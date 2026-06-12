@@ -176,6 +176,6 @@ CLAP supports backend selection through command-line arguments.
 
 For reporting issues, it can be done using either of the following ways: 
 + Raising an issue on the github repository under issues section
-+ Contact us at *paras@cdac.in*
+  
 
 

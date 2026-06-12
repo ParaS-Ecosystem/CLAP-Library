@@ -33,9 +33,10 @@ int main() {
     y[i] = (float)((rand() % 10) + 11);
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
+
+  auto start = high_resolution_clock::now();
+  
   backend->swap(n, x, 1, y, 1);
 
   auto stop = high_resolution_clock::now();

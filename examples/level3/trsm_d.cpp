@@ -42,10 +42,10 @@ int main() {
     B[i] = (double)(10 + 1);
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
 
+  auto start = high_resolution_clock::now();
+  
   backend->trsm(Layout::ColMajor, Side::Left, Uplo::Upper, Transpose::NoTrans,
                 Diag::NonUnit, m, n, alpha, A, m, B, m);
 

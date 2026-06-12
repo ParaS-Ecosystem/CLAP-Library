@@ -14,7 +14,6 @@
 #pragma once
 #include "macros.hpp"
 #include "types.hpp"
-#include <complex>
 #include <cstddef>
 #include <cstdint>
 #include <dlfcn.h>

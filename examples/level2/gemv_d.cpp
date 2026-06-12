@@ -63,11 +63,11 @@ int main()
         y[i] = 0.0;
     }
 
-    auto start =
-        high_resolution_clock::now();
-
     auto backend =
         clap::BlasFactory::create();
+
+     auto start =
+        high_resolution_clock::now();
 
     backend->gemv(Layout::ColMajor,Transpose::NoTrans,m,n,alpha,A,m,x,1, beta,y,1);
 

@@ -14,14 +14,12 @@
 #include "clap/openblas_backend.hpp"
 #include "../include/clap/dyn_backends.hpp"
 
-
 namespace clap {
 
-OpenBlasBackend::OpenBlasBackend()
-{std::cout << "Using OpenBLAS backend\n";
-    if (!dyn::loadOpenBlas())
-        throw std::runtime_error(
-            "OpenBLAS load failed");
+OpenBlasBackend::OpenBlasBackend() {
+  std::cout << "Using OpenBLAS backend\n";
+  if (!dyn::loadOpenBlas())
+    throw std::runtime_error("OpenBLAS load failed");
 }
 
-}
+} // namespace clap

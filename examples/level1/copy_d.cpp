@@ -33,9 +33,9 @@ int main() {
       y[i] = 0.0;
     }
 
-    auto start = high_resolution_clock::now();
-
     auto backend = clap::BlasFactory::create();
+
+   auto start = high_resolution_clock::now();
 
     backend->copy(n, x, 1, y, 1);
 

@@ -44,9 +44,9 @@ int main() {
     B[i] = (float)((rand() % 10) + 1);
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
+
+   auto start = high_resolution_clock::now();
 
   backend->trmm(Layout::ColMajor, Side::Left, Uplo::Upper, Transpose::NoTrans,
                 Diag::NonUnit, m, n, alpha, A, m, B, m);

@@ -35,10 +35,10 @@ int main() {
     y[i] = (float)((rand() % 10) + 1);
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
 
+  auto start = high_resolution_clock::now();
+  
   backend->axpy(n, alpha, x, 1, y, 1);
 
   auto stop = high_resolution_clock::now();

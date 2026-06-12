@@ -13,6 +13,8 @@
 
 // ==== CUDA & cuBLAS minimal typedefs ====
 
+#include <complex>
+
 typedef int cudaError_t;
 typedef std::complex<float> cuComplex;
 typedef std::complex<double> cuDoubleComplex;

@@ -30,9 +30,9 @@ int main() {
     x[i] = (double)((rand() % 10) + 1);
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
+
+  auto start = high_resolution_clock::now();
 
   backend->scal(n, alpha, x, 1);
 

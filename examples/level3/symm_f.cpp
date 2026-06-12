@@ -50,9 +50,9 @@ int main() {
     C[i] = 0.0f;
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
+
+  auto start = high_resolution_clock::now();
 
   backend->symm(Layout::ColMajor, Side::Left, Uplo::Upper, m, n, alpha, A, m, B,
                 m, beta, C, m);

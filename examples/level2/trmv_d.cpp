@@ -56,11 +56,11 @@ int main()
             (double)((rand() % 10) + 1);
     }
 
-    auto start =
-        high_resolution_clock::now();
-
     auto backend =
         clap::BlasFactory::create();
+    
+    auto start =
+        high_resolution_clock::now();
 
     backend->trmv(Layout::ColMajor,Uplo::Upper,Transpose::NoTrans,Diag::NonUnit,n,A,n,x,1);
 

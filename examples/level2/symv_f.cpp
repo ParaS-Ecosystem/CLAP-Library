@@ -48,11 +48,11 @@ int main()
         y[i] = 0.0f;
     }
 
-    auto start =
-        high_resolution_clock::now();
-
     auto backend =
         clap::BlasFactory::create();
+
+    auto start =
+        high_resolution_clock::now();
 
     backend->symv(Layout::ColMajor,Uplo::Upper,n,alpha,A,n,x,1,beta,y,1
     );

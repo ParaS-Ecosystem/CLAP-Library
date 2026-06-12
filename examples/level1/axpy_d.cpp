@@ -1,10 +1,12 @@
 
 #include <blas.hh>
 #include <stdio.h>
+#include <chrono>
 #include <stdlib.h>
 #include <time.h>
 
 using namespace clap;
+using namespace std::chrono;
 
 int main() {
   int n;
@@ -33,9 +35,12 @@ int main() {
   }
 
   auto backend = clap::BlasFactory::create();
-
+  
+  auto start = high_resolution_clock::now();
+  
   backend->axpy(n, alpha, x, 1, y, 1);
 
+  auto stop = high_resolution_clock::now();
 
   printf("\nAfter AXPY:\n");
 
@@ -43,6 +48,9 @@ int main() {
     printf("y[%d] = %lf\n", i, y[i]);
   }
 
+  double total_seconds = duration<double>(stop - start).count();
+
+  printf("Total time : %.6f s\n", total_seconds);
   free(x);
   free(y);
 

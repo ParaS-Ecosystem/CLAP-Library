@@ -47,9 +47,9 @@ int main() {
     C[i] = 0.0;
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
+
+  auto start = high_resolution_clock::now();
 
   backend->gemm(Layout::ColMajor, Transpose::NoTrans, Transpose::NoTrans, m, n,
                 k, alpha, A, m, B, k, beta, C, m);

@@ -31,9 +31,9 @@ int main() {
     y[i] = (float)((rand() % 10) + 1);
   }
 
-  auto start = high_resolution_clock::now();
-
   auto backend = clap::BlasFactory::create();
+
+  auto start = high_resolution_clock::now();
 
   float result = backend->dot(n, x, 1, y, 1);
 

@@ -3,7 +3,7 @@
 # high-performance linear algebra routines based on the BLAS standard.
 #
 # CLAP provides a unified math interface across architectures,
-# enabling portable and optimized performance on CPUs.
+# enabling portable and optimized performance on CPUs and GPUs.
 #
 # Copyright (C) The CLAP Contributors
 #

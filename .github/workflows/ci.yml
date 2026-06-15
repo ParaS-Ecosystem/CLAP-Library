@@ -2,12 +2,10 @@ name: CLAP CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
@@ -15,8 +13,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     env:
-      PARAS_INSTALL: $HOME/paras-install
-      CLAP_INSTALL: $HOME/clap-install
+      PARAS_INSTALL: /home/runner/paras-install
+      CLAP_INSTALL: /home/runner/clap-install
 
     steps:
       - name: Checkout CLAP repository
@@ -82,7 +80,7 @@ jobs:
             -DCMAKE_C_COMPILER=/usr/bin/clang-21 \
             -DCMAKE_CXX_COMPILER=/usr/bin/clang++-21 \
             -DPARAS_BASE_COMPILER=/usr/bin/clang++-21 \
-            -DPARAS_INSTALL_PREFIX=$PARAS_INSTALL \
+            -DPARAS_INSTALL_PREFIX=${PARAS_INSTALL} \
             -DLLVM_DIR=/usr/lib/llvm-21/lib/cmake/llvm \
             -DClang_DIR=/usr/lib/llvm-21/lib/cmake/clang \
             -DCMAKE_PREFIX_PATH=/usr/lib/llvm-21 \
@@ -93,21 +91,23 @@ jobs:
 
       - name: Verify ParaS Compiler
         run: |
-          export PATH=$PARAS_INSTALL/bin:$PATH
-          export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$LD_LIBRARY_PATH
-          parascc --version
+          export PATH=${PARAS_INSTALL}/bin:$PATH
+          export LD_LIBRARY_PATH=${PARAS_INSTALL}/lib:$LD_LIBRARY_PATH
+
+          ls -la ${PARAS_INSTALL}/bin
+          ${PARAS_INSTALL}/bin/parascc --version
 
       - name: Configure CLAP
         run: |
-          export PATH=$PARAS_INSTALL/bin:$PATH
-          export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$LD_LIBRARY_PATH
+          export PATH=${PARAS_INSTALL}/bin:$PATH
+          export LD_LIBRARY_PATH=${PARAS_INSTALL}/lib:$LD_LIBRARY_PATH
 
           cmake -S . -B build \
             -G Ninja \
             -DBUILD_SHARED_LIBS=ON \
-            -DCMAKE_INSTALL_PREFIX=$CLAP_INSTALL \
+            -DCMAKE_INSTALL_PREFIX=${CLAP_INSTALL} \
             -DCMAKE_C_COMPILER=/usr/bin/clang-21 \
-            -DCMAKE_CXX_COMPILER=$PARAS_INSTALL/bin/parascc \
+            -DCMAKE_CXX_COMPILER=${PARAS_INSTALL}/bin/parascc \
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build CLAP
@@ -120,23 +120,23 @@ jobs:
 
       - name: Verify CLAP installation
         run: |
-          ls -R $CLAP_INSTALL
+          ls -R ${CLAP_INSTALL}
 
       - name: Build and run CLAP example
         run: |
-          export PATH=$PARAS_INSTALL/bin:$PATH
-          export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$CLAP_INSTALL/lib:$CLAP_INSTALL/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+          export PATH=${PARAS_INSTALL}/bin:$PATH
+          export LD_LIBRARY_PATH=${PARAS_INSTALL}/lib:${CLAP_INSTALL}/lib:${CLAP_INSTALL}/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
           cd examples
 
           EXAMPLE_FILE=$(ls *.cpp | head -n 1)
 
-          echo "Building example: $EXAMPLE_FILE"
+          echo "Building example: ${EXAMPLE_FILE}"
 
-          parascc "$EXAMPLE_FILE" \
-            -I$CLAP_INSTALL/include \
-            -L$CLAP_INSTALL/lib \
-            -L$CLAP_INSTALL/lib64 \
+          ${PARAS_INSTALL}/bin/parascc "${EXAMPLE_FILE}" \
+            -I${CLAP_INSTALL}/include \
+            -L${CLAP_INSTALL}/lib \
+            -L${CLAP_INSTALL}/lib64 \
             -lclap \
             -lopenblas
 

@@ -72,7 +72,7 @@ cmake -S . -B build \
 ```bash
 cd build
 
-make -j$(nproc)
+make -j1
 
 make install
 ```

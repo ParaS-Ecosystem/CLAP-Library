@@ -2,10 +2,12 @@ name: CLAP CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
@@ -62,12 +64,15 @@ jobs:
             libzstd-dev
 
       - name: Checkout ParaS Compiler
-        run: |
-          git clone https://github.com/ParaS-Ecosystem/ParaS-Compiler.git $HOME/ParaS-Compiler
+        uses: actions/checkout@v4
+        with:
+          repository: ParaS-Ecosystem/ParaS-Compiler
+          token: ${{ secrets.PARAS_REPO_TOKEN }}
+          path: ParaS-Compiler
 
       - name: Build and install ParaS Compiler
         run: |
-          cd $HOME/ParaS-Compiler
+          cd ParaS-Compiler
           mkdir -p build
           cd build
 
@@ -90,7 +95,7 @@ jobs:
         run: |
           export PATH=$PARAS_INSTALL/bin:$PATH
           export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$LD_LIBRARY_PATH
-          parascc --version || true
+          parascc --version
 
       - name: Configure CLAP
         run: |
@@ -117,7 +122,7 @@ jobs:
         run: |
           ls -R $CLAP_INSTALL
 
-      - name: Build and run CLAP example with OpenBLAS CPU backend
+      - name: Build and run CLAP example
         run: |
           export PATH=$PARAS_INSTALL/bin:$PATH
           export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$CLAP_INSTALL/lib:$CLAP_INSTALL/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
@@ -128,7 +133,7 @@ jobs:
 
           echo "Building example: $EXAMPLE_FILE"
 
-          parascc $EXAMPLE_FILE \
+          parascc "$EXAMPLE_FILE" \
             -I$CLAP_INSTALL/include \
             -L$CLAP_INSTALL/lib \
             -L$CLAP_INSTALL/lib64 \

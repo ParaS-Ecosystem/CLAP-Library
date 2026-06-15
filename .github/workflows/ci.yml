@@ -108,11 +108,13 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=${CLAP_INSTALL} \
             -DCMAKE_C_COMPILER=/usr/bin/clang-21 \
             -DCMAKE_CXX_COMPILER=${PARAS_INSTALL}/bin/parascc \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-std=c++17 -fno-rtti -Iinclude" \
+            -DCMAKE_C_FLAGS="-Iinclude"
 
       - name: Build CLAP
         run: |
-          cmake --build build 
+          cmake --build build --parallel 1
 
       - name: Install CLAP
         run: |
@@ -127,7 +129,7 @@ jobs:
           export PATH=${PARAS_INSTALL}/bin:$PATH
           export LD_LIBRARY_PATH=${PARAS_INSTALL}/lib:${CLAP_INSTALL}/lib:${CLAP_INSTALL}/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
-          cd examples
+          cd examples/level3
 
           EXAMPLE_FILE=$(ls *.cpp | head -n 1)
 

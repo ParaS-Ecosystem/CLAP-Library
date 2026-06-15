@@ -142,4 +142,4 @@ jobs:
             -lclap \
             -lopenblas
 
-          ./a.out -cpu
+          printf "10\n10\n10\n" | ./a.out -cpu

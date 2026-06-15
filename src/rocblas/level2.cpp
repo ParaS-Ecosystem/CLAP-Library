@@ -1,16 +1,19 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
-// This file is part of the CLAP library — an implementation of
-// high-performance linear algebra routines based on the BLAS standard.
-//
-// CLAP provides a unified math interface across architectures,
-// enabling portable and optimized performance on CPUs and GPUs.
-//
-// Copyright (C) The CLAP Contributors
-//
-// CLAP is released under the GNU Lesser General Public License (LGPL) v3.
-// See the file LICENSE in the project root for full license details.
-// -----------------------------------------------------------------------------
-
 
 
 // #include "clap/openblas_utils.hpp"

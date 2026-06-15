@@ -112,7 +112,7 @@ jobs:
 
       - name: Build CLAP
         run: |
-          cmake --build build --parallel $(nproc)
+          cmake --build build 
 
       - name: Install CLAP
         run: |

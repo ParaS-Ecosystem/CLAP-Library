@@ -1,0 +1,138 @@
+name: CLAP CI
+
+on:
+  push:
+    branches: [ main ]
+
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build and Test CLAP Library
+    runs-on: ubuntu-24.04
+
+    env:
+      PARAS_INSTALL: $HOME/paras-install
+      CLAP_INSTALL: $HOME/clap-install
+
+    steps:
+      - name: Checkout CLAP repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            build-essential \
+            gcc \
+            g++ \
+            gfortran \
+            cmake \
+            ninja-build \
+            git \
+            wget \
+            gnupg \
+            lsb-release \
+            software-properties-common \
+            libopenblas-dev
+
+      - name: Add LLVM 21 repository
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+
+      - name: Install LLVM 21 dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            llvm-21 \
+            llvm-21-dev \
+            llvm-21-tools \
+            clang-21 \
+            clang-tools-21 \
+            libclang-21-dev \
+            libffi-dev \
+            libedit-dev \
+            libncurses-dev \
+            libcurl4-openssl-dev \
+            zlib1g-dev \
+            libxml2-dev \
+            libzstd-dev
+
+      - name: Checkout ParaS Compiler
+        run: |
+          git clone https://github.com/ParaS-Ecosystem/ParaS-Compiler.git $HOME/ParaS-Compiler
+
+      - name: Build and install ParaS Compiler
+        run: |
+          cd $HOME/ParaS-Compiler
+          mkdir -p build
+          cd build
+
+          cmake .. \
+            -G Ninja \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_C_COMPILER=/usr/bin/clang-21 \
+            -DCMAKE_CXX_COMPILER=/usr/bin/clang++-21 \
+            -DPARAS_BASE_COMPILER=/usr/bin/clang++-21 \
+            -DPARAS_INSTALL_PREFIX=$PARAS_INSTALL \
+            -DLLVM_DIR=/usr/lib/llvm-21/lib/cmake/llvm \
+            -DClang_DIR=/usr/lib/llvm-21/lib/cmake/clang \
+            -DCMAKE_PREFIX_PATH=/usr/lib/llvm-21 \
+            -DCMAKE_CXX_STANDARD=20
+
+          cmake --build . --parallel $(nproc)
+          cmake --install .
+
+      - name: Verify ParaS Compiler
+        run: |
+          export PATH=$PARAS_INSTALL/bin:$PATH
+          export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$LD_LIBRARY_PATH
+          parascc --version || true
+
+      - name: Configure CLAP
+        run: |
+          export PATH=$PARAS_INSTALL/bin:$PATH
+          export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$LD_LIBRARY_PATH
+
+          cmake -S . -B build \
+            -G Ninja \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_INSTALL_PREFIX=$CLAP_INSTALL \
+            -DCMAKE_C_COMPILER=/usr/bin/clang-21 \
+            -DCMAKE_CXX_COMPILER=$PARAS_INSTALL/bin/parascc \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build CLAP
+        run: |
+          cmake --build build --parallel $(nproc)
+
+      - name: Install CLAP
+        run: |
+          cmake --install build
+
+      - name: Verify CLAP installation
+        run: |
+          ls -R $CLAP_INSTALL
+
+      - name: Build and run CLAP example with OpenBLAS CPU backend
+        run: |
+          export PATH=$PARAS_INSTALL/bin:$PATH
+          export LD_LIBRARY_PATH=$PARAS_INSTALL/lib:$CLAP_INSTALL/lib:$CLAP_INSTALL/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+
+          cd examples
+
+          EXAMPLE_FILE=$(ls *.cpp | head -n 1)
+
+          echo "Building example: $EXAMPLE_FILE"
+
+          parascc $EXAMPLE_FILE \
+            -I$CLAP_INSTALL/include \
+            -L$CLAP_INSTALL/lib \
+            -L$CLAP_INSTALL/lib64 \
+            -lclap \
+            -lopenblas
+
+          ./a.out -cpu

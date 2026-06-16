@@ -16,7 +16,7 @@
 // -----------------------------------------------------------------------------
 
 // ==== CUDA & cuBLAS minimal typedefs ====
-
+#pragma once
 #include <complex>
 
 typedef int cudaError_t;

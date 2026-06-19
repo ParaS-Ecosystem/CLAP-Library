@@ -321,6 +321,36 @@ void CuBlasBackend::sbmv(Layout layout, Uplo uplo, int64_t n, int64_t k,
   clap_cudaFree(d_Y);
 }
 
+// Float GER
+
+void CuBlasBackend::ger(Layout layout, int m, int n, const float alpha,
+                        const float *X, int incx, const float *Y, int incy,
+                        float *A, int lda) {
+  float *d_X = nullptr, *d_Y = nullptr, *d_A = nullptr;
+
+  std::size_t sizeX = 1 + (m - 1) * std::abs(incx);
+  std::size_t sizeY = 1 + (n - 1) * std::abs(incy);
+  std::size_t sizeA = lda * n;
+
+  clap_cudaMalloc((void **)&d_X, sizeX * sizeof(float));
+  clap_cudaMalloc((void **)&d_Y, sizeY * sizeof(float));
+  clap_cudaMalloc((void **)&d_A, sizeA * sizeof(float));
+
+  clap_cudaMemcpy(d_X, X, sizeX * sizeof(float), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(d_Y, Y, sizeY * sizeof(float), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(d_A, A, sizeA * sizeof(float), cudaMemcpyHostToDevice);
+
+  clap_cublasSger(handle, (int)m, (int)n, &alpha, d_X, (int)incx, d_Y,
+                  (int)incy, d_A, (int)lda);
+
+  clap_cudaMemcpy(A, d_A, sizeA * sizeof(float), cudaMemcpyDeviceToHost);
+
+  clap_cudaFree(d_X);
+  clap_cudaFree(d_Y);
+  clap_cudaFree(d_A);
+}
+
+
 } // namespace clap
 
 

@@ -347,4 +347,33 @@ void RocBlasBackend::sbmv(Layout layout, Uplo uplo,
     clap_hipFree(d_Y);
 }
 
+// Float GER
+
+void RocBlasBackend::ger(Layout layout, int m, int n, const float alpha,
+                         const float *X, int incx, const float *Y, int incy,
+                         float *A, int lda) {
+  float *d_X = nullptr, *d_Y = nullptr, *d_A = nullptr;
+
+  std::size_t sizeX = 1 + (m - 1) * std::abs(incx);
+  std::size_t sizeY = 1 + (n - 1) * std::abs(incy);
+  std::size_t sizeA = lda * n;
+
+  clap_hipMalloc((void **)&d_X, sizeX * sizeof(float));
+  clap_hipMalloc((void **)&d_Y, sizeY * sizeof(float));
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(float));
+
+  clap_hipMemcpy(d_X, X, sizeX * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_Y, Y, sizeY * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(float), hipMemcpyHostToDevice);
+
+  clap_rocblasSger(handle, (int)m, (int)n, &alpha, d_X, (int)incx, d_Y,
+                   (int)incy, d_A, (int)lda);
+
+  clap_hipMemcpy(A, d_A, sizeA * sizeof(float), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_X);
+  clap_hipFree(d_Y);
+  clap_hipFree(d_A);
+}
+
 }

@@ -124,4 +124,13 @@ void OpenBlasBackend::sbmv(Layout layout, Uplo uplo, int64_t n, int64_t k,
                    alpha, A, (int)lda, x, (int)incX, beta, y, (int)incY);
 }
 
+// float GER
+
+void OpenBlasBackend::ger(Layout layout, int m, int n, const float alpha,
+                          const float *X, int incX, const float *Y, int incY,
+                          float *A, int lda) {
+  clap_cblas_sger(to_cblas_order(layout), (int)m, (int)n, alpha, X, (int)incX,
+                  Y, (int)incY, A, (int)lda);
+}
+
 } // namespace clap

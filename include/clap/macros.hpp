@@ -62,6 +62,8 @@
 #define clap_cublasSsbmv clap::dyn::p_cublasSsbmv_v2
 #define clap_cublasDsbmv clap::dyn::p_cublasDsbmv_v2
 
+#define clap_cublasSger clap::dyn::p_cublasSger_v2
+
 // Level 3
 
 #define clap_cublasSgemm clap::dyn::p_cublasSgemm_v2
@@ -114,6 +116,8 @@
 
 #define clap_cblas_ssbmv clap::dyn::p_cblas_ssbmv
 #define clap_cblas_dsbmv clap::dyn::p_cblas_dsbmv
+
+#define clap_cblas_sger clap::dyn::p_cblas_sger
 
 // Level 3
 
@@ -174,6 +178,8 @@
 
 #define clap_rocblasSsbmv clap::dyn::p_rocblas_ssbmv
 #define clap_rocblasDsbmv clap::dyn::p_rocblas_dsbmv
+
+#define clap_rocblasSger clap::dyn::p_rocblas_sger
 
 // Level 3
 

@@ -130,6 +130,12 @@ cublasStatus_t (*p_cublasDsbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    std::int64_t incx, const double *beta,
                                    double *Y, std::int64_t incy) = nullptr;
 
+cublasStatus_t (*p_cublasSger_v2)(cublasHandle_t handle, std::int64_t m,
+                                  std::int64_t n, const float *alpha,
+                                  const float *X, std::int64_t incx,
+                                  const float *Y, std::int64_t incy, float *A,
+                                  std::int64_t lda) = nullptr;
+
 // Level 3
 
 cublasStatus_t (*p_cublasSgemm_v2)(cublasHandle_t handle,
@@ -265,6 +271,11 @@ void (*p_cblas_dsbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
                       const double *A, std::int64_t lda, const double *X,
                       std::int64_t incx, const double beta, double *Y,
                       std::int64_t incy) = nullptr;
+
+void (*p_cblas_sger)(const CBLAS_ORDER Order, int m, int n, const float alpha,
+                     const float *X, int incx, const float *Y, int incy,
+                     float *A, int lda) = nullptr;
+
 
 // level 3
 
@@ -432,6 +443,12 @@ rocblas_status (*p_rocblas_dsbmv)(rocblas_handle handle, rocblas_fill uplo,
                                   std::int64_t lda, const double *X,
                                   std::int64_t incx, const double *beta,
                                   double *Y, std::int64_t incy) = nullptr;
+
+rocblas_status (*p_rocblas_sger)(rocblas_handle handle, std::int64_t m,
+                                 std::int64_t n, const float *alpha,
+                                 const float *X, std::int64_t incx,
+                                 const float *Y, std::int64_t incy, float *A,
+                                 std::int64_t lda) = nullptr;
 
 // Level 3
 
@@ -614,6 +631,10 @@ bool loadCudaAndCublas() {
   LOAD_CUDA_SYM(cublas_lib, cublasSsbmv_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasDsbmv_v2);
 
+  // GER
+
+  LOAD_CUDA_SYM(cublas_lib, cublasSger_v2);
+
   // level 3
 
   // GEMM
@@ -728,6 +749,10 @@ bool loadOpenBlas() {
 
   LOAD_OBLAS_SYM(openblas_lib, cblas_ssbmv);
   LOAD_OBLAS_SYM(openblas_lib, cblas_dsbmv);
+
+  // GER
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_sger);
 
   // Level 3
 
@@ -874,6 +899,10 @@ bool loadHipAndRocblas() {
 
   LOAD_HIP_SYM(rocblas_lib, rocblas_ssbmv);
   LOAD_HIP_SYM(rocblas_lib, rocblas_dsbmv);
+
+  // GER
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_sger);
 
   // level 3
 

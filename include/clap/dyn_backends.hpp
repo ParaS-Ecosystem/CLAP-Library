@@ -155,6 +155,11 @@ extern cublasStatus_t (*p_cublasDsbmv_v2)(cublasHandle_t handle,
                                           const double *X, std::int64_t incx,
                                           const double *beta, double *Y,
                                           std::int64_t incy);
+extern cublasStatus_t (*p_cublasSger_v2)(cublasHandle_t handle, std::int64_t m,
+                                         std::int64_t n, const float *alpha,
+                                         const float *X, std::int64_t incx,
+                                         const float *Y, std::int64_t incy,
+                                         float *A, std::int64_t lda);
 
 // Level 3
 
@@ -296,6 +301,9 @@ extern void (*p_cblas_dsbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
                              const double *A, std::int64_t lda, const double *X,
                              std::int64_t incx, const double beta, double *Y,
                              std::int64_t incy);
+extern void (*p_cblas_sger)(const CBLAS_ORDER Order, int m, int n,
+                            const float alpha, const float *X, int incx,
+                            const float *Y, int incy, float *A, int lda);
 
 // Level 3
 
@@ -472,6 +480,11 @@ extern rocblas_status (*p_rocblas_dsbmv)(
     const double *alpha, const double *A, std::int64_t lda, const double *X,
     std::int64_t incx, const double *beta, double *Y, std::int64_t incy);
 
+extern rocblas_status (*p_rocblas_sger)(rocblas_handle handle, std::int64_t m,
+                                        std::int64_t n, const float *alpha,
+                                        const float *X, std::int64_t incx,
+                                        const float *Y, std::int64_t incy,
+                                        float *A, std::int64_t lda);
 // Level 3
 
 extern rocblas_status (*p_rocblas_sgemm)(

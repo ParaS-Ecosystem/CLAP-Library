@@ -86,6 +86,9 @@ public:
             const double *A, int64_t lda, const double *X, int64_t incx,
             const double beta, double *Y, int64_t incy) override;
 
+   void ger(Layout layout, int m, int n, const float alpha, const float *X,
+           int incx, const float *Y, int incy, float *A, int lda) override;
+
   // Level 3
 
   void gemm(Layout layout, Transpose transA, Transpose transB, int64_t m,

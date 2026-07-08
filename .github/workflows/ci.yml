@@ -65,7 +65,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ParaS-Ecosystem/ParaS-Compiler
-          token: ${{ secrets.PARAS_REPO_TOKEN }}
+          ##token: ${{ secrets.PARAS_REPO_TOKEN }}
           path: ParaS-Compiler
 
       - name: Build and install ParaS Compiler

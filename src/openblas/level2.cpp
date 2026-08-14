@@ -133,4 +133,53 @@ void OpenBlasBackend::ger(Layout layout, int m, int n, const float alpha,
                   Y, (int)incY, A, (int)lda);
 }
 
+//GER Double
+
+void OpenBlasBackend::ger(Layout layout, int m, int n, const double alpha,
+                          const double *X, int incX, const double *Y, int incY,
+                          double *A, int lda) {
+  clap_cblas_dger(to_cblas_order(layout), (int)m, (int)n, alpha, X, (int)incX,
+                  Y, (int)incY, A, (int)lda);
+}
+
+//SYR Float
+
+void OpenBlasBackend::syr(Layout layout, Uplo uplo, int n, const float alpha,
+                          const float *X, int incX, float *A, int lda) {
+  clap_cblas_ssyr(to_cblas_order(layout), to_cblas_uplo(uplo), (int)n, alpha, X,
+                  (int)incX, A, (int)lda);
+}
+
+//SYR Double
+
+void OpenBlasBackend::syr(Layout layout, Uplo uplo, int n, const double alpha,
+                          const double *X, int incX, double *A, int lda) {
+  clap_cblas_dsyr(to_cblas_order(layout), to_cblas_uplo(uplo), (int)n, alpha, X,
+                  (int)incX, A, (int)lda);
+}
+
+//GBMV Float
+
+void OpenBlasBackend::gbmv(Layout layout, Transpose transpose, int m, int n,
+                           int KL, int KU, const float alpha, const float *A,
+                           int lda, const float *X, int incX, const float beta,
+                           float *Y, int incY) {
+  clap_cblas_sgbmv(to_cblas_order(layout), to_cblas_trans(transpose), (int)m,
+                   (int)n, (int)KL, (int)KU, alpha, A, (int)lda, X, (int)incX,
+                   beta, Y, (int)incY);
+}
+
+//GBMV Double
+
+void OpenBlasBackend::gbmv(Layout layout, Transpose transpose, int m, int n,
+                           int KL, int KU, const double alpha, const double *A,
+                           int lda, const double *X, int incX,
+                           const double beta, double *Y, int incY) {
+  clap_cblas_dgbmv(to_cblas_order(layout), to_cblas_trans(transpose), (int)m,
+                   (int)n, (int)KL, (int)KU, alpha, A, (int)lda, X, (int)incX,
+                   beta, Y, (int)incY);
+}
+
+
+
 } // namespace clap

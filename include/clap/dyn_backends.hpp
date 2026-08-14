@@ -297,6 +297,13 @@ extern float (*p_cblas_sdot)(int64_t, const float *, int64_t, const float *,
 extern double (*p_cblas_ddot)(int64_t, const double *, int64_t, const double *,
                               int64_t);
 
+extern int (*p_cblas_isamax)(int, const float *, int);
+extern int (*p_cblas_idamax)(int, const double *, int);
+
+extern float (*p_cblas_snrm2)(int, const float *, int);
+extern double (*p_cblas_dnrm2)(int, const double *, int);
+
+
 // LEVEL 2
 
 extern void (*p_cblas_sgemv)(const CBLAS_ORDER Order,
@@ -351,9 +358,36 @@ extern void (*p_cblas_dsbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
                              const double *A, std::int64_t lda, const double *X,
                              std::int64_t incx, const double beta, double *Y,
                              std::int64_t incy);
+
 extern void (*p_cblas_sger)(const CBLAS_ORDER Order, int m, int n,
                             const float alpha, const float *X, int incx,
                             const float *Y, int incy, float *A, int lda);
+extern void (*p_cblas_dger)(const CBLAS_ORDER Order, std::int64_t m,
+                            std::int64_t n, const double alpha, const double *X,
+                            std::int64_t incx, const double *Y,
+                            std::int64_t incy, double *A, std::int64_t lda);
+                            
+extern void (*p_cblas_ssyr)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                            std::int64_t n, const float alpha, const float *X,
+                            std::int64_t incX, float *A, std::int64_t lda);
+extern void (*p_cblas_dsyr)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                            std::int64_t n, const double alpha, const double *X,
+                            std::int64_t incX, double *A, std::int64_t lda);
+                            
+extern void (*p_cblas_sgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
+                             std::int64_t m, std::int64_t n, std::int64_t KL,
+                             std::int64_t KU, const float alpha, const float *A,
+                             std::int64_t lda, const float *X,
+                             std::int64_t incX, const float beta, float *Y,
+                             std::int64_t incY);
+extern void (*p_cblas_dgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
+                             std::int64_t m, std::int64_t n, std::int64_t KL,
+                             std::int64_t KU, const double alpha,
+                             const double *A, std::int64_t lda, const double *X,
+                             std::int64_t incX, const double beta, double *Y,
+                             std::int64_t incY);
+                             
+                             
 
 // Level 3
 
@@ -422,6 +456,45 @@ extern void (*p_cblas_dtrsm)(const CBLAS_ORDER Order, const CBLAS_SIDE Side,
                              std::int64_t N, const double alpha,
                              const double *A, std::int64_t lda, double *B,
                              std::int64_t ldb);
+
+extern void (*p_cblas_ssyr2k)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                              const CBLAS_TRANSPOSE Trans, std::int64_t N,
+                              std::int64_t K, const float alpha, const float *A,
+                              std::int64_t lda, const float *B,
+                              std::int64_t ldb, const float beta, float *C,
+                              std::int64_t ldc);
+extern void (*p_cblas_dsyr2k)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                              const CBLAS_TRANSPOSE Trans, std::int64_t N,
+                              std::int64_t K, const double alpha,
+                              const double *A, std::int64_t lda,
+                              const double *B, std::int64_t ldb,
+                              const double beta, double *C, std::int64_t ldc);
+
+
+
+
+
+
+//Complex Routines
+
+extern void (*p_cblas_cgemm)(const CBLAS_ORDER Order,
+                             const CBLAS_TRANSPOSE TransA,
+                             const CBLAS_TRANSPOSE TransB, std::int64_t M,
+                             std::int64_t N, std::int64_t K, const void *alpha,
+                             const void *A, std::int64_t lda, const void *B,
+                             std::int64_t ldb, const void *beta, void *C,
+                             std::int64_t ldc);
+extern void (*p_cblas_zgemm)(const CBLAS_ORDER Order,
+                             const CBLAS_TRANSPOSE TransA,
+                             const CBLAS_TRANSPOSE TransB, std::int64_t M,
+                             std::int64_t N, std::int64_t K, const void *alpha,
+                             const void *A, std::int64_t lda, const void *B,
+                             std::int64_t ldb, const void *beta, void *C,
+                             std::int64_t ldc);
+
+
+
+                             
 
 // ROCBLAS Functions
 

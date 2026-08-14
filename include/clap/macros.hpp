@@ -115,6 +115,14 @@
 #define clap_cblas_sdot clap::dyn::p_cblas_sdot
 #define clap_cblas_ddot clap::dyn::p_cblas_ddot
 
+#define clap_cblas_isamax clap::dyn::p_cblas_isamax
+#define clap_cblas_idamax clap::dyn::p_cblas_idamax
+
+#define clap_cblas_snrm2 clap::dyn::p_cblas_snrm2
+#define clap_cblas_dnrm2 clap::dyn::p_cblas_dnrm2
+
+
+
 // level 2
 
 #define clap_cblas_sgemv clap::dyn::p_cblas_sgemv
@@ -133,11 +141,20 @@
 #define clap_cblas_dsbmv clap::dyn::p_cblas_dsbmv
 
 #define clap_cblas_sger clap::dyn::p_cblas_sger
+#define clap_cblas_dger clap::dyn::p_cblas_dger
+
+#define clap_cblas_ssyr clap::dyn::p_cblas_ssyr
+#define clap_cblas_dsyr clap::dyn::p_cblas_dsyr
+
+#define clap_cblas_sgbmv clap::dyn::p_cblas_sgbmv
+#define clap_cblas_dgbmv clap::dyn::p_cblas_dgbmv
 
 // Level 3
 
 #define clap_cblas_sgemm clap::dyn::p_cblas_sgemm
 #define clap_cblas_dgemm clap::dyn::p_cblas_dgemm
+#define clap_cblas_cgemm clap::dyn::p_cblas_cgemm
+#define clap_cblas_zgemm clap::dyn::p_cblas_zgemm
 
 #define clap_cblas_ssymm clap::dyn::p_cblas_ssymm
 #define clap_cblas_dsymm clap::dyn::p_cblas_dsymm
@@ -150,6 +167,11 @@
 
 #define clap_cblas_strsm clap::dyn::p_cblas_strsm
 #define clap_cblas_dtrsm clap::dyn::p_cblas_dtrsm
+
+#define clap_cblas_ssyr2k clap::dyn::p_cblas_ssyr2k
+#define clap_cblas_dsyr2k clap::dyn::p_cblas_dsyr2k
+
+
 
 // ROCBLAS
 

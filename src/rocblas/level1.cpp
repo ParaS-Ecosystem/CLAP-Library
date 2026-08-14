@@ -219,4 +219,82 @@ void RocBlasBackend::swap(int64_t n, double *x, int64_t incx, double *y,
   clap_hipFree(d_y);
 }
 
+//IAMAX Float
+
+int RocBlasBackend::iamax(int n, const float *x, int incx) {
+  float *d_x = nullptr;
+  int *d_result = nullptr;
+  int h_result = 0;
+
+  clap_hipMalloc((void **)&d_x, n * sizeof(float));
+  clap_hipMalloc((void **)&d_result, sizeof(int));
+  clap_hipMemcpy(d_x, x, n * sizeof(float), hipMemcpyHostToDevice);
+  clap_rocblas_isamax(handle, (rocblas_int)n, d_x, (rocblas_int)incx, d_result);
+  clap_hipMemcpy(&h_result, d_result, sizeof(int), hipMemcpyDeviceToHost);
+  clap_hipFree(d_x);
+  clap_hipFree(d_result);
+
+  return (int)h_result;
+}
+
+//IAMAX Double
+
+int RocBlasBackend::iamax(int n, const double *x, int incx) {
+  double *d_x = nullptr;
+  int *d_result = nullptr;
+  int h_result = 0;
+
+  clap_hipMalloc((void **)&d_x, n * sizeof(double));
+  clap_hipMalloc((void **)&d_result, sizeof(int));
+  clap_hipMemcpy(d_x, x, n * sizeof(double), hipMemcpyHostToDevice);
+  clap_rocblas_idamax(handle, (rocblas_int)n, d_x, (rocblas_int)incx, d_result);
+  clap_hipMemcpy(&h_result, d_result, sizeof(int), hipMemcpyDeviceToHost);
+  clap_hipFree(d_x);
+  clap_hipFree(d_result);
+
+  return (int)h_result;
+}
+
+//NRM2 Float
+
+float RocBlasBackend::nrm2(int n, const float *x, int incx) {
+  float *d_x = nullptr;
+  float *d_result = nullptr;
+  float h_result = 0.0f;
+
+  size_t size_x = (n - 1) * incx + 1;
+
+  clap_hipMalloc((void **)&d_x, size_x * sizeof(float));
+  clap_hipMalloc((void **)&d_result, sizeof(float));
+  clap_hipMemcpy(d_x, x, size_x * sizeof(float), hipMemcpyHostToDevice);
+  clap_rocblas_snrm2(handle, (rocblas_int)n, d_x, (rocblas_int)incx, d_result);
+  clap_hipMemcpy(&h_result, d_result, sizeof(float), hipMemcpyDeviceToHost);
+  clap_hipFree(d_x);
+  clap_hipFree(d_result);
+
+  return h_result;
+}
+
+//NRM2 Double
+
+double RocBlasBackend::nrm2(int n, const double *x, int incx) {
+  double *d_x = nullptr;
+  double *d_result = nullptr;
+  double h_result = 0.0;
+
+  size_t size_x = (n - 1) * incx + 1;
+
+  clap_hipMalloc((void **)&d_x, size_x * sizeof(double));
+  clap_hipMalloc((void **)&d_result, sizeof(double));
+  clap_hipMemcpy(d_x, x, size_x * sizeof(double), hipMemcpyHostToDevice);
+  clap_rocblas_dnrm2(handle, (rocblas_int)n, d_x, (rocblas_int)incx, d_result);
+  clap_hipMemcpy(&h_result, d_result, sizeof(double), hipMemcpyDeviceToHost);
+  clap_hipFree(d_x);
+  clap_hipFree(d_result);
+
+  return h_result;
+}
+
+
+
 } // namespace clap

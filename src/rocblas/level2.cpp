@@ -376,4 +376,155 @@ void RocBlasBackend::ger(Layout layout, int m, int n, const float alpha,
   clap_hipFree(d_A);
 }
 
+// Double GER
+
+void RocBlasBackend::ger(Layout layout, int m, int n, const double alpha,
+                         const double *X, int incx, const double *Y, int incy,
+                         double *A, int lda) {
+  double *d_X = nullptr, *d_Y = nullptr, *d_A = nullptr;
+
+  std::size_t sizeX = 1 + (m - 1) * std::abs(incx);
+  std::size_t sizeY = 1 + (n - 1) * std::abs(incy);
+  std::size_t sizeA = lda * n;
+
+  clap_hipMalloc((void **)&d_X, sizeX * sizeof(double));
+  clap_hipMalloc((void **)&d_Y, sizeY * sizeof(double));
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(double));
+
+  clap_hipMemcpy(d_X, X, sizeX * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_Y, Y, sizeY * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(double), hipMemcpyHostToDevice);
+
+  clap_rocblasDger(handle, (int)m, (int)n, &alpha, d_X, (int)incx, d_Y,
+                   (int)incy, d_A, (int)lda);
+
+  clap_hipMemcpy(A, d_A, sizeA * sizeof(double), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_X);
+  clap_hipFree(d_Y);
+  clap_hipFree(d_A);
+}
+
+// Float SYR
+
+void RocBlasBackend::syr(Layout layout, Uplo uplo, int n, const float alpha,
+                         const float *X, int incx, float *A, int lda) {
+  float *d_X = nullptr, *d_A = nullptr;
+
+  std::size_t sizeX = 1 + (n - 1) * std::abs(incx);
+  std::size_t sizeA = lda * n;
+
+  clap_hipMalloc((void **)&d_X, sizeX * sizeof(float));
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(float));
+
+  clap_hipMemcpy(d_X, X, sizeX * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(float), hipMemcpyHostToDevice);
+
+  clap_rocblasSsyr(handle, clap::to_rocblas_uplo(uplo), (int)n, &alpha, d_X,
+                   (int)incx, d_A, (int)lda);
+
+  clap_hipMemcpy(A, d_A, sizeA * sizeof(float), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_X);
+  clap_hipFree(d_A);
+}
+
+// Double SYR
+
+void RocBlasBackend::syr(Layout layout, Uplo uplo, int n, const double alpha,
+                         const double *X, int incx, double *A, int lda) {
+  double *d_X = nullptr, *d_A = nullptr;
+
+  std::size_t sizeX = 1 + (n - 1) * std::abs(incx);
+  std::size_t sizeA = lda * n;
+
+  clap_hipMalloc((void **)&d_X, sizeX * sizeof(double));
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(double));
+
+  clap_hipMemcpy(d_X, X, sizeX * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(double), hipMemcpyHostToDevice);
+
+  clap_rocblasDsyr(handle, clap::to_rocblas_uplo(uplo), (int)n, &alpha, d_X,
+                   (int)incx, d_A, (int)lda);
+
+  clap_hipMemcpy(A, d_A, sizeA * sizeof(double), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_X);
+  clap_hipFree(d_A);
+}
+
+// Float GBMV
+
+void RocBlasBackend::gbmv(Layout layout, Transpose trans, int m, int n, int KL,
+                          int KU, const float alpha, const float *A, int lda,
+                          const float *X, int incx, const float beta, float *Y,
+                          int incy) {
+  float *d_A = nullptr, *d_X = nullptr, *d_Y = nullptr;
+
+  rocblas_operation roc_trans = clap::to_rocblas_trans(trans);
+
+  std::size_t sizeA = lda * n;
+
+  std::size_t lenX = (roc_trans == rocblas_operation_none) ? n : m;
+  std::size_t lenY = (roc_trans == rocblas_operation_none) ? m : n;
+
+  std::size_t sizeX = 1 + (lenX - 1) * std::abs(incx);
+  std::size_t sizeY = 1 + (lenY - 1) * std::abs(incy);
+
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(float));
+  clap_hipMalloc((void **)&d_X, sizeX * sizeof(float));
+  clap_hipMalloc((void **)&d_Y, sizeY * sizeof(float));
+
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_X, X, sizeX * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_Y, Y, sizeY * sizeof(float), hipMemcpyHostToDevice);
+
+  clap_rocblasSgbmv(handle, roc_trans, (int)m, (int)n, (int)KL, (int)KU, &alpha,
+                    d_A, (int)lda, d_X, (int)incx, &beta, d_Y, (int)incy);
+
+  clap_hipMemcpy(Y, d_Y, sizeY * sizeof(float), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_A);
+  clap_hipFree(d_X);
+  clap_hipFree(d_Y);
+}
+
+// Double GBMV
+
+void RocBlasBackend::gbmv(Layout layout, Transpose trans, int m, int n, int KL,
+                          int KU, const double alpha, const double *A, int lda,
+                          const double *X, int incx, const double beta,
+                          double *Y, int incy) {
+  double *d_A = nullptr, *d_X = nullptr, *d_Y = nullptr;
+
+  rocblas_operation roc_trans = clap::to_rocblas_trans(trans);
+
+  std::size_t sizeA = lda * n;
+
+  std::size_t lenX = (roc_trans == rocblas_operation_none) ? n : m;
+  std::size_t lenY = (roc_trans == rocblas_operation_none) ? m : n;
+
+  std::size_t sizeX = 1 + (lenX - 1) * std::abs(incx);
+  std::size_t sizeY = 1 + (lenY - 1) * std::abs(incy);
+
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(double));
+  clap_hipMalloc((void **)&d_X, sizeX * sizeof(double));
+  clap_hipMalloc((void **)&d_Y, sizeY * sizeof(double));
+
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_X, X, sizeX * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_Y, Y, sizeY * sizeof(double), hipMemcpyHostToDevice);
+
+  clap_rocblasDgbmv(handle, roc_trans, (int)m, (int)n, (int)KL, (int)KU, &alpha,
+                    d_A, (int)lda, d_X, (int)incx, &beta, d_Y, (int)incy);
+
+  clap_hipMemcpy(Y, d_Y, sizeY * sizeof(double), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_A);
+  clap_hipFree(d_X);
+  clap_hipFree(d_Y);
+}
+
+
+
 }

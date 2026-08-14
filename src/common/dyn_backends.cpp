@@ -66,6 +66,20 @@ cublasStatus_t (*p_cublasDdot_v2)(cublasHandle_t, int64_t, const double *,
                                   int64_t, const double *, int64_t,
                                   double *) = nullptr;
 
+cublasStatus_t (*p_cublasIsamax_v2)(cublasHandle_t, int, const float *, int,
+                                    int *) = nullptr;
+cublasStatus_t (*p_cublasIdamax_v2)(cublasHandle_t, int, const double *, int,
+                                    int *) = nullptr;
+
+cublasStatus_t (*p_cublasSnrm2_v2)(cublasHandle_t, int, const float *, int,
+                                   float *) = nullptr;
+cublasStatus_t (*p_cublasDnrm2_v2)(cublasHandle_t, int, const double *, int,
+                                   double *) = nullptr;
+
+
+
+
+
 // Level 2
 
 cublasStatus_t (*p_cublasSgemv_v2)(cublasHandle_t handle,
@@ -136,6 +150,35 @@ cublasStatus_t (*p_cublasSger_v2)(cublasHandle_t handle, std::int64_t m,
                                   const float *Y, std::int64_t incy, float *A,
                                   std::int64_t lda) = nullptr;
 
+cublasStatus_t (*p_cublasDger_v2)(cublasHandle_t handle, std::int64_t m,
+                                  std::int64_t n, const double *alpha,
+                                  const double *X, std::int64_t incx,
+                                  const double *Y, std::int64_t incy, double *A,
+                                  std::int64_t lda) = nullptr;
+
+ cublasStatus_t (*p_cublasSsyr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                  std::int64_t n, const float *alpha,
+                                  const float *X, std::int64_t incx, float *A,
+                                  std::int64_t lda) = nullptr;
+
+cublasStatus_t (*p_cublasDsyr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                  std::int64_t n, const double *alpha,
+                                  const double *X, std::int64_t incx, double *A,
+                                  std::int64_t lda) = nullptr;
+                                 
+cublasStatus_t (*p_cublasSgbmv_v2)(cublasHandle_t handle, cublasOperation_t trans,
+                                   std::int64_t m, std::int64_t n, std::int64_t KL,
+                                   std::int64_t KU, const float *alpha, const float *A,
+                                   std::int64_t lda, const float *X, std::int64_t incx,
+                                   const float *beta, float *Y, std::int64_t incy) = nullptr;
+
+cublasStatus_t (*p_cublasDgbmv_v2)(cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
+                                   std::int64_t n, std::int64_t KL, std::int64_t KU, const double *alpha,
+                                   const double *A, std::int64_t lda, const double *X, std::int64_t incx,
+                                   const double *beta, double *Y, std::int64_t incy) = nullptr;
+
+
+
 // Level 3
 
 cublasStatus_t (*p_cublasSgemm_v2)(cublasHandle_t handle,
@@ -194,6 +237,25 @@ cublasStatus_t (*p_cublasDtrsm_v2)(cublasHandle_t, cublasSideMode_t,
                                    cublasDiagType_t, int64_t, int64_t,
                                    const double *, const double *, int64_t,
                                    double *, int64_t) = nullptr;
+
+
+//Complex routines
+
+cublasStatus_t (*p_cublasCgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuComplex *alpha, const cuComplex *A, int lda,
+    const cuComplex *B, int ldb, const cuComplex *beta, cuComplex *C,
+    int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasZgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuDoubleComplex *alpha, const cuDoubleComplex *A,
+    int lda, const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
+    cuDoubleComplex *C, int ldc) = nullptr;
+
+
+
+
 
 //=======OpenBLAS==========
 
@@ -381,6 +443,19 @@ rocblas_status (*p_rocblas_sswap)(rocblas_handle, rocblas_int, float *,
 rocblas_status (*p_rocblas_dswap)(rocblas_handle, rocblas_int, double *,
                                   rocblas_int, double *, rocblas_int) = nullptr;
 
+rocblas_status (*p_rocblas_isamax)(rocblas_handle, rocblas_int, const float *,
+                                   rocblas_int, rocblas_int *) = nullptr;
+
+rocblas_status (*p_rocblas_idamax)(rocblas_handle, rocblas_int, const double *,
+                                   rocblas_int, rocblas_int *) = nullptr;
+
+rocblas_status (*p_rocblas_snrm2)(rocblas_handle, rocblas_int, const float *,
+                                  rocblas_int, float *) = nullptr;
+
+rocblas_status (*p_rocblas_dnrm2)(rocblas_handle, rocblas_int, const double *,
+                                  rocblas_int, double *) = nullptr;
+                                 
+
 // Level 2
 
 rocblas_status (*p_rocblas_sgemv)(rocblas_handle handle,
@@ -450,6 +525,37 @@ rocblas_status (*p_rocblas_sger)(rocblas_handle handle, std::int64_t m,
                                  const float *Y, std::int64_t incy, float *A,
                                  std::int64_t lda) = nullptr;
 
+rocblas_status (*p_rocblas_dger)(rocblas_handle handle, std::int64_t m,
+                                 std::int64_t n, const double *alpha,
+                                 const double *X, std::int64_t incx,
+                                 const double *Y, std::int64_t incy, double *A,
+                                 std::int64_t lda) = nullptr;
+
+rocblas_status (*p_rocblas_ssyr)(rocblas_handle handle, rocblas_fill uplo,
+                                 std::int64_t n, const float *alpha,
+                                 const float *X, std::int64_t incx, float *A,
+                                 std::int64_t lda) = nullptr;
+
+rocblas_status (*p_rocblas_dsyr)(rocblas_handle handle, rocblas_fill uplo,
+                                 std::int64_t n, const double *alpha,
+                                 const double *X, std::int64_t incx, double *A,
+                                 std::int64_t lda) = nullptr;
+
+rocblas_status (*p_rocblas_sgbmv)(rocblas_handle handle, rocblas_operation trans, 
+                                  std::int64_t m, std::int64_t n, std::int64_t KL,
+                                  std::int64_t KU, const float *alpha, const float *A, 
+                                  std::int64_t lda, const float *X, std::int64_t incx,
+                                  const float *beta, float *Y, std::int64_t incy) = nullptr;
+
+rocblas_status (*p_rocblas_dgbmv)(rocblas_handle handle, rocblas_operation trans, std::int64_t m,
+                                  std::int64_t n, std::int64_t KL, std::int64_t KU, const double *alpha,
+                                  const double *A, std::int64_t lda, const double *X, std::int64_t incx,
+                                  const double *beta, double *Y, std::int64_t incy) = nullptr;
+                                
+
+
+
+
 // Level 3
 
 rocblas_status (*p_rocblas_sgemm)(rocblas_handle, rocblas_operation,
@@ -464,6 +570,7 @@ rocblas_status (*p_rocblas_dgemm)(rocblas_handle, rocblas_operation,
                                   rocblas_int, const double *, rocblas_int,
                                   const double *, double *,
                                   rocblas_int) = nullptr;
+
 
 rocblas_status (*p_rocblas_ssymm)(rocblas_handle, rocblas_side, rocblas_fill,
                                   rocblas_int, rocblas_int, const float *,
@@ -487,6 +594,18 @@ rocblas_status (*p_rocblas_dsyrk)(rocblas_handle, rocblas_fill,
                                   const double *, double *,
                                   rocblas_int) = nullptr;
 
+rocblas_status (*p_rocblas_ssyr2k)(rocblas_handle, rocblas_fill,
+                                   rocblas_operation, rocblas_int, rocblas_int,
+                                   const float *, const float *, rocblas_int,
+                                   const float *, rocblas_int, const float *,
+                                   float *, rocblas_int) = nullptr;
+
+rocblas_status (*p_rocblas_dsyr2k)(rocblas_handle, rocblas_fill,
+                                   rocblas_operation, rocblas_int, rocblas_int,
+                                   const double *, const double *, rocblas_int,
+                                   const double *, rocblas_int, const double *,
+                                   double *, rocblas_int) = nullptr;
+
 rocblas_status (*p_rocblas_strmm)(rocblas_handle, rocblas_side, rocblas_fill,
                                   rocblas_operation, rocblas_diagonal,
                                   rocblas_int, rocblas_int, const float *,
@@ -508,6 +627,35 @@ rocblas_status (*p_rocblas_dtrsm)(rocblas_handle, rocblas_side, rocblas_fill,
                                   rocblas_int, rocblas_int, const double *,
                                   const double *, rocblas_int, double *,
                                   rocblas_int) = nullptr;
+
+                          
+
+
+//Complex routines
+
+rocblas_status (*p_rocblas_cgemm)(rocblas_handle, rocblas_operation,
+                                  rocblas_operation, rocblas_int, rocblas_int,
+                                  rocblas_int, const rocblas_float_complex *,
+                                  const rocblas_float_complex *, rocblas_int,
+                                  const rocblas_float_complex *, rocblas_int,
+                                  const rocblas_float_complex *,
+                                  rocblas_float_complex *,
+                                  rocblas_int) = nullptr;
+
+rocblas_status (*p_rocblas_zgemm)(rocblas_handle, rocblas_operation,
+                                  rocblas_operation, rocblas_int, rocblas_int,
+                                  rocblas_int, const rocblas_double_complex *,
+                                  const rocblas_double_complex *, rocblas_int,
+                                  const rocblas_double_complex *, rocblas_int,
+                                  const rocblas_double_complex *,
+                                  rocblas_double_complex *,
+                                  rocblas_int) = nullptr;
+
+
+
+
+
+                                  
 
 static void *cuda_lib = nullptr;
 static void *cublas_lib = nullptr;
@@ -604,6 +752,17 @@ bool loadCudaAndCublas() {
   LOAD_CUDA_SYM(cublas_lib, cublasSdot_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasDdot_v2);
 
+  // iamax
+
+  LOAD_CUDA_SYM(cublas_lib, cublasIsamax_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasIdamax_v2);
+
+  // nrm2
+
+  LOAD_CUDA_SYM(cublas_lib, cublasSnrm2_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasDnrm2_v2);
+
+
   // Level 2
 
   // GEMV
@@ -634,6 +793,21 @@ bool loadCudaAndCublas() {
   // GER
 
   LOAD_CUDA_SYM(cublas_lib, cublasSger_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasDger_v2);
+
+  // SYR
+
+  LOAD_CUDA_SYM(cublas_lib, cublasSsyr_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasDsyr_v2);
+
+  //GBMV
+
+  LOAD_CUDA_SYM(cublas_lib, cublasSgbmv_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasDgbmv_v2);
+
+
+
+
 
   // level 3
 
@@ -641,6 +815,9 @@ bool loadCudaAndCublas() {
 
   LOAD_CUDA_SYM(cublas_lib, cublasSgemm_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasDgemm_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasCgemm_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasZgemm_v2);
+
 
   // SYMM
 
@@ -661,6 +838,13 @@ bool loadCudaAndCublas() {
 
   LOAD_CUDA_SYM(cublas_lib, cublasStrsm_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasDtrsm_v2);
+
+  //SYR2K
+
+  LOAD_CUDA_SYM(cublas_lib, cublasSsyr2k_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasDsyr2k_v2);
+
+
 
 #pragma GCC diagnostic pop
 
@@ -873,6 +1057,18 @@ bool loadHipAndRocblas() {
   LOAD_HIP_SYM(rocblas_lib, rocblas_sswap);
   LOAD_HIP_SYM(rocblas_lib, rocblas_dswap);
 
+  // IAMAX
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_isamax);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_idamax);
+
+  //NRM2
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_snrm2);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_dnrm2);
+
+
+
   // level 2
 
   // GEMV
@@ -903,6 +1099,18 @@ bool loadHipAndRocblas() {
   // GER
 
   LOAD_HIP_SYM(rocblas_lib, rocblas_sger);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_dger);
+
+  // SYR
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_ssyr);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_dsyr);
+
+  //GBMV
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_sgbmv);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_dgbmv);
+
 
   // level 3
 
@@ -910,6 +1118,9 @@ bool loadHipAndRocblas() {
 
   LOAD_HIP_SYM(rocblas_lib, rocblas_sgemm);
   LOAD_HIP_SYM(rocblas_lib, rocblas_dgemm);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_cgemm);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_zgemm);
+
 
   // SYMM
 
@@ -930,6 +1141,12 @@ bool loadHipAndRocblas() {
 
   LOAD_HIP_SYM(rocblas_lib, rocblas_strsm);
   LOAD_HIP_SYM(rocblas_lib, rocblas_dtrsm);
+
+  // SYR2K
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_ssyr2k);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_dsyr2k);
+
 
 #pragma GCC diagnostic pop
 

@@ -433,4 +433,173 @@ void RocBlasBackend::trsm(Layout layout,
     clap_hipFree(d_B);
 }
 
+//SYR2K Float
+
+void RocBlasBackend::syr2k(Layout layout, Uplo uplo, Transpose trans, int n,
+                           int k, float alpha, const float *A, int lda,
+                           const float *B, int ldb, float beta, float *C,
+                           int ldc) {
+  size_t sizeA = (trans == Transpose::NoTrans) ? lda * k : lda * n;
+  size_t sizeB = (trans == Transpose::NoTrans) ? ldb * k : ldb * n;
+  size_t sizeC = ldc * n;
+
+  float *d_A = nullptr;
+  float *d_B = nullptr;
+  float *d_C = nullptr;
+
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(float));
+  clap_hipMalloc((void **)&d_B, sizeB * sizeof(float));
+  clap_hipMalloc((void **)&d_C, sizeC * sizeof(float));
+
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_B, B, sizeB * sizeof(float), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_C, C, sizeC * sizeof(float), hipMemcpyHostToDevice);
+
+  clap_rocblas_ssyr2k(handle, to_rocblas_uplo(uplo), to_rocblas_trans(trans), n,
+                      k, &alpha, d_A, lda, d_B, ldb, &beta, d_C, ldc);
+
+  clap_hipMemcpy(C, d_C, sizeC * sizeof(float), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_A);
+  clap_hipFree(d_B);
+  clap_hipFree(d_C);
+}
+
+//SYR2K Double
+
+void RocBlasBackend::syr2k(Layout layout, Uplo uplo, Transpose trans, int n,
+                           int k, double alpha, const double *A, int lda,
+                           const double *B, int ldb, double beta, double *C,
+                           int ldc) {
+  size_t sizeA = (trans == Transpose::NoTrans) ? lda * k : lda * n;
+  size_t sizeB = (trans == Transpose::NoTrans) ? ldb * k : ldb * n;
+  size_t sizeC = ldc * n;
+
+  double *d_A = nullptr;
+  double *d_B = nullptr;
+  double *d_C = nullptr;
+
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(double));
+  clap_hipMalloc((void **)&d_B, sizeB * sizeof(double));
+  clap_hipMalloc((void **)&d_C, sizeC * sizeof(double));
+
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_B, B, sizeB * sizeof(double), hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_C, C, sizeC * sizeof(double), hipMemcpyHostToDevice);
+
+  clap_rocblas_dsyr2k(handle, to_rocblas_uplo(uplo), to_rocblas_trans(trans), n,
+                      k, &alpha, d_A, lda, d_B, ldb, &beta, d_C, ldc);
+
+  clap_hipMemcpy(C, d_C, sizeC * sizeof(double), hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_A);
+  clap_hipFree(d_B);
+  clap_hipFree(d_C);
+}
+
+
+
+
+
+
+
+
+//Complex routines
+
+//GEMM Complex Float
+
+void RocBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
+                          int m, int n, int k, const std::complex<float> *alpha,
+                          const std::complex<float> *A, int lda,
+                          const std::complex<float> *B, int ldb,
+                          const std::complex<float> *beta,
+                          std::complex<float> *C, int ldc) {
+  size_t sizeA = lda * ((transA == Transpose::NoTrans) ? k : m);
+  size_t sizeB = ldb * ((transB == Transpose::NoTrans) ? n : k);
+  size_t sizeC = ldc * n;
+
+  std::complex<float> *d_A = nullptr;
+  std::complex<float> *d_B = nullptr;
+  std::complex<float> *d_C = nullptr;
+
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(std::complex<float>));
+  clap_hipMalloc((void **)&d_B, sizeB * sizeof(std::complex<float>));
+  clap_hipMalloc((void **)&d_C, sizeC * sizeof(std::complex<float>));
+
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(std::complex<float>),
+                 hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_B, B, sizeB * sizeof(std::complex<float>),
+                 hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_C, C, sizeC * sizeof(std::complex<float>),
+                 hipMemcpyHostToDevice);
+
+  clap_rocblas_cgemm(
+      handle, to_rocblas_trans(transA), to_rocblas_trans(transB),
+      (rocblas_int)m, (rocblas_int)n, (rocblas_int)k,
+      reinterpret_cast<const rocblas_float_complex *>(alpha),
+      reinterpret_cast<const rocblas_float_complex *>(d_A), (rocblas_int)lda,
+      reinterpret_cast<const rocblas_float_complex *>(d_B), (rocblas_int)ldb,
+      reinterpret_cast<const rocblas_float_complex *>(beta),
+      reinterpret_cast<rocblas_float_complex *>(d_C), (rocblas_int)ldc);
+
+  clap_hipMemcpy(C, d_C, sizeC * sizeof(std::complex<float>),
+                 hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_A);
+  clap_hipFree(d_B);
+  clap_hipFree(d_C);
+}
+
+//GEMM Complex Double
+
+void RocBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
+                          int m, int n, int k,
+                          const std::complex<double> *alpha,
+                          const std::complex<double> *A, int lda,
+                          const std::complex<double> *B, int ldb,
+                          const std::complex<double> *beta,
+                          std::complex<double> *C, int ldc) {
+  size_t sizeA = lda * ((transA == Transpose::NoTrans) ? k : m);
+  size_t sizeB = ldb * ((transB == Transpose::NoTrans) ? n : k);
+  size_t sizeC = ldc * n;
+
+  std::complex<double> *d_A = nullptr;
+  std::complex<double> *d_B = nullptr;
+  std::complex<double> *d_C = nullptr;
+
+  clap_hipMalloc((void **)&d_A, sizeA * sizeof(std::complex<double>));
+  clap_hipMalloc((void **)&d_B, sizeB * sizeof(std::complex<double>));
+  clap_hipMalloc((void **)&d_C, sizeC * sizeof(std::complex<double>));
+
+  clap_hipMemcpy(d_A, A, sizeA * sizeof(std::complex<double>),
+                 hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_B, B, sizeB * sizeof(std::complex<double>),
+                 hipMemcpyHostToDevice);
+  clap_hipMemcpy(d_C, C, sizeC * sizeof(std::complex<double>),
+                 hipMemcpyHostToDevice);
+
+  clap_rocblas_zgemm(
+      handle, to_rocblas_trans(transA), to_rocblas_trans(transB),
+      (rocblas_int)m, (rocblas_int)n, (rocblas_int)k,
+      reinterpret_cast<const rocblas_double_complex *>(alpha),
+      reinterpret_cast<const rocblas_double_complex *>(d_A), (rocblas_int)lda,
+      reinterpret_cast<const rocblas_double_complex *>(d_B), (rocblas_int)ldb,
+      reinterpret_cast<const rocblas_double_complex *>(beta),
+      reinterpret_cast<rocblas_double_complex *>(d_C), (rocblas_int)ldc);
+
+  clap_hipMemcpy(C, d_C, sizeC * sizeof(std::complex<double>),
+                 hipMemcpyDeviceToHost);
+
+  clap_hipFree(d_A);
+  clap_hipFree(d_B);
+  clap_hipFree(d_C);
+}
+
+
+
+
+
+
+
+
 } // namespace clap

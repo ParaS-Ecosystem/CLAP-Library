@@ -415,6 +415,19 @@ extern rocblas_status (*p_rocblas_sswap)(rocblas_handle, rocblas_int, float *,
 extern rocblas_status (*p_rocblas_dswap)(rocblas_handle, rocblas_int, double *,
                                          rocblas_int, double *, rocblas_int);
 
+extern rocblas_status (*p_rocblas_isamax)(rocblas_handle, rocblas_int,
+                                          const float *, rocblas_int,
+                                          rocblas_int *);
+extern rocblas_status (*p_rocblas_idamax)(rocblas_handle, rocblas_int,
+                                          const double *, rocblas_int,
+                                          rocblas_int *);
+
+extern rocblas_status (*p_rocblas_snrm2)(rocblas_handle, rocblas_int,
+                                         const float *, rocblas_int, float *);
+extern rocblas_status (*p_rocblas_dnrm2)(rocblas_handle, rocblas_int,
+                                         const double *, rocblas_int, double *);
+
+
 // LEVEL 2
 
 extern rocblas_status (*p_rocblas_sgemv)(rocblas_handle handle,
@@ -471,30 +484,62 @@ extern rocblas_status (*p_rocblas_dtrsv)(rocblas_handle handle,
                                          const double *A, int64_t lda,
                                          double *x, int64_t incx);
 
-extern rocblas_status (*p_rocblas_ssbmv)(
-    rocblas_handle handle, rocblas_fill uplo, std::int64_t n, std::int64_t k,
-    const float *alpha, const float *A, std::int64_t lda, const float *X,
-    std::int64_t incx, const float *beta, float *Y, std::int64_t incy);
-extern rocblas_status (*p_rocblas_dsbmv)(
-    rocblas_handle handle, rocblas_fill uplo, std::int64_t n, std::int64_t k,
-    const double *alpha, const double *A, std::int64_t lda, const double *X,
-    std::int64_t incx, const double *beta, double *Y, std::int64_t incy);
+extern rocblas_status (*p_rocblas_ssbmv)(rocblas_handle handle, rocblas_fill uplo, std::int64_t n,
+                                         std::int64_t k, const float *alpha, const float *A,
+                                         std::int64_t lda, const float *X, std::int64_t incx, 
+                                         const float *beta, float *Y, std::int64_t incy);
+
+extern rocblas_status (*p_rocblas_dsbmv)(rocblas_handle handle, rocblas_fill uplo, std::int64_t n,
+                                         std::int64_t k, const double *alpha, const double *A, 
+                                         std::int64_t lda, const double *X, std::int64_t incx,
+                                         const double *beta, double *Y, std::int64_t incy);
 
 extern rocblas_status (*p_rocblas_sger)(rocblas_handle handle, std::int64_t m,
                                         std::int64_t n, const float *alpha,
                                         const float *X, std::int64_t incx,
                                         const float *Y, std::int64_t incy,
                                         float *A, std::int64_t lda);
+
+extern rocblas_status (*p_rocblas_dger)(rocblas_handle handle, std::int64_t m,
+                                        std::int64_t n, const double *alpha,
+                                        const double *X, std::int64_t incx,
+                                        const double *Y, std::int64_t incy,
+                                        double *A, std::int64_t lda);
+
+extern rocblas_status (*p_rocblas_ssyr)(rocblas_handle handle,
+                                        rocblas_fill uplo, std::int64_t n,
+                                        const float *alpha, const float *X,
+                                        std::int64_t incx, float *A,
+                                        std::int64_t lda);
+
+extern rocblas_status (*p_rocblas_dsyr)(rocblas_handle handle,
+                                        rocblas_fill uplo, std::int64_t n,
+                                        const double *alpha, const double *X,
+                                        std::int64_t incx, double *A,
+                                        std::int64_t lda);
+
+extern rocblas_status (*p_rocblas_sgbmv)(rocblas_handle handle, rocblas_operation trans, 
+                                         std::int64_t m, std::int64_t n, std::int64_t KL, 
+                                         std::int64_t KU, const float *alpha, const float *A,
+                                         std::int64_t lda, const float *X, std::int64_t incx,
+                                         const float *beta, float *Y, std::int64_t incy);
+
+extern rocblas_status (*p_rocblas_dgbmv)(rocblas_handle handle, rocblas_operation trans, std::int64_t m,
+                                         std::int64_t n, std::int64_t KL, std::int64_t KU, const double *alpha,
+                                         const double *A, std::int64_t lda, const double *X, std::int64_t incx,
+                                         const double *beta, double *Y, std::int64_t incy);
+
+
+
 // Level 3
 
-extern rocblas_status (*p_rocblas_sgemm)(
-    rocblas_handle, rocblas_operation, rocblas_operation, rocblas_int,
-    rocblas_int, rocblas_int, const float *, const float *, rocblas_int,
-    const float *, rocblas_int, const float *, float *, rocblas_int);
-extern rocblas_status (*p_rocblas_dgemm)(
-    rocblas_handle, rocblas_operation, rocblas_operation, rocblas_int,
-    rocblas_int, rocblas_int, const double *, const double *, rocblas_int,
-    const double *, rocblas_int, const double *, double *, rocblas_int);
+extern rocblas_status (*p_rocblas_sgemm)(rocblas_handle, rocblas_operation, rocblas_operation, rocblas_int,
+                                         rocblas_int, rocblas_int, const float *, const float *, rocblas_int,
+                                         const float *, rocblas_int, const float *, float *, rocblas_int);
+
+extern rocblas_status (*p_rocblas_dgemm)(rocblas_handle, rocblas_operation, rocblas_operation, rocblas_int,
+                                         rocblas_int, rocblas_int, const double *, const double *, rocblas_int,
+                                         const double *, rocblas_int, const double *, double *, rocblas_int);
 
 extern rocblas_status (*p_rocblas_ssymm)(rocblas_handle, rocblas_side,
                                          rocblas_fill, rocblas_int, rocblas_int,
@@ -520,14 +565,15 @@ extern rocblas_status (*p_rocblas_dsyrk)(rocblas_handle, rocblas_fill,
                                          const double *, rocblas_int,
                                          const double *, double *, rocblas_int);
 
-extern rocblas_status (*p_rocblas_strmm)(
-    rocblas_handle, rocblas_side, rocblas_fill, rocblas_operation,
-    rocblas_diagonal, rocblas_int, rocblas_int, const float *, const float *,
-    rocblas_int, const float *, rocblas_int, float *, rocblas_int);
-extern rocblas_status (*p_rocblas_dtrmm)(
-    rocblas_handle, rocblas_side, rocblas_fill, rocblas_operation,
-    rocblas_diagonal, rocblas_int, rocblas_int, const double *, const double *,
-    rocblas_int, const double *, rocblas_int, double *, rocblas_int);
+extern rocblas_status (*p_rocblas_strmm)(rocblas_handle, rocblas_side, rocblas_fill, rocblas_operation,
+                                         rocblas_diagonal, rocblas_int, rocblas_int, const float *,
+                                         const float *, rocblas_int, const float *, rocblas_int, float *, 
+                                         rocblas_int);
+
+extern rocblas_status (*p_rocblas_dtrmm)(rocblas_handle, rocblas_side, rocblas_fill, rocblas_operation,
+                                         rocblas_diagonal, rocblas_int, rocblas_int, const double *,
+                                         const double *,rocblas_int, const double *, rocblas_int, double *,
+                                          rocblas_int);
 
 extern rocblas_status (*p_rocblas_strsm)(rocblas_handle, rocblas_side,
                                          rocblas_fill, rocblas_operation,
@@ -535,12 +581,44 @@ extern rocblas_status (*p_rocblas_strsm)(rocblas_handle, rocblas_side,
                                          rocblas_int, const float *,
                                          const float *, rocblas_int, float *,
                                          rocblas_int);
+
 extern rocblas_status (*p_rocblas_dtrsm)(rocblas_handle, rocblas_side,
                                          rocblas_fill, rocblas_operation,
                                          rocblas_diagonal, rocblas_int,
                                          rocblas_int, const double *,
                                          const double *, rocblas_int, double *,
                                          rocblas_int);
+
+extern rocblas_status (*p_rocblas_ssyr2k)(rocblas_handle, rocblas_fill,
+                                          rocblas_operation, rocblas_int,
+                                          rocblas_int, const float *,
+                                          const float *, rocblas_int,
+                                          const float *, rocblas_int,
+                                          const float *, float *, rocblas_int);
+
+extern rocblas_status (*p_rocblas_dsyr2k)(rocblas_handle, rocblas_fill, rocblas_operation, 
+                                          rocblas_int, rocblas_int, const double *, const double *,
+                                          rocblas_int, const double *, rocblas_int,
+                                          const double *, double *, rocblas_int);
+
+
+//Complex routines
+
+extern rocblas_status (*p_rocblas_cgemm)(rocblas_handle, rocblas_operation, rocblas_operation, rocblas_int,
+                                         rocblas_int, rocblas_int, const rocblas_float_complex *, const rocblas_float_complex *, 
+                                         rocblas_int, const rocblas_float_complex *, rocblas_int, const rocblas_float_complex *,
+                                         rocblas_float_complex *, rocblas_int);
+
+extern rocblas_status (*p_rocblas_zgemm)(rocblas_handle, rocblas_operation, rocblas_operation, rocblas_int,
+                                         rocblas_int, rocblas_int, const rocblas_double_complex *,
+                                         const rocblas_double_complex *, rocblas_int, const rocblas_double_complex *,
+                                         rocblas_int, const rocblas_double_complex *, rocblas_double_complex *,
+                                         rocblas_int);
+ 
+
+
+
+
 
 bool loadCudaAndCublas();
 bool loadOpenBlas();

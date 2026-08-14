@@ -282,6 +282,12 @@ float (*p_cblas_sdot)(int64_t, const float *, int64_t, const float *,
 double (*p_cblas_ddot)(int64_t, const double *, int64_t, const double *,
                        int64_t) = nullptr;
 
+int (*p_cblas_isamax)(int, const float *, int) = nullptr;
+int (*p_cblas_idamax)(int, const double *, int) = nullptr;
+
+float (*p_cblas_snrm2)(int, const float *, int) = nullptr;
+double (*p_cblas_dnrm2)(int, const double *, int) = nullptr;
+
 // Level 2
 
 void (*p_cblas_sgemv)(const CBLAS_ORDER Order, const CBLAS_TRANSPOSE Trans,
@@ -337,6 +343,35 @@ void (*p_cblas_dsbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
 void (*p_cblas_sger)(const CBLAS_ORDER Order, int m, int n, const float alpha,
                      const float *X, int incx, const float *Y, int incy,
                      float *A, int lda) = nullptr;
+
+void (*p_cblas_dger)(const CBLAS_ORDER Order, std::int64_t m, std::int64_t n,
+                     const double alpha, const double *X, std::int64_t incx,
+                     const double *Y, std::int64_t incy, double *A,
+                     std::int64_t lda) = nullptr;
+
+void (*p_cblas_ssyr)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                     std::int64_t n, const float alpha, const float *X,
+                     std::int64_t incX, float *A, std::int64_t lda) = nullptr;
+
+void (*p_cblas_dsyr)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                     std::int64_t n, const double alpha, const double *X,
+                     std::int64_t incX, double *A, std::int64_t lda) = nullptr;
+
+void (*p_cblas_sgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
+                      std::int64_t m, std::int64_t n, std::int64_t KL,
+                      std::int64_t KU, const float alpha, const float *A,
+                      std::int64_t lda, const float *X, std::int64_t incX,
+                      const float beta, float *Y, std::int64_t incY) = nullptr;
+
+void (*p_cblas_dgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
+                      std::int64_t m, std::int64_t n, std::int64_t KL,
+                      std::int64_t KU, const double alpha, const double *A,
+                      std::int64_t lda, const double *X, std::int64_t incX,
+                      const double beta, double *Y,
+                      std::int64_t incY) = nullptr;
+                      
+                      
+
 
 
 // level 3
@@ -397,6 +432,38 @@ void (*p_cblas_dtrsm)(const CBLAS_ORDER Order, const CBLAS_SIDE Side,
                       const CBLAS_DIAG Diag, std::int64_t M, std::int64_t N,
                       const double alpha, const double *A, std::int64_t lda,
                       double *B, std::int64_t ldb) = nullptr;
+
+void (*p_cblas_ssyr2k)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                       const CBLAS_TRANSPOSE Trans, std::int64_t N,
+                       std::int64_t K, const float alpha, const float *A,
+                       std::int64_t lda, const float *B, std::int64_t ldb,
+                       const float beta, float *C, std::int64_t ldc) = nullptr;
+void (*p_cblas_dsyr2k)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                       const CBLAS_TRANSPOSE Trans, std::int64_t N,
+                       std::int64_t K, const double alpha, const double *A,
+                       std::int64_t lda, const double *B, std::int64_t ldb,
+                       const double beta, double *C,
+                       std::int64_t ldc) = nullptr;
+
+//Complex Routines
+
+void (*p_cblas_cgemm)(const CBLAS_ORDER Order, const CBLAS_TRANSPOSE TransA,
+                      const CBLAS_TRANSPOSE TransB, std::int64_t M,
+                      std::int64_t N, std::int64_t K, const void *alpha,
+                      const void *A, std::int64_t lda, const void *B,
+                      std::int64_t ldb, const void *beta, void *C,
+                      std::int64_t ldc) = nullptr;
+
+void (*p_cblas_zgemm)(const CBLAS_ORDER Order, const CBLAS_TRANSPOSE TransA,
+                      const CBLAS_TRANSPOSE TransB, std::int64_t M,
+                      std::int64_t N, std::int64_t K, const void *alpha,
+                      const void *A, std::int64_t lda, const void *B,
+                      std::int64_t ldb, const void *beta, void *C,
+                      std::int64_t ldc) = nullptr;
+
+
+
+
 
 //=======ROCBLAS==========
 
@@ -907,6 +974,16 @@ bool loadOpenBlas() {
   LOAD_OBLAS_SYM(openblas_lib, cblas_sdot);
   LOAD_OBLAS_SYM(openblas_lib, cblas_ddot);
 
+  // iamax
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_icamax);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_izamax);
+
+  //NRM2
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_scnrm2);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dznrm2);
+
   // Level 2
 
   // GEMV
@@ -937,6 +1014,18 @@ bool loadOpenBlas() {
   // GER
 
   LOAD_OBLAS_SYM(openblas_lib, cblas_sger);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dger);
+
+  // SYR
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_ssyr);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dsyr);
+
+  // GBMV
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_sgbmv);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dgbmv);
+
 
   // Level 3
 
@@ -944,6 +1033,8 @@ bool loadOpenBlas() {
 
   LOAD_OBLAS_SYM(openblas_lib, cblas_sgemm);
   LOAD_OBLAS_SYM(openblas_lib, cblas_dgemm);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_cgemm);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_zgemm);
 
   // SYMM
 
@@ -964,6 +1055,14 @@ bool loadOpenBlas() {
 
   LOAD_OBLAS_SYM(openblas_lib, cblas_strsm);
   LOAD_OBLAS_SYM(openblas_lib, cblas_dtrsm);
+
+  // SYR2K
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_ssyr2k);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dsyr2k);
+
+
+ 
 
 #pragma GCC diagnostic pop
 

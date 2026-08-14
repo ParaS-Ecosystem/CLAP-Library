@@ -141,4 +141,62 @@ void OpenBlasBackend::trsm(Layout layout, Side side, Uplo uplo,
                    (int)ldb);
 }
 
+//SYR2K Float
+
+void OpenBlasBackend::syr2k(Layout layout, Uplo uplo, Transpose transA, int n,
+                            int K, const float alpha, const float *A, int lda,
+                            const float *B, int ldb, const float beta, float *C,
+                            int ldc) {
+
+  clap_cblas_ssyr2k(to_cblas_order(layout), to_cblas_uplo(uplo),
+                    to_cblas_trans(transA), (int)n, (int)K, alpha, A, (int)lda,
+                    B, (int)ldb, beta, C, (int)ldc);
+}
+
+//SYR2K Double
+
+void OpenBlasBackend::syr2k(Layout layout, Uplo uplo, Transpose transA, int n,
+                            int K, const double alpha, const double *A, int lda,
+                            const double *B, int ldb, const double beta,
+                            double *C, int ldc) {
+  clap_cblas_dsyr2k(to_cblas_order(layout), to_cblas_uplo(uplo),
+                    to_cblas_trans(transA), (int)n, (int)K, alpha, A, (int)lda,
+                    B, (int)ldb, beta, C, (int)ldc);
+}
+
+
+
+//Complex Routines
+
+//GEMM Complex float
+
+void OpenBlasBackend::gemm(Layout layout, Transpose trans, Transpose transB,
+                           int m, int n, int K,
+                           const std::complex<float> *alpha,
+                           const std::complex<float> *A, int lda,
+                           const std::complex<float> *B, int ldb,
+                           const std::complex<float> *beta,
+                           std::complex<float> *C, int ldc) {
+  clap_cblas_cgemm(to_cblas_order(layout), to_cblas_trans(trans),
+                   to_cblas_trans(trans), (int)m, (int)n, (int)K, alpha, A,
+                   (int)lda, B, (int)ldb, beta, C, (int)ldc);
+}
+
+//GEMM Complex Double
+
+void OpenBlasBackend::gemm(Layout layout, Transpose trans, Transpose transB,
+                           int m, int n, int K,
+                           const std::complex<double> *alpha,
+                           const std::complex<double> *A, int lda,
+                           const std::complex<double> *B, int ldb,
+                           const std::complex<double> *beta,
+                           std::complex<double> *C, int ldc) {
+  clap_cblas_zgemm(to_cblas_order(layout), to_cblas_trans(trans),
+                   to_cblas_trans(trans), (int)m, (int)n, (int)K, alpha, A,
+                   (int)lda, B, (int)ldb, beta, C, (int)ldc);
+}
+
+
+
+
 } // namespace clap

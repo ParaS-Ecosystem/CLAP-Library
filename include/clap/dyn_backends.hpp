@@ -41,16 +41,6 @@ extern cudaError_t (*p_cudaMemset)(void *, int64_t, size_t);
 
 extern cublasStatus_t (*p_cublasCreate_v2)(cublasHandle_t *handle);
 extern cublasStatus_t (*p_cublasDestroy_v2)(cublasHandle_t handle);
-extern cublasStatus_t (*p_cublasSgemm_v2)(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-    int64_t m, int64_t n, int64_t k, const float *alpha, const float *A,
-    int64_t lda, const float *B, int64_t ldb, const float *beta, float *C,
-    int64_t ldc);
-extern cublasStatus_t (*p_cublasDgemm_v2)(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-    int64_t m, int64_t n, int64_t k, const double *alpha, const double *A,
-    int64_t lda, const double *B, int64_t ldb, const double *beta, double *C,
-    int64_t ldc);
 
 // level 1
 
@@ -84,6 +74,15 @@ extern cublasStatus_t (*p_cublasSdot_v2)(cublasHandle_t, int64_t, const float *,
 extern cublasStatus_t (*p_cublasDdot_v2)(cublasHandle_t, int64_t,
                                          const double *, int64_t,
                                          const double *, int64_t, double *);
+extern cublasStatus_t (*p_cublasIsamax_v2)(cublasHandle_t, int, const float *,
+                                           int, int *);
+extern cublasStatus_t (*p_cublasIdamax_v2)(cublasHandle_t, int, const double *,
+                                           int, int *);
+
+extern cublasStatus_t (*p_cublasSnrm2_v2)(cublasHandle_t, int, const float *,
+                                          int, float *);
+extern cublasStatus_t (*p_cublasDnrm2_v2)(cublasHandle_t, int, const double *,
+                                          int, double *);
 
 // level 2
 
@@ -160,7 +159,36 @@ extern cublasStatus_t (*p_cublasSger_v2)(cublasHandle_t handle, std::int64_t m,
                                          const float *X, std::int64_t incx,
                                          const float *Y, std::int64_t incy,
                                          float *A, std::int64_t lda);
+extern cublasStatus_t (*p_cublasDger_v2)(cublasHandle_t handle, std::int64_t m,
+                                         std::int64_t n, const double *alpha,
+                                         const double *X, std::int64_t incx,
+                                         const double *Y, std::int64_t incy,
+                                         double *A, std::int64_t lda);
 
+extern cublasStatus_t (*p_cublasSsyr_v2)(cublasHandle_t handle,
+                                         cublasFillMode_t uplo, std::int64_t n,
+                                         const float *alpha, const float *X,
+                                         std::int64_t incx, float *A,
+                                         std::int64_t lda);
+extern cublasStatus_t (*p_cublasDsyr_v2)(cublasHandle_t handle,
+                                         cublasFillMode_t uplo, std::int64_t n,
+                                         const double *alpha, const double *X,
+                                         std::int64_t incx, double *A,
+                                         std::int64_t lda);
+
+// banded
+extern cublasStatus_t (*p_cublasSgbmv_v2)(cublasHandle_t handle, 
+                                         cublasOperation_t trans, std::int64_t m,
+                                         std::int64_t n, std::int64_t KL, std::int64_t KU, 
+                                         const float *alpha,const float *A, 
+                                         std::int64_t lda, const float *X, std::int64_t incx,
+                                         const float *beta, float *Y, std::int64_t incy);
+extern cublasStatus_t (*p_cublasDgbmv_v2)(cublasHandle_t handle, 
+                                         cublasOperation_t trans, std::int64_t m,
+                                         std::int64_t n, std::int64_t KL, std::int64_t KU, 
+                                         const double *alpha,const double *A, 
+                                         std::int64_t lda, const double *X, std::int64_t incx,
+                                         const double *beta, double *Y, std::int64_t incy);
 // Level 3
 
 /// GEMM
@@ -198,6 +226,18 @@ extern cublasStatus_t (*p_cublasDsyrk_v2)(cublasHandle_t, cublasFillMode_t,
                                           int64_t, const double *, double *,
                                           int64_t);
 
+// SYR2
+extern cublasStatus_t (*p_cublasSsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                           cublasOperation_t, int, int,
+                                           const float *, const float *, int,
+                                           const float *, int, const float *,
+                                           float *, int);
+extern cublasStatus_t (*p_cublasDsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                           cublasOperation_t, int, int,
+                                           const double *, const double *, int,
+                                           const double *, int, const double *,
+                                           double *, int);
+
 // TRMM
 extern cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
                                           cublasFillMode_t, cublasOperation_t,
@@ -222,6 +262,16 @@ extern cublasStatus_t (*p_cublasDtrsm_v2)(cublasHandle_t, cublasSideMode_t,
                                           cublasDiagType_t, int64_t, int64_t,
                                           const double *, const double *,
                                           int64_t, double *, int64_t);
+
+extern cublasStatus_t (*p_cublasCgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuComplex *alpha, const cuComplex *A, int lda,
+    const cuComplex *B, int ldb, const cuComplex *beta, cuComplex *C, int ldc);
+extern cublasStatus_t (*p_cublasZgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuDoubleComplex *alpha, const cuDoubleComplex *A,
+    int lda, const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
+    cuDoubleComplex *C, int ldc);
 
 // OpenBLAS functions
 

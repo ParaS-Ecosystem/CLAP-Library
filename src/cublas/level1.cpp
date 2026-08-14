@@ -165,4 +165,48 @@ double CuBlasBackend::dot(int64_t n, const double *x, int64_t incx,
   return result;
 }
 
+// IAMAX Float
+int CuBlasBackend::iamax(int n, const float *x, int incx) {
+  float *d_x = nullptr;
+  int result = 0;
+  clap_cudaMalloc((void **)&d_x, n * sizeof(float));
+  clap_cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
+  clap_cublasIsamax(handle, n, d_x, incx, &result);
+  clap_cudaFree(d_x);
+  return result - 1;
+}
+
+// IAMAX Double
+int CuBlasBackend::iamax(int n, const double *x, int incx) {
+  double *d_x = nullptr;
+  int result = 0;
+  clap_cudaMalloc((void **)&d_x, n * sizeof(double));
+  clap_cudaMemcpy(d_x, x, n * sizeof(double), cudaMemcpyHostToDevice);
+  clap_cublasIdamax(handle, n, d_x, incx, &result);
+  clap_cudaFree(d_x);
+  return result - 1;
+}
+
+// NRM2 Float
+float CuBlasBackend::nrm2(int n, const float *x, int incx) {
+  float *d_x = nullptr, result = 0.0f;
+  clap_cudaMalloc((void **)&d_x, n * sizeof(float));
+  clap_cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
+
+  clap_cublasSnrm2(handle, n, d_x, incx, &result);
+  clap_cudaFree(d_x);
+  return result;
+}
+
+// NRM2 Double
+double CuBlasBackend::nrm2(int n, const double *x, int incx) {
+  double *d_x = nullptr, result = 0.0;
+  clap_cudaMalloc((void **)&d_x, n * sizeof(double));
+  clap_cudaMemcpy(d_x, x, n * sizeof(double), cudaMemcpyHostToDevice);
+  std::cout << "Calling cublasDnrm2" << std::endl;
+  clap_cublasDnrm2(handle, n, d_x, incx, &result);
+  clap_cudaFree(d_x);
+  return result;
+}
+
 } // namespace clap

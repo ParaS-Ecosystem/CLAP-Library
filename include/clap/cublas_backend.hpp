@@ -54,6 +54,12 @@ public:
   double dot(int64_t n, const double *x, int64_t incx, const double *y,
              int64_t incy) override;
 
+  int iamax(int n, const float *x, int incx) override;
+  int iamax(int n, const double *x, int incx) override;
+
+  float nrm2(int n, const float *x, int incx) override;
+  double nrm2(int n, const double *x, int incx)override;
+  
   // level 2
 
   void gemv(Layout layout, Transpose trans, int64_t m, int64_t n,

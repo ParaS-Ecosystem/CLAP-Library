@@ -57,6 +57,12 @@ public:
   virtual double dot(int64_t n, const double *x, int64_t incx, const double *y,
                      int64_t incy) = 0;
 
+  virtual int iamax(int n, const float *x, int incx) = 0;
+  virtual int iamax(int n, const double *x, int incx) = 0;
+
+  virtual float nrm2(int n, const float *x, int incx) = 0;
+  virtual double nrm2(int n, const double *x, int incx) = 0;
+
   // level 2
 
   virtual void gemv(Layout layout, Transpose trans, int64_t m, int64_t n,
@@ -98,9 +104,27 @@ public:
                     const double *X, int64_t incx, const double beta, double *Y,
                     int64_t incy) = 0;
 
-   virtual void ger(Layout layout, int m, int n, const float alpha,
+  virtual void ger(Layout layout, int m, int n, const float alpha,
                    const float *X, int incx, const float *Y, int incy, float *A,
                    int lda) = 0;
+  virtual void ger(Layout layout, int m, int n, const double alpha,
+                   const double *X, int incx, const double *Y, int incy,
+                   double *A, int lda) = 0;
+
+  virtual void syr(Layout layout, Uplo uplo, int n, const float alpha,
+                   const float *X, int incx, float *A, int lda) = 0;
+  virtual void syr(Layout layout, Uplo uplo, int n, const double alpha,
+                   const double *X, int incx, double *A, int lda) = 0;
+
+  // banded
+  virtual void gbmv(Layout layout, Transpose trans, int m, int n, int KL,
+                    int KU, const float alpha, const float *A, int lda,
+                    const float *X, int incx, const float beta, float *Y,
+                    int incy) = 0;
+  virtual void gbmv(Layout layout, Transpose trans, int m, int n, int KL,
+                    int KU, const double alpha, const double *A, int lda,
+                    const double *X, int incx, const double beta, double *Y,
+                    int incy) = 0;
 
   // level3
 
@@ -127,6 +151,13 @@ public:
                     int64_t k, double alpha, const double *A, int64_t lda,
                     double beta, double *C, int64_t ldc) = 0;
 
+  virtual void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+                     float alpha, const float *A, int lda, const float *B,
+                     int ldb, float beta, float *C, int ldc) = 0;
+  virtual void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+                     double alpha, const double *A, int lda, const double *B,
+                     int ldb, double beta, double *C, int ldc) = 0;
+
   virtual void trmm(Layout layout, Side side, Uplo uplo, Transpose trans,
                     Diag diag, int64_t m, int64_t n, double alpha,
                     const double *A, int64_t lda, double *B, int64_t ldb) = 0;
@@ -140,6 +171,20 @@ public:
   virtual void trsm(Layout layout, Side side, Uplo uplo, Transpose trans,
                     Diag diag, int64_t m, int64_t n, double alpha,
                     const double *A, int64_t lda, double *B, int64_t ldb) = 0;
+
+   // complex
+  virtual void gemm(Layout layout, Transpose transA, Transpose transB, int m,
+                    int n, int K, const std::complex<float> *alpha,
+                    const std::complex<float> *A, int lda,
+                    const std::complex<float> *B, int ldb,
+                    const std::complex<float> *beta, std::complex<float> *C,
+                    int ldc) = 0;
+  virtual void gemm(Layout layout, Transpose transA, Transpose transB, int m,
+                    int n, int k, const std::complex<double> *alpha,
+                    const std::complex<double> *A, int lda,
+                    const std::complex<double> *B, int ldb,
+                    const std::complex<double> *beta, std::complex<double> *C,
+                    int ldc) = 0;  
 };
 
 class BlasFactory {

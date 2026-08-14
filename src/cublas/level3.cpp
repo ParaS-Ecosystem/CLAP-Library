@@ -242,6 +242,59 @@ void CuBlasBackend::syrk(Layout layout, Uplo uplo, Transpose trans, int64_t n,
   clap_cudaFree(dC);
 }
 
+// SYR2K Float
+void CuBlasBackend::syr2k(Layout layout, Uplo uplo, Transpose trans, int n,
+                          int k, float alpha, const float *A, int lda,
+                          const float *B, int ldb, float beta, float *C,
+                          int ldc) {
+
+  float *dA = nullptr, *dB = nullptr, *dC = nullptr;
+
+  clap_cudaMalloc((void **)&dA, lda * k * sizeof(float));
+  clap_cudaMalloc((void **)&dB, ldb * k * sizeof(float));
+  clap_cudaMalloc((void **)&dC, ldc * n * sizeof(float));
+
+  clap_cudaMemcpy(dA, A, lda * k * sizeof(float), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dB, B, ldb * k * sizeof(float), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dC, C, ldc * n * sizeof(float), cudaMemcpyHostToDevice);
+
+  clap_cublasSsyr2k(handle, to_cublas_uplo(uplo), to_cublas_trans(trans),
+                    (int)n, (int)k, &alpha, dA, (int)lda, dB, (int)ldb, &beta,
+                    dC, (int)ldc);
+
+  clap_cudaMemcpy(C, dC, ldc * n * sizeof(float), cudaMemcpyDeviceToHost);
+
+  clap_cudaFree(dA);
+  clap_cudaFree(dB);
+  clap_cudaFree(dC);
+}
+// SYR2K Double
+void CuBlasBackend::syr2k(Layout layout, Uplo uplo, Transpose trans, int n,
+                          int k, double alpha, const double *A, int lda,
+                          const double *B, int ldb, double beta, double *C,
+                          int ldc) {
+
+  double *dA = nullptr, *dB = nullptr, *dC = nullptr;
+
+  clap_cudaMalloc((void **)&dA, lda * k * sizeof(double));
+  clap_cudaMalloc((void **)&dB, ldb * k * sizeof(double));
+  clap_cudaMalloc((void **)&dC, ldc * n * sizeof(double));
+
+  clap_cudaMemcpy(dA, A, lda * k * sizeof(double), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dB, B, ldb * k * sizeof(double), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dC, C, ldc * n * sizeof(double), cudaMemcpyHostToDevice);
+
+  clap_cublasDsyr2k(handle, to_cublas_uplo(uplo), to_cublas_trans(trans),
+                    (int)n, (int)k, &alpha, dA, (int)lda, dB, (int)ldb, &beta,
+                    dC, (int)ldc);
+
+  clap_cudaMemcpy(C, dC, ldc * n * sizeof(double), cudaMemcpyDeviceToHost);
+
+  clap_cudaFree(dA);
+  clap_cudaFree(dB);
+  clap_cudaFree(dC);
+}
+
 // Double TRMM
 
 void CuBlasBackend::trmm(Layout layout, Side side, Uplo uplo, Transpose trans,
@@ -379,6 +432,81 @@ void CuBlasBackend::trsm(Layout layout, Side side, Uplo uplo, Transpose trans,
 
   clap_cudaFree(dA);
   clap_cudaFree(dB);
+}
+
+// GEMM Complex Float
+void CuBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
+                         int m, int n, int K, const std::complex<float> *alpha,
+                         const std::complex<float> *A, int lda,
+                         const std::complex<float> *B, int ldb,
+                         const std::complex<float> *beta,
+                         std::complex<float> *C, int ldc) {
+
+  cuComplex *dA = nullptr, *dB = nullptr, *dC = nullptr;
+
+  size_t sizeA = lda * K;
+  size_t sizeB = ldb * n;
+  size_t sizeC = ldc * n;
+
+  clap_cudaMalloc((void **)&dA, sizeA * sizeof(cuComplex));
+  clap_cudaMalloc((void **)&dB, sizeB * sizeof(cuComplex));
+  clap_cudaMalloc((void **)&dC, sizeC * sizeof(cuComplex));
+
+  clap_cudaMemcpy(dA, A, sizeA * sizeof(cuComplex), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dB, B, sizeB * sizeof(cuComplex), cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dC, C, sizeC * sizeof(cuComplex), cudaMemcpyHostToDevice);
+
+  cuComplex alpha_c = make_cuComplex(alpha->real(), alpha->imag());
+  cuComplex beta_c = make_cuComplex(beta->real(), beta->imag());
+
+  clap_cublasCgemm(handle, to_cublas_trans(transA), to_cublas_trans(transB),
+                   (int)m, (int)n, (int)K, &alpha_c, dA, (int)lda, dB, (int)ldb,
+                   &beta_c, dC, (int)ldc);
+
+  clap_cudaMemcpy(C, dC, sizeC * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+  clap_cudaFree(dA);
+  clap_cudaFree(dB);
+  clap_cudaFree(dC);
+}
+
+// GEMM Complex Double
+void CuBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
+                         int m, int n, int k, const std::complex<double> *alpha,
+                         const std::complex<double> *A, int lda,
+                         const std::complex<double> *B, int ldb,
+                         const std::complex<double> *beta,
+                         std::complex<double> *C, int ldc) {
+
+  cuDoubleComplex *dA = nullptr, *dB = nullptr, *dC = nullptr;
+
+  size_t sizeA = lda * k;
+  size_t sizeB = ldb * n;
+  size_t sizeC = ldc * n;
+
+  clap_cudaMalloc((void **)&dA, sizeA * sizeof(cuDoubleComplex));
+  clap_cudaMalloc((void **)&dB, sizeB * sizeof(cuDoubleComplex));
+  clap_cudaMalloc((void **)&dC, sizeC * sizeof(cuDoubleComplex));
+
+  clap_cudaMemcpy(dA, A, sizeA * sizeof(cuDoubleComplex),
+                  cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dB, B, sizeB * sizeof(cuDoubleComplex),
+                  cudaMemcpyHostToDevice);
+  clap_cudaMemcpy(dC, C, sizeC * sizeof(cuDoubleComplex),
+                  cudaMemcpyHostToDevice);
+
+  cuDoubleComplex alpha_c = make_cuDoubleComplex(alpha->real(), alpha->imag());
+  cuDoubleComplex beta_c = make_cuDoubleComplex(beta->real(), beta->imag());
+
+  clap_cublasZgemm(handle, to_cublas_trans(transA), to_cublas_trans(transB),
+                   (int)m, (int)n, (int)k, &alpha_c, dA, (int)lda, dB, (int)ldb,
+                   &beta_c, dC, (int)ldc);
+
+  clap_cudaMemcpy(C, dC, sizeC * sizeof(cuDoubleComplex),
+                  cudaMemcpyDeviceToHost);
+
+  clap_cudaFree(dA);
+  clap_cudaFree(dB);
+  clap_cudaFree(dC);
 }
 
 } // namespace clap

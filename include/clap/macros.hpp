@@ -45,6 +45,9 @@
 #define clap_cublasSdot clap::dyn::p_cublasSdot_v2
 #define clap_cublasDdot clap::dyn::p_cublasDdot_v2
 
+#define clap_cublasIsamax clap::dyn::p_cublasIsamax_v2
+#define clap_cublasIdamax clap::dyn::p_cublasIdamax_v2
+
 // level 2
 
 #define clap_cublasSgemv clap::dyn::p_cublasSgemv_v2
@@ -63,6 +66,11 @@
 #define clap_cublasDsbmv clap::dyn::p_cublasDsbmv_v2
 
 #define clap_cublasSger clap::dyn::p_cublasSger_v2
+#define clap_cublasDger clap::dyn::p_cublasDger_v2
+
+//banded
+#define clap_cublasSgbmv clap::dyn::p_cublasSgbmv_v2
+#define clap_cublasDgbmv clap::dyn::p_cublasDgbmv_v2
 
 // Level 3
 
@@ -75,11 +83,18 @@
 #define clap_cublasSsyrk clap::dyn::p_cublasSsyrk_v2
 #define clap_cublasDsyrk clap::dyn::p_cublasDsyrk_v2
 
+#define clap_cublasSsyr2k clap::dyn::p_cublasSsyr2k_v2
+#define clap_cublasDsyr2k clap::dyn::p_cublasDsyr2k_v2
+
 #define clap_cublasStrmm clap::dyn::p_cublasStrmm_v2
 #define clap_cublasDtrmm clap::dyn::p_cublasDtrmm_v2
 
 #define clap_cublasStrsm clap::dyn::p_cublasStrsm_v2
 #define clap_cublasDtrsm clap::dyn::p_cublasDtrsm_v2
+
+//complex
+#define clap_cublasCgemm clap::dyn::p_cublasCgemm_v2
+#define clap_cublasZgemm clap::dyn::p_cublasZgemm_v2
 
 // OPENBLAS
 

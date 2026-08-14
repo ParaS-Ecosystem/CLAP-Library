@@ -95,7 +95,21 @@ public:
 
    void ger(Layout layout, int m, int n, const float alpha, const float *X,
            int incx, const float *Y, int incy, float *A, int lda) override;
+  void ger(Layout layout, int m, int n, const double alpha, const double *X,
+           int incx, const double *Y, int incy, double *A, int lda) override;
 
+  void syr(Layout layout, Uplo uplo, int n, const float alpha, const float *X,
+           int incx, float *A, int lda) override;
+  void syr(Layout layout, Uplo uplo, int n, const double alpha, const double *X,
+           int incx, double *A, int lda) override;
+
+  // banded
+  void gbmv(Layout layout, Transpose trans, int m, int n, int KL, int KU,
+            const float alpha, const float *A, int lda, const float *X,
+            int incx, const float beta, float *Y, int incy) override;
+  void gbmv(Layout layout, Transpose trans, int m, int n, int KL, int KU,
+            const double alpha, const double *A, int lda, const double *X,
+            int incx, const double beta, double *Y, int incy) override;
   // Level 3
 
   void gemm(Layout layout, Transpose transA, Transpose transB, int64_t m,
@@ -121,6 +135,13 @@ public:
             double alpha, const double *A, int64_t lda, double beta, double *C,
             int64_t ldc) override;
 
+    void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+             float alpha, const float *A, int lda, const float *B, int ldb,
+             float beta, float *C, int ldc) override;
+  void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+             double alpha, const double *A, int lda, const double *B, int ldb,
+             double beta, double *C, int ldc) override;
+
   void trmm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
             int64_t m, int64_t n, double alpha, const double *A, int64_t lda,
             double *B, int64_t ldb) override;
@@ -134,6 +155,19 @@ public:
   void trsm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
             int64_t m, int64_t n, double alpha, const double *A, int64_t lda,
             double *B, int64_t ldb) override;
+
+   // complex
+  void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,
+            int K, const std::complex<float> *alpha,
+            const std::complex<float> *A, int lda, const std::complex<float> *B,
+            int ldb, const std::complex<float> *beta, std::complex<float> *C,
+            int ldc) override;
+  void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,
+            int k, const std::complex<double> *alpha,
+            const std::complex<double> *A, int lda,
+            const std::complex<double> *B, int ldb,
+            const std::complex<double> *beta, std::complex<double> *C,
+            int ldc) override;
 };
 
 } // namespace clap

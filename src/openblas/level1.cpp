@@ -89,4 +89,29 @@ double OpenBlasBackend::dot(int64_t n, const double *x, int64_t incx,
   return clap_cblas_ddot(n, x, incx, y, incy);
 }
 
+// Float IAMAX
+
+int OpenBlasBackend::iamax(int n, const float *x, int incx) {
+  return clap_cblas_isamax(n, x, incx);
+}
+
+// Double IAMAX
+
+int OpenBlasBackend::iamax(int n, const double *x, int incx) {
+  return clap_cblas_idamax(n, x, incx);
+}
+
+// Float NRM2
+
+float OpenBlasBackend::nrm2(int n, const float *x, int incx) {
+  return clap_cblas_snrm2(n, x, incx);
+}
+
+// Double NRM2
+
+double OpenBlasBackend::nrm2(int n, const double *x, int incx) {
+  return clap_cblas_dnrm2(n, x, incx);
+}
+
+
 } // namespace clap

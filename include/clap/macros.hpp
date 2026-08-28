@@ -48,6 +48,9 @@
 #define clap_cublasIsamax clap::dyn::p_cublasIsamax_v2
 #define clap_cublasIdamax clap::dyn::p_cublasIdamax_v2
 
+#define clap_cublasSnrm2 clap::dyn::p_cublasSnrm2_v2
+#define clap_cublasDnrm2 clap::dyn::p_cublasDnrm2_v2
+
 // level 2
 
 #define clap_cublasSgemv clap::dyn::p_cublasSgemv_v2
@@ -67,6 +70,9 @@
 
 #define clap_cublasSger clap::dyn::p_cublasSger_v2
 #define clap_cublasDger clap::dyn::p_cublasDger_v2
+
+#define clap_cublasSsyr clap::dyn::p_cublasSsyr_v2
+#define clap_cublasDsyr clap::dyn::p_cublasDsyr_v2
 
 //banded
 #define clap_cublasSgbmv clap::dyn::p_cublasSgbmv_v2
@@ -254,6 +260,3 @@
 
 #define clap_rocblas_ssyr2k clap::dyn::p_rocblas_ssyr2k
 #define clap_rocblas_dsyr2k clap::dyn::p_rocblas_dsyr2k
-
-
-

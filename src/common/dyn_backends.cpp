@@ -165,7 +165,7 @@ cublasStatus_t (*p_cublasDsyr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                   std::int64_t n, const double *alpha,
                                   const double *X, std::int64_t incx, double *A,
                                   std::int64_t lda) = nullptr;
-                                 
+
 cublasStatus_t (*p_cublasSgbmv_v2)(cublasHandle_t handle, cublasOperation_t trans,
                                    std::int64_t m, std::int64_t n, std::int64_t KL,
                                    std::int64_t KU, const float *alpha, const float *A,
@@ -213,6 +213,36 @@ cublasStatus_t (*p_cublasDsyrk_v2)(cublasHandle_t, cublasFillMode_t,
                                    cublasOperation_t, int64_t, int64_t,
                                    const double *, const double *, int64_t,
                                    const double *, double *, int64_t) = nullptr;
+
+cublasStatus_t (*p_cublasSsyr2k_v2)(
+    cublasHandle_t handle,
+    cublasFillMode_t uplo,
+    cublasOperation_t trans,
+    int n,
+    int k,
+    const float *alpha,
+    const float *A,
+    int lda,
+    const float *B,
+    int ldb,
+    const float *beta,
+    float *C,
+    int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasDsyr2k_v2)(
+    cublasHandle_t handle,
+    cublasFillMode_t uplo,
+    cublasOperation_t trans,
+    int n,
+    int k,
+    const double *alpha,
+    const double *A,
+    int lda,
+    const double *B,
+    int ldb,
+    const double *beta,
+    double *C,
+    int ldc) = nullptr;
 
 cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
                                    cublasFillMode_t, cublasOperation_t,
@@ -369,8 +399,8 @@ void (*p_cblas_dgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
                       std::int64_t lda, const double *X, std::int64_t incX,
                       const double beta, double *Y,
                       std::int64_t incY) = nullptr;
-                      
-                      
+
+
 
 
 
@@ -521,7 +551,7 @@ rocblas_status (*p_rocblas_snrm2)(rocblas_handle, rocblas_int, const float *,
 
 rocblas_status (*p_rocblas_dnrm2)(rocblas_handle, rocblas_int, const double *,
                                   rocblas_int, double *) = nullptr;
-                                 
+
 
 // Level 2
 
@@ -608,9 +638,9 @@ rocblas_status (*p_rocblas_dsyr)(rocblas_handle handle, rocblas_fill uplo,
                                  const double *X, std::int64_t incx, double *A,
                                  std::int64_t lda) = nullptr;
 
-rocblas_status (*p_rocblas_sgbmv)(rocblas_handle handle, rocblas_operation trans, 
+rocblas_status (*p_rocblas_sgbmv)(rocblas_handle handle, rocblas_operation trans,
                                   std::int64_t m, std::int64_t n, std::int64_t KL,
-                                  std::int64_t KU, const float *alpha, const float *A, 
+                                  std::int64_t KU, const float *alpha, const float *A,
                                   std::int64_t lda, const float *X, std::int64_t incx,
                                   const float *beta, float *Y, std::int64_t incy) = nullptr;
 
@@ -618,7 +648,7 @@ rocblas_status (*p_rocblas_dgbmv)(rocblas_handle handle, rocblas_operation trans
                                   std::int64_t n, std::int64_t KL, std::int64_t KU, const double *alpha,
                                   const double *A, std::int64_t lda, const double *X, std::int64_t incx,
                                   const double *beta, double *Y, std::int64_t incy) = nullptr;
-                                
+
 
 
 
@@ -695,7 +725,7 @@ rocblas_status (*p_rocblas_dtrsm)(rocblas_handle, rocblas_side, rocblas_fill,
                                   const double *, rocblas_int, double *,
                                   rocblas_int) = nullptr;
 
-                          
+
 
 
 //Complex routines
@@ -722,7 +752,7 @@ rocblas_status (*p_rocblas_zgemm)(rocblas_handle, rocblas_operation,
 
 
 
-                                  
+
 
 static void *cuda_lib = nullptr;
 static void *cublas_lib = nullptr;
@@ -976,13 +1006,13 @@ bool loadOpenBlas() {
 
   // iamax
 
-  LOAD_OBLAS_SYM(openblas_lib, cblas_icamax);
-  LOAD_OBLAS_SYM(openblas_lib, cblas_izamax);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_isamax);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_idamax);
 
-  //NRM2
+  // nrm2
 
-  LOAD_OBLAS_SYM(openblas_lib, cblas_scnrm2);
-  LOAD_OBLAS_SYM(openblas_lib, cblas_dznrm2);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_snrm2);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dnrm2);
 
   // Level 2
 
@@ -1062,7 +1092,7 @@ bool loadOpenBlas() {
   LOAD_OBLAS_SYM(openblas_lib, cblas_dsyr2k);
 
 
- 
+
 
 #pragma GCC diagnostic pop
 

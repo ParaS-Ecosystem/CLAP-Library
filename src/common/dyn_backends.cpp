@@ -707,6 +707,36 @@ cublasStatus_t (*p_cublasZsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
                                     const cuDoubleComplex *, cuDoubleComplex *,
                                     int) = nullptr;
 
+cublasStatus_t (*p_cublasSsyr2k_v2)(
+    cublasHandle_t handle,
+    cublasFillMode_t uplo,
+    cublasOperation_t trans,
+    int n,
+    int k,
+    const float *alpha,
+    const float *A,
+    int lda,
+    const float *B,
+    int ldb,
+    const float *beta,
+    float *C,
+    int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasDsyr2k_v2)(
+    cublasHandle_t handle,
+    cublasFillMode_t uplo,
+    cublasOperation_t trans,
+    int n,
+    int k,
+    const double *alpha,
+    const double *A,
+    int lda,
+    const double *B,
+    int ldb,
+    const double *beta,
+    double *C,
+    int ldc) = nullptr;
+
 cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
                                    cublasFillMode_t, cublasOperation_t,
                                    cublasDiagType_t, int, int, const float *,
@@ -799,6 +829,25 @@ cublasStatus_t (*p_cublasZher2k_v2)(
     int n, int k, const cuDoubleComplex *alpha, const cuDoubleComplex *A,
     int lda, const cuDoubleComplex *B, int ldb, const double *beta,
     cuDoubleComplex *C, int ldc) = nullptr;
+
+
+
+//Complex routines
+
+cublasStatus_t (*p_cublasCgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuComplex *alpha, const cuComplex *A, int lda,
+    const cuComplex *B, int ldb, const cuComplex *beta, cuComplex *C,
+    int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasZgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuDoubleComplex *alpha, const cuDoubleComplex *A,
+    int lda, const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
+    cuDoubleComplex *C, int ldc) = nullptr;
+
+
+
 
 
 //=======OpenBLAS==========
@@ -2082,6 +2131,7 @@ rocblas_status (*p_rocblas_dgemm)(rocblas_handle, rocblas_operation,
                                   const double *, double *,
                                   rocblas_int) = nullptr;
 
+
 rocblas_status (*p_rocblas_ssymm)(rocblas_handle, rocblas_side, rocblas_fill,
                                   rocblas_int, rocblas_int, const float *,
                                   const float *, rocblas_int, const float *,
@@ -2593,6 +2643,13 @@ bool loadCudaAndCublas() {
   LOAD_CUDA_SYM(cublas_lib, cublasCher2k_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasZher2k_v2);
 
+  //SYR2K
+
+  LOAD_CUDA_SYM(cublas_lib, cublasSsyr2k_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasDsyr2k_v2);
+
+
+
 #pragma GCC diagnostic pop
 
   cuda_loaded = true;
@@ -2883,6 +2940,14 @@ bool loadOpenBlas() {
   //HER2K
   LOAD_OBLAS_SYM(openblas_lib, cblas_cher2k);
   LOAD_OBLAS_SYM(openblas_lib, cblas_zher2k);
+
+  // SYR2K
+
+  LOAD_OBLAS_SYM(openblas_lib, cblas_ssyr2k);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_dsyr2k);
+
+
+
 
 #pragma GCC diagnostic pop
 
@@ -3182,6 +3247,12 @@ bool loadHipAndRocblas() {
   //HER2K
   LOAD_HIP_SYM(rocblas_lib, rocblas_cher2k);
   LOAD_HIP_SYM(rocblas_lib, rocblas_zher2k);
+
+  // SYR2K
+
+  LOAD_HIP_SYM(rocblas_lib, rocblas_ssyr2k);
+  LOAD_HIP_SYM(rocblas_lib, rocblas_dsyr2k);
+
 
 #pragma GCC diagnostic pop
 

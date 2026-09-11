@@ -49,5 +49,4 @@ static rocblas_side to_rocblas_side(Side s) {
 static rocblas_diagonal to_rocblas_diag(Diag d) {
   return (d == Diag::Unit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
 }
-
-} // namespace clap
+}

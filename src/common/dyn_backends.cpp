@@ -707,6 +707,28 @@ cublasStatus_t (*p_cublasZsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
                                     const cuDoubleComplex *, cuDoubleComplex *,
                                     int) = nullptr;
 
+cublasStatus_t (*p_cublasSsyr2k_v2)(
+    cublasHandle_t handle,
+    cublasFillMode_t uplo,
+    cublasOperation_t trans,
+    int n,
+    int k,
+    const float *alpha,
+    const float *A,
+    int lda,
+    const float *B,
+    int ldb,
+    const float *beta,
+    float *C,
+    int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasSsbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                   std::int64_t n, std::int64_t k,
+                                   const float *alpha, const float *A,
+                                   std::int64_t lda, const float *X,
+                                   std::int64_t incx, const float *beta,
+                                   float *Y, std::int64_t incy) = nullptr;
+
 cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
                                    cublasFillMode_t, cublasOperation_t,
                                    cublasDiagType_t, int, int, const float *,
@@ -801,7 +823,154 @@ cublasStatus_t (*p_cublasZher2k_v2)(
     cuDoubleComplex *C, int ldc) = nullptr;
 
 
-//=======OpenBLAS==========
+cublasStatus_t (*p_cublasSspr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                  std::int64_t n, const float *alpha,
+                                  const float *X, std::int64_t incx,
+                                  float *Ap) = nullptr;
+
+cublasStatus_t (*p_cublasDspr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                  std::int64_t n, const double *alpha,
+                                  const double *X, std::int64_t incx,
+                                  double *Ap) = nullptr;
+
+cublasStatus_t (*p_cublasSspr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                   std::int64_t n, const float *alpha,
+                                   const float *X, std::int64_t incx,
+                                   const float *Y, std::int64_t incy,
+                                   float *Ap) = nullptr;
+
+cublasStatus_t (*p_cublasDspr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                   std::int64_t n, const double *alpha,
+                                   const double *X, std::int64_t incx,
+                                   const double *Y, std::int64_t incy,
+                                   double *Ap) = nullptr;
+
+//LEVEL 3 ROUTINES
+
+cublasStatus_t (*p_cublasSgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const float *alpha, const float *A, int lda,
+    const float *B, int ldb, const float *beta, float *C, int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasDgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const double *alpha, const double *A, int lda,
+    const double *B, int ldb, const double *beta, double *C, int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasCgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuComplex *alpha, const cuComplex *A, int lda,
+    const cuComplex *B, int ldb, const cuComplex *beta, cuComplex *C,
+    int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasZgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const cuDoubleComplex *alpha, const cuDoubleComplex *A,
+    int lda, const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
+    cuDoubleComplex *C, int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasSsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int, const float *,
+                                   const float *, int, const float *, int,
+                                   const float *, float *, int) = nullptr;
+
+cublasStatus_t (*p_cublasDsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int, const double *,
+                                   const double *, int, const double *, int,
+                                   const double *, double *, int) = nullptr;
+
+cublasStatus_t (*p_cublasCsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int,
+                                   const cuComplex *, const cuComplex *, int,
+                                   const cuComplex *, int, const cuComplex *,
+                                   cuComplex *, int) = nullptr;
+
+cublasStatus_t (*p_cublasZsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int,
+                                   const cuDoubleComplex *,
+                                   const cuDoubleComplex *, int,
+                                   const cuDoubleComplex *, int,
+                                   const cuDoubleComplex *, cuDoubleComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasSsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int, const float *,
+                                   const float *, int, const float *, float *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasDsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int, const double *,
+                                   const double *, int, const double *,
+                                   double *, int) = nullptr;
+
+cublasStatus_t (*p_cublasCsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int,
+                                   const cuComplex *, const cuComplex *, int,
+                                   const cuComplex *, cuComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasZsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int,
+                                   const cuDoubleComplex *,
+                                   const cuDoubleComplex *, int,
+                                   const cuDoubleComplex *, cuDoubleComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasSsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int, const float *,
+                                    const float *, int, const float *, int,
+                                    const float *, float *, int) = nullptr;
+
+cublasStatus_t (*p_cublasDsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int, const double *,
+                                    const double *, int, const double *, int,
+                                    const double *, double *, int) = nullptr;
+
+cublasStatus_t (*p_cublasCsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int,
+                                    const cuComplex *, const cuComplex *, int,
+                                    const cuComplex *, int, const cuComplex *,
+                                    cuComplex *, int) = nullptr;
+
+cublasStatus_t (*p_cublasZsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int,
+                                    const cuDoubleComplex *,
+                                    const cuDoubleComplex *, int,
+                                    const cuDoubleComplex *, int,
+                                    const cuDoubleComplex *, cuDoubleComplex *,
+                                    int) = nullptr;
+
+cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int, const float *,
+                                   const float *, int, float *, int, float *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasDtrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int, const double *,
+                                   const double *, int, double *, int, double *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasCtrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int,
+                                   const cuComplex *, const cuComplex *, int,
+                                   cuComplex *, int, cuComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasZtrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int,
+                                   const cuDoubleComplex *,
+                                   const cuDoubleComplex *, int,
+                                   cuDoubleComplex *, int, cuDoubleComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasStrsm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int, const float *,
+                                   const float *, int, float *, int) = nullptr;
 
 //LEVEL 1 ROUTINES
 

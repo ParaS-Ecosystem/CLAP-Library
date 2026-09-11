@@ -16,6 +16,7 @@
 // -----------------------------------------------------------------------------
 
 #pragma once
+
 #include "./blas_factory.hpp"
 
 namespace clap {
@@ -111,44 +112,97 @@ public:
             const double alpha, const double *A, int lda, const double *X,
             int incx, const double beta, double *Y, int incy) override;
 
+//Level 3
 
-
-
-  // Level 3
-
-  void gemm(Layout layout, Transpose transA, Transpose transB, int64_t m,
-            int64_t n, int64_t k, float alpha, const float *A, int64_t lda,
-            const float *B, int64_t ldb, float beta, float *C,
-            int64_t ldc) override;
-  void gemm(Layout layout, Transpose transA, Transpose transB, int64_t m,
-            int64_t n, int64_t k, double alpha, const double *A, int64_t lda,
-            const double *B, int64_t ldb, double beta, double *C,
-            int64_t ldc) override;
-
-  void symm(Layout layout, Side side, Uplo uplo, int64_t m, int64_t n,
-            float alpha, const float *A, int64_t lda, const float *B,
-            int64_t ldb, float beta, float *C, int64_t ldc) override;
-  void symm(Layout layout, Side side, Uplo uplo, int64_t m, int64_t n,
-            double alpha, const double *A, int64_t lda, const double *B,
-            int64_t ldb, double beta, double *C, int64_t ldc) override;
-
-  void syrk(Layout layout, Uplo uplo, Transpose trans, int64_t n, int64_t k,
-            float alpha, const float *A, int64_t lda, float beta, float *C,
-            int64_t ldc) override;
-  void syrk(Layout layout, Uplo uplo, Transpose trans, int64_t n, int64_t k,
-            double alpha, const double *A, int64_t lda, double beta, double *C,
-            int64_t ldc) override;
+  void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,
+            int k, float alpha, const float *A, int lda, const float *B,
+            int ldb, float beta, float *C, int ldc) override;
+  void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,
+            int k, double alpha, const double *A, int lda, const double *B,
+            int ldb, double beta, double *C, int ldc) override;
+  void symm(Layout layout, Side side, Uplo uplo, int m, int n, float alpha,
+            const float *A, int lda, const float *B, int ldb, float beta,
+            float *C, int ldc) override;
+  void symm(Layout layout, Side side, Uplo uplo, int m, int n, double alpha,
+            const double *A, int lda, const double *B, int ldb, double beta,
+            double *C, int ldc) override;
+  void syrk(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+            float alpha, const float *A, int lda, float beta, float *C,
+            int ldc) override;
+  void syrk(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+            double alpha, const double *A, int lda, double beta, double *C,
+            int ldc) override;
+  void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+             float alpha, const float *A, int lda, const float *B, int ldb,
+             float beta, float *C, int ldc) override;
+  void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+             double alpha, const double *A, int lda, const double *B, int ldb,
+             double beta, double *C, int ldc) override;
 
   void trmm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
-            int64_t m, int64_t n, double alpha, const double *A, int64_t lda,
-            double *B, int64_t ldb) override;
+            int m, int n, double alpha, const double *A, int lda, double *B,
+            int ldb) override;
   void trmm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
-            int64_t m, int64_t n, float alpha, const float *A, int64_t lda,
-            float *B, int64_t ldb) override;
-
+            int m, int n, float alpha, const float *A, int lda, float *B,
+            int ldb) override;
   void trsm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
-            int64_t m, int64_t n, float alpha, const float *A, int64_t lda,
-            float *B, int64_t ldb) override;
+            int m, int n, float alpha, const float *A, int lda, float *B,
+            int ldb) override;
+  void trsm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
+            int m, int n, double alpha, const double *A, int lda, double *B,
+            int ldb) override;
+  void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,
+            int K, const std::complex<float> *alpha,
+            const std::complex<float> *A, int lda, const std::complex<float> *B,
+            int ldb, const std::complex<float> *beta, std::complex<float> *C,
+            int ldc) override;
+  void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,
+            int k, const std::complex<double> *alpha,
+            const std::complex<double> *A, int lda,
+            const std::complex<double> *B, int ldb,
+            const std::complex<double> *beta, std::complex<double> *C,
+            int ldc) override;
+  void symm(Layout layout, Side side, Uplo uplo, int m, int n,
+            const std::complex<float> *alpha, const std::complex<float> *A,
+            int lda, const std::complex<float> *B, int ldb,
+            const std::complex<float> *beta, std::complex<float> *C,
+            int ldc) override;
+  void symm(Layout layout, Side side, Uplo uplo, int m, int n,
+            const std::complex<double> *alpha, const std::complex<double> *A,
+            int lda, const std::complex<double> *B, int ldb,
+            const std::complex<double> *beta, std::complex<double> *C,
+            int ldc) override;
+  void syrk(Layout layout, Uplo uplo, Transpose trans, int n, int K,
+            const std::complex<float> *alpha, const std::complex<float> *A,
+            int lda, const std::complex<float> *beta, std::complex<float> *C,
+            int ldc) override;
+  void syrk(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+            const std::complex<double> *alpha, const std::complex<double> *A,
+            int lda, const std::complex<double> *beta, std::complex<double> *C,
+            int ldc) override;
+  void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+             const std::complex<float> *alpha, const std::complex<float> *A,
+             int lda, const std::complex<float> *B, int ldb,
+             const std::complex<float> *beta, std::complex<float> *C,
+             int ldc) override;
+  void syr2k(Layout layout, Uplo uplo, Transpose trans, int n, int k,
+             const std::complex<double> *alpha, const std::complex<double> *A,
+             int lda, const std::complex<double> *B, int ldb,
+             const std::complex<double> *beta, std::complex<double> *C,
+             int ldc) override;
+
+  void trmm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
+            int m, int n, const std::complex<float> *alpha,
+            const std::complex<float> *A, int lda, std::complex<float> *B,
+            int ldb) override;
+  void trmm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
+            int m, int n, const std::complex<double> *alpha,
+            const std::complex<double> *A, int lda, std::complex<double> *B,
+            int ldb) override;
+  void trsm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
+            int m, int n, const std::complex<float> *alpha,
+            const std::complex<float> *A, int lda, std::complex<float> *B,
+            int ldb) override;
   void trsm(Layout layout, Side side, Uplo uplo, Transpose trans, Diag diag,
             int64_t m, int64_t n, double alpha, const double *A, int64_t lda,
             double *B, int64_t ldb) override;
@@ -175,4 +229,4 @@ public:
 
 };
 
-} // namespace clap
+}

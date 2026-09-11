@@ -20,72 +20,68 @@
 namespace clap {
 
 // Float COPY
-
-void OpenBlasBackend::OpenBlasBackend::copy(int64_t n, const float *x,
-                                            int64_t incx, float *y,
-                                            int64_t incy) {
+void OpenBlasBackend::copy(int n, const float *x, int incx,
+                                            float *y, int incy) {
   clap_cblas_scopy(n, x, incx, y, incy);
 }
 
 // Double COPY
-
-void OpenBlasBackend::OpenBlasBackend::copy(int64_t n, const double *x,
-                                            int64_t incx, double *y,
-                                            int64_t incy) {
+void OpenBlasBackend::copy(int n, const double *x, int incx,
+                                            double *y, int incy) {
   clap_cblas_dcopy(n, x, incx, y, incy);
 }
 
 // Float SCAL
-
-void OpenBlasBackend::scal(int64_t n, float a, float *x, int64_t incx) {
+void OpenBlasBackend::scal(int n, float a, float *x, int incx) {
   clap_cblas_sscal(n, a, x, incx);
 }
 
 // Double SCAL
-
-void OpenBlasBackend::scal(int64_t n, double a, double *x, int64_t incx) {
+void OpenBlasBackend::scal(int n, double a, double *x, int incx) {
   clap_cblas_dscal(n, a, x, incx);
 }
 
-// Float axpy
-
-void OpenBlasBackend::axpy(int64_t n, float a, const float *x, int64_t incx,
-                           float *y, int64_t incy) {
+// Float AXPY
+void OpenBlasBackend::axpy(int n, float a, const float *x, int incx, float *y,
+                           int incy) {
   clap_cblas_saxpy(n, a, x, incx, y, incy);
 }
 
-// Double axpy
-
-void OpenBlasBackend::axpy(int64_t n, double a, const double *x, int64_t incx,
-                           double *y, int64_t incy) {
+// Double AXPY
+void OpenBlasBackend::axpy(int n, double a, const double *x, int incx,
+                           double *y, int incy) {
   clap_cblas_daxpy(n, a, x, incx, y, incy);
 }
 
-// Float swap
+// Float IAMAX
+int OpenBlasBackend::iamax(int n, const float *x, int incx) {
+  return clap_cblas_isamax(n, x, incx);
+}
 
-void OpenBlasBackend::swap(int64_t n, float *x, int64_t incx, float *y,
-                           int64_t incy) {
+// Double IAMAX
+int OpenBlasBackend::iamax(int n, const double *x, int incx) {
+  return clap_cblas_idamax(n, x, incx);
+}
+
+// Float SWAP
+void OpenBlasBackend::swap(int n, float *x, int incx, float *y, int incy) {
   clap_cblas_sswap(n, x, incx, y, incy);
 }
 
-// Double swap
-
-void OpenBlasBackend::swap(int64_t n, double *x, int64_t incx, double *y,
-                           int64_t incy) {
+// Double SWAP
+void OpenBlasBackend::swap(int n, double *x, int incx, double *y, int incy) {
   clap_cblas_dswap(n, x, incx, y, incy);
 }
 
-// Double dot
-
-float OpenBlasBackend::dot(int64_t n, const float *x, int64_t incx,
-                           const float *y, int64_t incy) {
+// Float DOT
+float OpenBlasBackend::dot(int n, const float *x, int incx, const float *y,
+                           int incy) {
   return clap_cblas_sdot(n, x, incx, y, incy);
 }
 
-// Float dot
-
-double OpenBlasBackend::dot(int64_t n, const double *x, int64_t incx,
-                            const double *y, int64_t incy) {
+// Double DOT
+double OpenBlasBackend::dot(int n, const double *x, int incx, const double *y,
+                            int incy) {
   return clap_cblas_ddot(n, x, incx, y, incy);
 }
 

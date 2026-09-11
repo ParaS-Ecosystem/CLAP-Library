@@ -29,4 +29,5 @@ CuBlasBackend::CuBlasBackend() {
   }
 }
 CuBlasBackend::~CuBlasBackend() { clap_cublasDestroy(handle); }
-} // namespace clap
+}
+

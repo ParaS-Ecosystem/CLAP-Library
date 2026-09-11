@@ -15,32 +15,20 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
-
 #include "clap/rocblas_backend.hpp"
 #include "clap/dyn_backends.hpp"
 
 namespace clap {
 
-RocBlasBackend::RocBlasBackend()
-    {
-        if(!dyn::loadHipAndRocblas())
-        {std::cout << "Using ROCBLAS backend\n";
-            throw std::runtime_error(
-                "Failed to load HIP/rocBLAS dynamically."
-            );
-        }
+RocBlasBackend::RocBlasBackend() {
+  if (!dyn::loadHipAndRocblas()) {
+    throw std::runtime_error("Failed to load HIP/rocBLAS dynamically.");
+  }
 
-        if(clap_rocblas_create_handle(&handle)
-            != rocblas_status_success)
-        {
-            throw std::runtime_error(
-                "Failed to create rocBLAS handle."
-            );
-        }
-    }
-RocBlasBackend::~RocBlasBackend()
-    {
-        clap_rocblas_destroy_handle(handle);
-    }
+  if (clap_rocblas_create_handle(&handle) != rocblas_status_success) {
+    throw std::runtime_error("Failed to create rocBLAS handle.");
+  }
+}
+RocBlasBackend::~RocBlasBackend() { clap_rocblas_destroy_handle(handle); }
 
 }

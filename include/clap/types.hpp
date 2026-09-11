@@ -15,9 +15,9 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
-// ==== CUDA & cuBLAS minimal typedefs ====
-#pragma once
 #include <complex>
+
+//Cublas
 
 typedef int cudaError_t;
 typedef std::complex<float> cuComplex;
@@ -36,7 +36,6 @@ inline float cuCimagf(const cuComplex &c) { return c.imag(); }
 inline double cuCreal(const cuDoubleComplex &c) { return c.real(); }
 
 inline double cuCimag(const cuDoubleComplex &c) { return c.imag(); }
-
 typedef enum cudaMemcpyKind {
   cudaMemcpyHostToHost = 0,
   cudaMemcpyHostToDevice = 1,
@@ -81,7 +80,7 @@ typedef enum cublasPointerMode_t {
 
 typedef struct cublasContext *cublasHandle_t;
 
-// ==== OpenBLAS minimal typedefs ====
+//Openblas
 
 typedef enum CBLAS_ORDER {
   CblasRowMajor = 101,
@@ -97,7 +96,7 @@ typedef enum CBLAS_UPLO { CblasUpper = 121, CblasLower = 122 } CBLAS_UPLO;
 typedef enum CBLAS_DIAG { CblasNonUnit = 131, CblasUnit = 132 } CBLAS_DIAG;
 typedef enum CBLAS_SIDE { CblasLeft = 141, CblasRight = 142 } CBLAS_SIDE;
 
-//=======rocblas minimal typedefs=======
+//Rocblas
 
 typedef int hipError_t;
 typedef int rocblas_int;

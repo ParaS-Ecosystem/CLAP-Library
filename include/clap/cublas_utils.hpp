@@ -17,9 +17,7 @@
 
 #include "blas_factory.hpp"
 #include "dyn_backends.hpp"
-
 namespace clap {
-
 inline cublasOperation_t to_cublas_trans(Transpose t) {
   if (t == Transpose::NoTrans)
     return CUBLAS_OP_N;
@@ -36,5 +34,4 @@ inline cublasDiagType_t to_cublas_diag(Diag d) {
 inline cublasSideMode_t to_cublas_side(Side s) {
   return (s == Side::Left) ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
 }
-
-} // namespace clap
+}

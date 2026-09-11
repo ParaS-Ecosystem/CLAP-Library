@@ -16,6 +16,7 @@
 // -----------------------------------------------------------------------------
 
 #include "clap/blas_factory.hpp"
+
 #include "clap/cublas_backend.hpp"
 #include "clap/openblas_backend.hpp"
 #include "clap/rocblas_backend.hpp"
@@ -27,16 +28,14 @@ std::unique_ptr<IBlasBackend> BlasFactory::create(BackendType default_backend) {
   BackendType selected = default_backend;
 
   const char *env_backend = std::getenv("CLAP_BACKEND");
-
   if (env_backend) {
     std::string be(env_backend);
     if (be == "CUDA")
       selected = BackendType::CUDA;
-    else if (be == "ROCM")
-      selected = BackendType::ROCM;
+    else if (be == "AMD")
+      selected = BackendType::AMD;
     else if (be == "CPU")
       selected = BackendType::CPU;
-
   } else {
 
     std::ifstream cmdline("/proc/self/cmdline");
@@ -49,7 +48,7 @@ std::unique_ptr<IBlasBackend> BlasFactory::create(BackendType default_backend) {
           break;
         }
         if (arg == "-rocm") {
-          selected = BackendType::ROCM;
+          selected = BackendType::AMD;
           break;
         }
         if (arg == "-cpu") {
@@ -67,8 +66,7 @@ std::unique_ptr<IBlasBackend> BlasFactory::create(BackendType default_backend) {
   } else {
     return std::make_unique<RocBlasBackend>();
   }
-
   throw std::invalid_argument("Unsupported backend requested.");
 }
 
-} // namespace clap
+}

@@ -722,20 +722,12 @@ cublasStatus_t (*p_cublasSsyr2k_v2)(
     float *C,
     int ldc) = nullptr;
 
-cublasStatus_t (*p_cublasDsyr2k_v2)(
-    cublasHandle_t handle,
-    cublasFillMode_t uplo,
-    cublasOperation_t trans,
-    int n,
-    int k,
-    const double *alpha,
-    const double *A,
-    int lda,
-    const double *B,
-    int ldb,
-    const double *beta,
-    double *C,
-    int ldc) = nullptr;
+cublasStatus_t (*p_cublasSsbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                   std::int64_t n, std::int64_t k,
+                                   const float *alpha, const float *A,
+                                   std::int64_t lda, const float *X,
+                                   std::int64_t incx, const float *beta,
+                                   float *Y, std::int64_t incy) = nullptr;
 
 cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
                                    cublasFillMode_t, cublasOperation_t,
@@ -831,8 +823,39 @@ cublasStatus_t (*p_cublasZher2k_v2)(
     cuDoubleComplex *C, int ldc) = nullptr;
 
 
+cublasStatus_t (*p_cublasSspr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                  std::int64_t n, const float *alpha,
+                                  const float *X, std::int64_t incx,
+                                  float *Ap) = nullptr;
 
-//Complex routines
+cublasStatus_t (*p_cublasDspr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                  std::int64_t n, const double *alpha,
+                                  const double *X, std::int64_t incx,
+                                  double *Ap) = nullptr;
+
+cublasStatus_t (*p_cublasSspr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                   std::int64_t n, const float *alpha,
+                                   const float *X, std::int64_t incx,
+                                   const float *Y, std::int64_t incy,
+                                   float *Ap) = nullptr;
+
+cublasStatus_t (*p_cublasDspr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
+                                   std::int64_t n, const double *alpha,
+                                   const double *X, std::int64_t incx,
+                                   const double *Y, std::int64_t incy,
+                                   double *Ap) = nullptr;
+
+//LEVEL 3 ROUTINES
+
+cublasStatus_t (*p_cublasSgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const float *alpha, const float *A, int lda,
+    const float *B, int ldb, const float *beta, float *C, int ldc) = nullptr;
+
+cublasStatus_t (*p_cublasDgemm_v2)(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const double *alpha, const double *A, int lda,
+    const double *B, int ldb, const double *beta, double *C, int ldc) = nullptr;
 
 cublasStatus_t (*p_cublasCgemm_v2)(
     cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
@@ -846,11 +869,108 @@ cublasStatus_t (*p_cublasZgemm_v2)(
     int lda, const cuDoubleComplex *B, int ldb, const cuDoubleComplex *beta,
     cuDoubleComplex *C, int ldc) = nullptr;
 
+cublasStatus_t (*p_cublasSsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int, const float *,
+                                   const float *, int, const float *, int,
+                                   const float *, float *, int) = nullptr;
 
+cublasStatus_t (*p_cublasDsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int, const double *,
+                                   const double *, int, const double *, int,
+                                   const double *, double *, int) = nullptr;
 
+cublasStatus_t (*p_cublasCsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int,
+                                   const cuComplex *, const cuComplex *, int,
+                                   const cuComplex *, int, const cuComplex *,
+                                   cuComplex *, int) = nullptr;
 
+cublasStatus_t (*p_cublasZsymm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, int, int,
+                                   const cuDoubleComplex *,
+                                   const cuDoubleComplex *, int,
+                                   const cuDoubleComplex *, int,
+                                   const cuDoubleComplex *, cuDoubleComplex *,
+                                   int) = nullptr;
 
-//=======OpenBLAS==========
+cublasStatus_t (*p_cublasSsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int, const float *,
+                                   const float *, int, const float *, float *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasDsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int, const double *,
+                                   const double *, int, const double *,
+                                   double *, int) = nullptr;
+
+cublasStatus_t (*p_cublasCsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int,
+                                   const cuComplex *, const cuComplex *, int,
+                                   const cuComplex *, cuComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasZsyrk_v2)(cublasHandle_t, cublasFillMode_t,
+                                   cublasOperation_t, int, int,
+                                   const cuDoubleComplex *,
+                                   const cuDoubleComplex *, int,
+                                   const cuDoubleComplex *, cuDoubleComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasSsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int, const float *,
+                                    const float *, int, const float *, int,
+                                    const float *, float *, int) = nullptr;
+
+cublasStatus_t (*p_cublasDsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int, const double *,
+                                    const double *, int, const double *, int,
+                                    const double *, double *, int) = nullptr;
+
+cublasStatus_t (*p_cublasCsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int,
+                                    const cuComplex *, const cuComplex *, int,
+                                    const cuComplex *, int, const cuComplex *,
+                                    cuComplex *, int) = nullptr;
+
+cublasStatus_t (*p_cublasZsyr2k_v2)(cublasHandle_t, cublasFillMode_t,
+                                    cublasOperation_t, int, int,
+                                    const cuDoubleComplex *,
+                                    const cuDoubleComplex *, int,
+                                    const cuDoubleComplex *, int,
+                                    const cuDoubleComplex *, cuDoubleComplex *,
+                                    int) = nullptr;
+
+cublasStatus_t (*p_cublasStrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int, const float *,
+                                   const float *, int, float *, int, float *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasDtrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int, const double *,
+                                   const double *, int, double *, int, double *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasCtrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int,
+                                   const cuComplex *, const cuComplex *, int,
+                                   cuComplex *, int, cuComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasZtrmm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int,
+                                   const cuDoubleComplex *,
+                                   const cuDoubleComplex *, int,
+                                   cuDoubleComplex *, int, cuDoubleComplex *,
+                                   int) = nullptr;
+
+cublasStatus_t (*p_cublasStrsm_v2)(cublasHandle_t, cublasSideMode_t,
+                                   cublasFillMode_t, cublasOperation_t,
+                                   cublasDiagType_t, int, int, const float *,
+                                   const float *, int, float *, int) = nullptr;
 
 //LEVEL 1 ROUTINES
 
@@ -1048,14 +1168,91 @@ void (*p_cblas_zgerc)(const CBLAS_ORDER Order, std::int64_t m, std::int64_t n,
                       const std::complex<double> *Y, std::int64_t incy,
                       std::complex<double> *A, std::int64_t lda) = nullptr;
 
-void (*p_cblas_sger)(const CBLAS_ORDER Order, int m, int n, const float alpha,
-                     const float *X, int incx, const float *Y, int incy,
-                     float *A, int lda) = nullptr;
+void (*p_cblas_stbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t K, const float *A, std::int64_t lda,
+                      float *X, std::int64_t incX) = nullptr;
 
-void (*p_cblas_dger)(const CBLAS_ORDER Order, std::int64_t m, std::int64_t n,
-                     const double alpha, const double *X, std::int64_t incx,
-                     const double *Y, std::int64_t incy, double *A,
-                     std::int64_t lda) = nullptr;
+void (*p_cblas_dtbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t K, const double *A, std::int64_t lda,
+                      double *X, std::int64_t incX) = nullptr;
+
+void (*p_cblas_ctbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t k, const std::complex<float> *A,
+                      std::int64_t lda, std::complex<float> *X,
+                      std::int64_t incx) = nullptr;
+
+void (*p_cblas_ztbmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t k, const std::complex<double> *A,
+                      std::int64_t lda, std::complex<double> *X,
+                      std::int64_t incx) = nullptr;
+
+void (*p_cblas_stbsv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t K, const float *A, std::int64_t lda,
+                      float *X, std::int64_t incX) = nullptr;
+
+void (*p_cblas_dtbsv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t K, const double *A, std::int64_t lda,
+                      double *X, std::int64_t incX) = nullptr;
+
+void (*p_cblas_ctbsv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t K, const std::complex<float> *A,
+                      std::int64_t lda, std::complex<float> *X,
+                      std::int64_t incx) = nullptr;
+
+void (*p_cblas_ztbsv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      std::int64_t K, const std::complex<double> *A,
+                      std::int64_t lda, std::complex<double> *X,
+                      std::int64_t incx) = nullptr;
+
+void (*p_cblas_chpmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      std::int64_t n, const std::complex<float> *alpha,
+                      const std::complex<float> *Ap,
+                      const std::complex<float> *X, std::int64_t incx,
+                      const std::complex<float> *beta, std::complex<float> *Y,
+                      std::int64_t incy) = nullptr;
+
+void (*p_cblas_zhpmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      std::int64_t n, const std::complex<double> *alpha,
+                      const std::complex<double> *Ap,
+                      const std::complex<double> *X, std::int64_t incx,
+                      const std::complex<double> *beta, std::complex<double> *Y,
+                      std::int64_t incy) = nullptr;
+
+void (*p_cblas_sspmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      std::int64_t n, const float alpha, const float *Ap,
+                      const float *x, std::int64_t incX, const float beta,
+                      float *y, std::int64_t incY) = nullptr;
+
+void (*p_cblas_dspmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      std::int64_t n, const double alpha, const double *Ap,
+                      const double *x, std::int64_t incX, const double beta,
+                      double *y, std::int64_t incY) = nullptr;
+
+void (*p_cblas_stpmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      const float *Ap, float *X, std::int64_t incX) = nullptr;
+
+void (*p_cblas_dtpmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      const double *Ap, double *X, std::int64_t incX) = nullptr;
+
+void (*p_cblas_ctpmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      const std::complex<float> *Ap, std::complex<float> *X,
+                      std::int64_t incx) = nullptr;
+
+void (*p_cblas_ztpmv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      const std::complex<double> *Ap, std::complex<double> *X,
+                      std::int64_t incx) = nullptr;
 
 void (*p_cblas_cgeru)(const CBLAS_ORDER Order, std::int64_t m, std::int64_t n,
                       const std::complex<float> *alpha,
@@ -1073,9 +1270,9 @@ void (*p_cblas_ssyr)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
                      std::int64_t n, const float alpha, const float *X,
                      std::int64_t incX, float *A, std::int64_t lda) = nullptr;
 
-void (*p_cblas_dsyr)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
-                     std::int64_t n, const double alpha, const double *X,
-                     std::int64_t incX, double *A, std::int64_t lda) = nullptr;
+void (*p_cblas_dtpsv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      const double *Ap, double *X, std::int64_t incX) = nullptr;
 
 void (*p_cblas_ssyr2)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo, int n,
                       const float alpha, const float *X, int incX,
@@ -1135,12 +1332,10 @@ void (*p_cblas_sgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
                       std::int64_t lda, const float *X, std::int64_t incX,
                       const float beta, float *Y, std::int64_t incY) = nullptr;
 
-void (*p_cblas_dgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
-                      std::int64_t m, std::int64_t n, std::int64_t KL,
-                      std::int64_t KU, const double alpha, const double *A,
-                      std::int64_t lda, const double *X, std::int64_t incX,
-                      const double beta, double *Y,
-                      std::int64_t incY) = nullptr;
+void (*p_cblas_ztpsv)(const CBLAS_ORDER Order, const CBLAS_UPLO Uplo,
+                      CBLAS_TRANSPOSE trans, CBLAS_DIAG diag, std::int64_t n,
+                      const std::complex<double> *Ap, std::complex<double> *X,
+                      std::int64_t incX) = nullptr;
 
 void (*p_cblas_cgbmv)(const CBLAS_ORDER Order, CBLAS_TRANSPOSE trans,
                       std::int64_t m, std::int64_t n, std::int64_t KL,
@@ -2131,7 +2326,6 @@ rocblas_status (*p_rocblas_dgemm)(rocblas_handle, rocblas_operation,
                                   const double *, double *,
                                   rocblas_int) = nullptr;
 
-
 rocblas_status (*p_rocblas_ssymm)(rocblas_handle, rocblas_side, rocblas_fill,
                                   rocblas_int, rocblas_int, const float *,
                                   const float *, rocblas_int, const float *,
@@ -2643,12 +2837,17 @@ bool loadCudaAndCublas() {
   LOAD_CUDA_SYM(cublas_lib, cublasCher2k_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasZher2k_v2);
 
-  //SYR2K
+  //HEMM
+  LOAD_CUDA_SYM(cublas_lib, cublasChemm_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasZhemm_v2);
 
-  LOAD_CUDA_SYM(cublas_lib, cublasSsyr2k_v2);
-  LOAD_CUDA_SYM(cublas_lib, cublasDsyr2k_v2);
+  //HERK
+  LOAD_CUDA_SYM(cublas_lib, cublasCherk_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasZherk_v2);
 
-
+  //HER2K
+  LOAD_CUDA_SYM(cublas_lib, cublasCher2k_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasZher2k_v2);
 
 #pragma GCC diagnostic pop
 
@@ -2941,13 +3140,17 @@ bool loadOpenBlas() {
   LOAD_OBLAS_SYM(openblas_lib, cblas_cher2k);
   LOAD_OBLAS_SYM(openblas_lib, cblas_zher2k);
 
-  // SYR2K
+  //HEMM
+  LOAD_OBLAS_SYM(openblas_lib, cblas_chemm);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_zhemm);
 
-  LOAD_OBLAS_SYM(openblas_lib, cblas_ssyr2k);
-  LOAD_OBLAS_SYM(openblas_lib, cblas_dsyr2k);
+  //HERK
+  LOAD_OBLAS_SYM(openblas_lib, cblas_cherk);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_zherk);
 
-
-
+  //HER2K
+  LOAD_OBLAS_SYM(openblas_lib, cblas_cher2k);
+  LOAD_OBLAS_SYM(openblas_lib, cblas_zher2k);
 
 #pragma GCC diagnostic pop
 

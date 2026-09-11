@@ -17,9 +17,7 @@
 
 #include "blas_factory.hpp"
 #include "dyn_backends.hpp"
-
 namespace clap {
-
 static CBLAS_ORDER to_cblas_order(Layout l) {
   return l == Layout::RowMajor ? CblasRowMajor : CblasColMajor;
 }
@@ -42,4 +40,4 @@ static CBLAS_DIAG to_cblas_diag(Diag d) {
 inline CBLAS_SIDE to_cblas_side(Side s) {
   return (s == Side::Left) ? CblasLeft : CblasRight;
 }
-} // namespace clap
+}

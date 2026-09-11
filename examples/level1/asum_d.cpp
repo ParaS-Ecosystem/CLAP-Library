@@ -1,0 +1,37 @@
+#include <blas.hh>
+#include <stdio.h>
+#include <chrono>
+#include <stdlib.h>
+#include <time.h>
+using namespace clap;
+using namespace std::chrono;
+
+int main() {
+  int n;
+  printf("Enter vector size (double): ");
+  scanf("%d", &n);
+  printf("n = %d\n", n);
+  srand(time(NULL));
+
+  double *x = (double *)malloc(n * sizeof(double));
+  if (x == NULL) {
+    printf("malloc failed\n");
+    return 1;
+  }
+  for (int i = 0; i < n; i++) {
+    x[i] = (double)((rand() % 10) - 5);
+  }
+
+  auto backend = clap::BlasFactory::create();
+  auto start = high_resolution_clock::now();
+  double result = backend->asum(n, x, 1);
+  auto stop = high_resolution_clock::now();
+
+  printf("\nASUM result = %lf\n", result);
+
+  double total_seconds = duration<double>(stop - start).count();
+  printf("Total time : %.6f s\n", total_seconds);
+
+  free(x);
+  return 0;
+}

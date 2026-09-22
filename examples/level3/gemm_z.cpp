@@ -63,12 +63,12 @@ int main() {
         m,
 	n,
 	k,
-	alpha,
+	&alpha,
 	A,
 	m,
 	B,
 	k,
-	beta,
+	&beta,
 	C,
 	m
     );

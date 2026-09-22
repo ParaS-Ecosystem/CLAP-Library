@@ -17,4 +17,4 @@ int main() {
     printf("NRM2 result = %f\n", result);
 
     return 0;
-
+}

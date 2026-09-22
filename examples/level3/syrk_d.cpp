@@ -49,7 +49,7 @@ int main() {
 
   double total_seconds = duration<double>(stop - start).count();
 
-  for (int i = 0; i < 10 && i < m * n; i++) {
+  for (int i = 0; i < 10 && i < k * n; i++) {
     printf("C[%d] = %f\n", i, C[i]);
   }
   printf("SYRK Double Time : %.6f s\n", total_seconds);

@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #include "clap/dnn_dyn_backends.hpp"
 
 #include <dlfcn.h>
@@ -78,22 +95,18 @@ std::string error_text;
 
 void* open_any(std::initializer_list<const char*> names) {
     for (auto n : names) {
-        if (void* h = dlopen(n, RTLD_LAZY | RTLD_LOCAL)) return h; //dlopen("onednn.so",RTLD_LAZY)
+        if (void* h = dlopen(n, RTLD_LAZY | RTLD_LOCAL)) return h;
     }
     return nullptr;
 }
 
 template<class T>
 bool sym(void* h, const char* n, T& out) {
-	//h = cublas_lib ,n= name of rotine , out = function pointer for routine
-	//main dlsym handling 
     out = reinterpret_cast<T>(dlsym(h, n));
     if (!out) { error_text = std::string("missing symbol ") + n; return false; }
     return true;
 }
 
-// Optional symbol: a missing entry point leaves the pointer null and only
-// disables the feature group that needs it.
 template<class T>
 bool symOptional(void* h, const char* n, T& out) {
     out = reinterpret_cast<T>(dlsym(h, n));
@@ -107,12 +120,12 @@ bool loadOneDnn() {
     std::lock_guard<std::mutex> lock(one_mutex);
     if (one_done) return one_lib != nullptr;
     one_done=true;
-    one_lib=open_any({"libdnnl.so", "libdnnl.so.3", "libdnnl.so.2"});//dlopen 
+    one_lib=open_any({"libdnnl.so", "libdnnl.so.3", "libdnnl.so.2"});
     if (!one_lib) { error_text="cannot dlopen libdnnl.so; set LD_LIBRARY_PATH to oneDNN lib directory"; return false; }
 
-#define S(x) if(!sym(one_lib,#x,p_##x)) return false   //dlsym   
+#define S(x) if(!sym(one_lib,#x,p_##x)) return false
 
-    S(dnnl_engine_create); S(dnnl_engine_destroy); S(dnnl_stream_create); S(dnnl_stream_wait); S(dnnl_stream_destroy); //SYM(cublas_lib, cublas_gemm_v)
+    S(dnnl_engine_create); S(dnnl_engine_destroy); S(dnnl_stream_create); S(dnnl_stream_wait); S(dnnl_stream_destroy);
     S(dnnl_memory_desc_create_with_strides); S(dnnl_memory_desc_destroy); S(dnnl_memory_create); S(dnnl_memory_destroy);
     S(dnnl_primitive_create); S(dnnl_primitive_execute); S(dnnl_primitive_destroy); S(dnnl_primitive_desc_destroy);
     S(dnnl_convolution_forward_primitive_desc_create); S(dnnl_convolution_backward_data_primitive_desc_create); S(dnnl_convolution_backward_weights_primitive_desc_create);
@@ -254,4 +267,4 @@ bool hasOneDnnGraph() { return loadOneDnn() && one_graph; }
 bool hasMiopenT5LayerNorm() { return loadHipAndMiopen() && miopen_t5; }
 bool hasMiopenMha() { return loadHipAndMiopen() && miopen_mha; }
 
-} // namespace clap::dnn_dyn
+}

@@ -4,8 +4,6 @@
 #include <iostream>
 #include <vector>
 
-// RMSNorm (dedicated operation, not LayerNorm) over the hidden dimension of a
-// [B, S, H] tensor, forward in training mode (saved_rstd) and backward.
 int main() {
     auto backend = clap::createDnnBackend();
     clap_example::Device device(*backend);

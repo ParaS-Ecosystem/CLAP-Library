@@ -5,10 +5,6 @@
 #include <iostream>
 #include <vector>
 
-// Scaled dot-product attention with causal masking and grouped-query
-// attention (4 query heads sharing 2 key/value heads).  The datatype is the
-// first of Float32 / BFloat16 / Float16 that the selected backend supports
-// natively; unsupported configurations are reported, never emulated.
 int main() {
     auto backend = clap::createDnnBackend();
     clap_example::Device device(*backend);

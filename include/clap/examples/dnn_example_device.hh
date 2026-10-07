@@ -1,17 +1,5 @@
 #pragma once
 
-// Small helper shared by the CLAP_DNN framework-contract examples.
-//
-// It owns the memory and stream that a framework such as Torch-ParaS would
-// normally own, so that the examples can call the ExecutionContext overloads
-// exactly like a framework does:
-//   CPU  : host memory, optional caller dnnl_stream_t
-//   CUDA : cudaMalloc'ed device memory and a caller-created cudaStream_t
-//   ROCM : hipMalloc'ed device memory and a caller-created hipStream_t
-//
-// The CUDA/HIP runtime entry points are the ones CLAP already resolves at
-// runtime (clap::dnn_dyn), so the examples need no vendor headers either.
-
 #include <dnn.hh>
 #include "clap/dnn_dyn_backends.hpp"
 
@@ -73,7 +61,6 @@ public:
 
     bool onGpu() const { return ctx.backend != clap::ExecutionBackend::CPU; }
 
-    // Memory owned by the "framework" (this helper), not by CLAP_DNN.
     void* allocate(std::size_t bytes)
     {
         void* p = nullptr;
@@ -103,7 +90,6 @@ public:
             std::memcpy(dst, src, bytes);
     }
 
-    // Waits for the work enqueued on the caller stream only (no device sync).
     void synchronize()
     {
         if (ctx.backend == clap::ExecutionBackend::CUDA)
@@ -157,10 +143,6 @@ private:
     clap::abi::dnnl_engine_t cpu_engine_ = nullptr;
     std::vector<void*> allocations_;
 };
-
-// ---------------------------------------------------------------------------
-// Float16 / BFloat16 host conversions (round to nearest even).
-// ---------------------------------------------------------------------------
 
 inline std::uint16_t floatToBFloat16(float f)
 {
@@ -225,7 +207,6 @@ inline float halfToFloat(std::uint16_t h)
     return f;
 }
 
-// Host vector of an arbitrary CLAP datatype, converted from/to Float32.
 inline std::vector<std::uint8_t> encode(const std::vector<float>& values, clap::DataType type)
 {
     std::vector<std::uint8_t> out(values.size() * clap::dataTypeSize(type));
@@ -258,4 +239,4 @@ inline std::vector<float> decode(const std::vector<std::uint8_t>& raw, clap::Dat
     return out;
 }
 
-} // namespace clap_example
+}

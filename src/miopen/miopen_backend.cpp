@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #include "clap/miopen_backend.hpp"
 #include "clap/dnn_dyn_backends.hpp"
 
@@ -17,8 +34,6 @@
 namespace clap {
     namespace {
         using namespace abi;
-        // miopenStatusNotImplemented / miopenStatusUnsupportedOp mean that
-        // MIOpen has no native implementation for the configuration.
         void check(miopenStatus_t s, const char* what) {
             if (s == miopenStatusNotImplemented || s == miopenStatusUnsupportedOp) throw DnnUnsupportedError(std::string("CLAP_DNN MIOpen: no native support in ") + what + " status=" + std::to_string(s));
             if (s != miopenStatusSuccess) throw std::runtime_error(std::string("MIOpen call failed: ") + what + " status=" + std::to_string(s));
@@ -38,8 +53,6 @@ namespace clap {
             if (v < 0 || v > INT_MAX) throw DnnUnsupportedError(std::string("CLAP_DNN MIOpen ") + what + ": tensor extent or stride does not fit the MIOpen int descriptor");
             return (int) v;
         }
-        // MIOpen tensor descriptor with datatype, dims and element strides
-        // (miopenSetTensorDescriptor, 1..5 dimensions).
         struct Tensor {
             miopenTensorDescriptor_t v {
             };
@@ -97,8 +110,6 @@ namespace clap {
                 if (v) dnn_dyn::p_miopenDestroyConvolutionDescriptor(v);
             }
         };
-        // MIOpen has no SiLU activation mode; SiLU is composed from the
-        // LOGISTIC activation and miopenOpTensor (see activationForward).
         miopenActivationMode_t actMode(ActivationMode m) {
             if (m == ActivationMode::ReLU) return miopenActivationRELU;
             if (m == ActivationMode::Tanh) return miopenActivationTANH;
@@ -127,7 +138,6 @@ namespace clap {
                 if (v) dnn_dyn::p_miopenDestroyPoolingDescriptor(v);
             }
         };
-        // Device staging buffer used only by the historical host-pointer API.
         struct Buf {
             void* p {
             };
@@ -146,9 +156,6 @@ namespace clap {
                 if (n) checkHip(dnn_dyn::p_hipMemcpy(dst, p, n, hipMemcpyDeviceToHost), "hipMemcpy D2H");
             }
         };
-        // Stream-ordered scratch memory for one framework call: carved from
-        // ExecutionContext::workspace when possible, otherwise allocated with
-        // hipMallocAsync / released with hipFreeAsync on the caller stream.
         struct Scratch {
             hipStream_t stream {
             };
@@ -197,8 +204,6 @@ namespace clap {
         void requireRocm(const ExecutionContext& ctx, const char* operation) {
             dnn_contract::requireBackend(ctx, ExecutionBackend::ROCM, "MIOpen", operation);
         }
-        // MIOpen handle of the current HIP device bound to the caller
-        // stream; the backend mutex serializes binding and enqueue.
         struct Handle {
             std::lock_guard<std::recursive_mutex> lock;
             miopenHandle_t v {
@@ -219,7 +224,6 @@ namespace clap {
     }
 
     namespace miopen_detail {
-        // Cached MIOpen MHA solution (Find 2.0) for one problem shape.
         struct MhaSolution {
             miopenSolution_t solution = nullptr;
             std::size_t workspace = 0;
@@ -233,8 +237,6 @@ namespace clap {
         std::recursive_mutex mutex;
         std::map<int, miopenHandle_t> handles;
         std::map<std::string, std::unique_ptr<miopen_detail::MhaSolution>> mha;
-        // Per-device constant MHA scalars (descale/scale factors, dropout
-        // probability/seed/offset) initialized once.
         std::map<int, void*> mha_constants;
 
         ~NativeState() {
@@ -259,11 +261,6 @@ namespace clap {
     ExecutionBackend MiOpenBackend::executionBackend() const noexcept {
         return ExecutionBackend::ROCM;
     }
-
-    // ------------------------------------------------------------------
-    // Historical host-pointer API: stage through device buffers, run the
-    // framework-contract implementation on the default stream, copy back.
-    // ------------------------------------------------------------------
 
     void MiOpenBackend::convolutionForward(const TensorDesc& xd, const float* x, const TensorDesc& wd, const float* w, const ConvolutionDesc& c, const TensorDesc& yd, float* y) {
         std::cerr<<"[MY CLAP] ROCm convolution called through MIOpen function pointers\n";
@@ -328,7 +325,6 @@ namespace clap {
         DX.d2h(dx);
     }
 
-    // Historical softmax: normalization over dimension 1 (channels).
     void MiOpenBackend::softmaxForward(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y) {
         Buf X(bytes(xd)), Y(bytes(yd));
         X.h2d(x);
@@ -457,7 +453,6 @@ namespace clap {
         DB.d2h(dbias);
     }
 
-    // Historical dropout API: the MIOpen reserve space doubles as the mask.
     void MiOpenBackend::dropoutForward(const DropoutDesc& dropout, const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y, std::uint8_t* mask) {
         const std::size_t rs = dropoutReserveSpaceSize(xd, legacyContext());
         Buf reserve(rs), X(bytes(xd)), Y(bytes(yd));
@@ -563,15 +558,6 @@ void MiOpenBackend::tensorReduceProduct(const TensorDesc& xd, const float* x, co
     Y0.d2h(y);
 }
 
-// ==========================================================================
-// Framework execution contract
-//
-// Every tensor pointer is a HIP device pointer owned by the caller.  The
-// MIOpen handle of the current device is bound to ctx.stream with
-// miopenSetStream and the MIOpen primitive is enqueued on that stream.  No
-// host staging, no duplicate input/output buffers, no device synchronization.
-// ==========================================================================
-
 void MiOpenBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "convolutionForward");
@@ -620,7 +606,6 @@ void MiOpenBackend::convolutionBackwardWeights(const TensorDesc& xd, const void*
         "miopenConvolutionBackwardWeights");
 }
 
-// db may be described as [C] or [1, C, 1, 1]; MIOpen uses the latter.
 void MiOpenBackend::convolutionBackwardBias(const TensorDesc& dyd, const void* dy, const TensorDesc& dbd, void* db, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "convolutionBackwardBias");
@@ -682,10 +667,6 @@ void MiOpenBackend::fusedConvolutionBiasActivation(const TensorDesc& xd, const v
         "miopenActivationForward(fused)");
 }
 
-// SiLU has no MIOpen activation mode.  It is composed from native MIOpen
-// primitives on the caller stream:
-//   s = LOGISTIC(x)                        miopenActivationForward
-//   y = s * x                              miopenOpTensor(Mul)
 void MiOpenBackend::activationForward(const ActivationDesc& a, const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "activationForward");
@@ -718,13 +699,6 @@ void MiOpenBackend::activationForward(const ActivationDesc& a, const TensorDesc&
         "miopenOpTensor(SiLU multiply)");
 }
 
-// MIOpen activation backward consumes y; it is recomputed on the caller
-// stream.  SiLU backward, dx = dy * (s + x * s * (1 - s)), is composed from
-// native MIOpen primitives:
-//   s  = LOGISTIC(x)                       miopenActivationForward
-//   t  = x * dy                            miopenOpTensor(Mul)
-//   dx = t * s * (1 - s)                   miopenActivationBackward(LOGISTIC)
-//   dx = s * dy + dx                       miopenOpTensor(Mul, beta = 1)
 void MiOpenBackend::activationBackward(const ActivationDesc& a, const TensorDesc& xd, const void* x, const TensorDesc& dyd, const void* dy, const TensorDesc& dxd, void* dx, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "activationBackward");
@@ -800,8 +774,6 @@ void MiOpenBackend::poolingBackward(const PoolingDesc& p, const TensorDesc& xd, 
 
 namespace {
 
-// MIOpen softmax normalizes over C of an NCHW tensor (MIOPEN_SOFTMAX_MODE_CHANNEL).
-// Any axis of an arbitrary-rank tensor maps exactly onto [outer, axis, inner, 1].
 struct SoftmaxView {
     dnn_contract::AxisView v;
     std::unique_ptr<Tensor> t;
@@ -820,7 +792,7 @@ void requireSameView(const SoftmaxView& a, const SoftmaxView& b, const char* whe
         throw std::runtime_error(std::string(where) + ": tensor shapes do not match");
 }
 
-} // namespace
+}
 
 void MiOpenBackend::softmaxForward(const SoftmaxDesc& softmax, const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
@@ -858,8 +830,6 @@ void MiOpenBackend::softmaxBackward(const SoftmaxDesc& softmax, const TensorDesc
         "miopenSoftmaxBackward_V2");
 }
 
-// MIOpen batch normalization; statistics are Float32 [C] device vectors and
-// saved_variance holds MIOpen's saved inverse variance.
 void MiOpenBackend::batchNormForwardTraining(const BatchNormDesc& bn, const TensorDesc& xd, const void* x, const void* scale, const void* bias, void* rm, void* rv, void* sm, void* sv, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "batchNormForwardTraining");
@@ -910,8 +880,6 @@ void MiOpenBackend::batchNormBackward(const BatchNormDesc& bn, const TensorDesc&
 
 namespace {
 
-// Statistics descriptor [d0, ..., d(n-2), 1] for normalizations over the last
-// dimension.  MIOpen writes them in the datatype of the normalized tensor.
 std::vector<std::int64_t> statDims(const TensorDesc& d)
 {
     std::vector<std::int64_t> dims = d.dims;
@@ -938,10 +906,8 @@ void requireFloat32Stats(const TensorDesc& d, const char* where)
                                   "the CLAP Float32 statistics contract is met for Float32 tensors only");
 }
 
-} // namespace
+}
 
-// LayerNorm over the last dimension (miopenLayerNormForward with
-// MIOPEN_WEIGHT_BIAS so that scale and bias are applied).
 void MiOpenBackend::layerNormForward(const LayerNormDesc& ln, const TensorDesc& xd, const void* x, const TensorDesc& sd, const void* scale, const void* bias, const TensorDesc& yd, void* y, void* mean, void* rstd, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "layerNormForward");
@@ -1009,8 +975,6 @@ void MiOpenBackend::layerNormBackward(const LayerNormDesc& , const TensorDesc& x
         "miopenLayerNormBackward");
 }
 
-// RMSNorm through MIOpen T5LayerNorm (MIOPEN_WEIGHT_BIAS_T5), which computes
-// y = x * rsqrt(mean(x^2) + eps) * weight over the last dimension.
 void MiOpenBackend::rmsNormForward(const RmsNormDesc& norm, const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* weight, const TensorDesc& yd, void* y, void* saved_rstd, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "rmsNormForward");
@@ -1089,8 +1053,6 @@ std::size_t MiOpenBackend::dropoutReserveSpaceSize(const TensorDesc& xd, const E
     return rs;
 }
 
-// MIOpen dropout on caller memory; the PRNG states are stream-ordered scratch
-// initialized by miopenSetDropoutDescriptor on the caller stream.
 void MiOpenBackend::dropoutForward(const DropoutDesc& dropout, const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, void* reserve, std::size_t reserve_bytes, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "dropoutForward");
@@ -1192,9 +1154,6 @@ void MiOpenBackend::lrnBackward(const LrnDesc& lrn, const TensorDesc& xd, const 
                 d, miopenLRNCrossChannel, (unsigned)lrn.local_size, lrn.alpha, lrn.beta, lrn.k),
             "miopenSetLRNDescriptor");
 
-        // miopenLRNBackward consumes the workspace written by a forward call
-        // with do_backward=true.  The CLAP API does not carry that workspace,
-        // so it is regenerated on the caller stream into scratch memory.
         Scratch scratch(ctx);
         std::size_t ws_bytes = 0;
         check(
@@ -1333,19 +1292,8 @@ void MiOpenBackend::tensorReduceProduct(const TensorDesc& xd, const void* x, con
     miopenReduce(h.v, scratch, miopenReduceTensorMul, xd, x, yd, y);
 }
 
-// ==========================================================================
-// Scaled dot-product attention through the MIOpen MHA Find-2.0 API
-// (miopenCreateMhaProblem / miopenFindSolutions / miopenRunSolution).
-//
-// The MIOpen MHA forward solver computes softmax(scale * Q K^T) V for packed
-// [B, H, S, D] Float32 tensors with equal query and key/value sequence
-// lengths and equal head counts.  It has no additive-mask, causal or GQA
-// support, so those configurations are reported as unsupported.
-// ==========================================================================
-
 namespace {
 
-// Device layout of the constant MHA scalars shared by all calls on a device.
 struct MhaConstants {
     float descale_k = 1.0f;
     float descale_q = 1.0f;
@@ -1387,7 +1335,7 @@ std::string mhaUnsupportedReason(const dnn_contract::AttentionShape& shape,
     return {};
 }
 
-} // namespace
+}
 
 void MiOpenBackend::scaledDotProductAttentionForward(const AttentionDesc& attention,
                                                      const TensorDesc& qd,
@@ -1418,7 +1366,6 @@ void MiOpenBackend::scaledDotProductAttentionForward(const AttentionDesc& attent
     int device = 0;
     checkHip(dnn_dyn::p_hipGetDevice(&device), "hipGetDevice");
 
-    // Constant scalars: one small device block per device, written once.
     void*& constants = native_->mha_constants[device];
     if (!constants) {
         const MhaConstants init;
@@ -1540,12 +1487,6 @@ void MiOpenBackend::scaledDotProductAttentionForward(const AttentionDesc& attent
         "miopenRunSolution(MHA)");
 }
 
-// ==========================================================================
-// Capability model.  MIOpen capabilities are decided from the datatype,
-// descriptor layout and the optional beta entry points that the installed
-// MIOpen exports; MIOpen remains the final arbiter at execution time.
-// ==========================================================================
-
 DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const ExecutionContext& ctx) const
 {
     if (ctx.backend != ExecutionBackend::ROCM)
@@ -1641,4 +1582,3 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
 }
 
 }
-// namespace clap

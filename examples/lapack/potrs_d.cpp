@@ -67,7 +67,6 @@ int main() {
 
     auto start = high_resolution_clock::now();
 
-    // Step 1: Cholesky factorization
     backend->dpotrf(Layout::ColMajor, Uplo::Lower, n, A, n, &info);
 
     if (info != 0) {
@@ -75,7 +74,6 @@ int main() {
         return 1;
     }
 
-    // Solve AX = B
      backend->dpotrs(Layout::ColMajor, Uplo::Lower, n, 1, A, n, B, n, &info);
 
     auto end = high_resolution_clock::now();
@@ -92,7 +90,6 @@ int main() {
     for (int i = 0; i < show; i++)
         printf("  x[%d] = %.8f\n", i, B[i]);
 
-    // Verify: compute ||Ax - b|| / ||b||
     double res_norm = 0.0;
     double b_norm   = 0.0;
 

@@ -4,9 +4,6 @@
 #include <iostream>
 #include <vector>
 
-// LogSoftmax forward/backward along the last axis of a [Tokens, Experts]
-// router-logit tensor.  Regular softmax is unchanged; LogSoftmax is selected
-// with SoftmaxDesc::log_softmax.
 int main() {
     auto backend = clap::createDnnBackend();
     clap_example::Device device(*backend);

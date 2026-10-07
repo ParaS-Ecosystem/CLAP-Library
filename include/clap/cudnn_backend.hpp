@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #pragma once
 
 #include "idnn_backend.hpp"
@@ -63,7 +80,6 @@ public:
     void tensorReduceSum(const TensorDesc&, const float*, const TensorDesc&, float*) override;
     void tensorReduceProduct(const TensorDesc&, const float*, const TensorDesc&, float*) override;
 
-    // Framework execution contract (device pointers + caller stream).
     ExecutionBackend executionBackend() const noexcept override;
     DnnSupport supports(const DnnCapabilityQuery&, const ExecutionContext&) const override;
 
@@ -105,10 +121,8 @@ private:
     float dropout_probability_ = 0.0f;
     std::uint64_t dropout_seed_ = 0;
 
-    // cuDNN handles (one per CUDA device), graph execution plans and other
-    // vendor state.  Defined in src/cudnn/cudnn_backend.cpp.
     struct NativeState;
     std::unique_ptr<NativeState> native_;
 };
 
-} // namespace clap
+}

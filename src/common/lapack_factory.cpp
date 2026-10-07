@@ -31,7 +31,6 @@ LapackFactory::create(BackendType default_backend) {
 
     BackendType selected = default_backend;
 
-    // Check environment variable (same as BlasFactory)
     const char *env_backend = std::getenv("CLAP_BACKEND");
     if (env_backend) {
         std::string be(env_backend);
@@ -39,7 +38,6 @@ LapackFactory::create(BackendType default_backend) {
         else if (be == "AMD") selected = BackendType::AMD;
         else if (be == "CPU")  selected = BackendType::CPU;
     } else {
-        // Check command-line args via /proc/self/cmdline
         std::ifstream cmdline("/proc/self/cmdline");
         if (cmdline.is_open()) {
             std::string arg;
@@ -64,4 +62,4 @@ LapackFactory::create(BackendType default_backend) {
     throw std::invalid_argument("Unsupported LAPACK backend requested.");
 }
 
-} // namespace clap
+}

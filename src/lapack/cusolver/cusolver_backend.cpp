@@ -28,9 +28,8 @@ namespace clap {
 
 using detail::checked_call;
 
-// ── cuSOLVER fill mode / operation helpers ────────────────────────────────
 static int to_cusolver_uplo(Uplo u) {
-    return (u == Uplo::Upper) ? 1 : 0;   // 1=UPPER 0=LOWER
+    return (u == Uplo::Upper) ? 1 : 0;
 }
 
 static int to_cusolver_trans(Transpose t) {
@@ -43,21 +42,18 @@ static int to_cusolver_trans(Transpose t) {
 }
 
 static int to_cusolver_job(Job j) {
-    return (j == Job::Vec) ? 1 : 0;   // CUSOLVER_EIG_MODE_VECTOR=1
+    return (j == Job::Vec) ? 1 : 0;
 }
 
-// ── Constructor ───────────────────────────────────────────────────────────
 CuSolverBackend::CuSolverBackend() : m_handle(nullptr) {
     std::cout << "Using cuSOLVER backend\n";
 
-    // Load cuSOLVER library
     if (!dyn_lapack::loadCuSolver())
         throw std::runtime_error("cuSOLVER load failed");
 
     if (!dyn::loadCudaAndCublas())
         throw std::runtime_error("CUDA runtime load failed for cuSOLVER");
 
-    // Create cuSOLVER handle
     cusolverStatus_t st = dyn_lapack::p_cusolverDnCreate(&m_handle);
     if (st != CUSOLVER_STATUS_SUCCESS)
         throw std::runtime_error("cusolverDnCreate failed");
@@ -79,7 +75,6 @@ static void check_cusolver(cusolverStatus_t status, const char *operation) {
         throw std::runtime_error(std::string(operation) + " failed with cuSOLVER status " +
                                  std::to_string(static_cast<int>(status)));
 }
-
 
 const auto clap_cudaMalloc = checked_call(dyn::p_cudaMalloc, check_cuda, "cudaMalloc");
 const auto clap_cudaFree = checked_call(dyn::p_cudaFree, check_cuda, "cudaFree");
@@ -111,12 +106,6 @@ const auto clap_cusolverDnDsyevd_bufferSize = checked_call(dyn_lapack::p_cusolve
 const auto clap_cusolverDnSsyevd = checked_call(dyn_lapack::p_cusolverDnSsyevd, check_cusolver, "cusolverDnSsyevd");
 const auto clap_cusolverDnDsyevd = checked_call(dyn_lapack::p_cusolverDnDsyevd, check_cusolver, "cusolverDnDsyevd");
 
-// ══════════════════════════════════════════════════════════════════════════
-// INTERNAL TEMPLATE HELPERS
-// Each allocates device memory, copies H→D, runs kernel, copies D→H, frees
-// ══════════════════════════════════════════════════════════════════════════
-
-// ── getrf_impl ────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
                                          float *A, lapack_int lda,
@@ -124,7 +113,6 @@ void CuSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
     
     size_t szA  = (size_t)lda * n * sizeof(float);
 
-    // Device allocations
     float *dA       = nullptr;
     int   *d_ipiv   = nullptr;
     int   *d_info   = nullptr;
@@ -135,18 +123,14 @@ void CuSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
     clap_cudaMalloc((void**)&d_ipiv, (size_t)std::min(m,n) * sizeof(int));
     clap_cudaMalloc((void**)&d_info, sizeof(int));
 
-    // Copy A host → device
     clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
 
-    // Query workspace size
     clap_cusolverDnSgetrf_bufferSize(m_handle, m, n, dA, lda, &lwork);
     clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(float));
 
-    // Factorize
     clap_cusolverDnSgetrf(m_handle, m, n, dA, lda, d_work, d_ipiv, d_info);
     clap_cudaDeviceSynchronize();
 
-    // Copy results back
     clap_cudaMemcpy(A,    dA,     szA,                              cudaMemcpyDeviceToHost);
     clap_cudaMemcpy(ipiv, d_ipiv, (size_t)std::min(m,n)*sizeof(int), cudaMemcpyDeviceToHost);
     clap_cudaMemcpy(info, d_info, sizeof(int),                       cudaMemcpyDeviceToHost);
@@ -190,7 +174,6 @@ void CuSolverBackend::getrf_impl<double>(lapack_int m, lapack_int n,
     clap_cudaFree(d_info); clap_cudaFree(d_work);
 }
 
-// ── getrs_impl ────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::getrs_impl<float>(Transpose trans,
                                          lapack_int n, lapack_int nrhs,
@@ -259,7 +242,6 @@ void CuSolverBackend::getrs_impl<double>(Transpose trans,
     clap_cudaFree(d_ipiv); clap_cudaFree(d_info);
 }
 
-// ── potrf_impl ────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::potrf_impl<float>(Uplo uplo, lapack_int n,
                                          float *A, lapack_int lda,
@@ -315,7 +297,6 @@ void CuSolverBackend::potrf_impl<double>(Uplo uplo, lapack_int n,
 
     clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);
 }
-// ── potri_impl ────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::potri_impl<float>(Uplo uplo, lapack_int n, float *A, lapack_int lda,
                                          lapack_int *info) {
@@ -341,7 +322,7 @@ void CuSolverBackend::potri_impl<float>(Uplo uplo, lapack_int n, float *A, lapac
     clap_cudaMemcpy(A,    dA,     szA,        cudaMemcpyDeviceToHost);
     clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
 
-    clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);                          
+    clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);
 }
 
 template<>
@@ -369,10 +350,9 @@ void CuSolverBackend::potri_impl<double>(Uplo uplo, lapack_int n, double *A, lap
     clap_cudaMemcpy(A,    dA,     szA,        cudaMemcpyDeviceToHost);
     clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
 
-    clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);                          
+    clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);
 }
 
-// ── potrs_impl ────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::potrs_impl<float>(Uplo uplo, lapack_int n, lapack_int nrhs,
     									const float *A, lapack_int lda,float *B, 
@@ -443,7 +423,6 @@ void CuSolverBackend::potrs_impl<double>(Uplo uplo, lapack_int n, lapack_int nrh
     clap_cudaFree(d_info);
 }
 
-// ── gesvd_impl ────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::gesvd_impl<float>(Job jobu, Job jobvt,
                                          lapack_int m, lapack_int n,
@@ -533,7 +512,6 @@ void CuSolverBackend::gesvd_impl<double>(Job jobu, Job jobvt,
     clap_cudaFree(dS); clap_cudaFree(d_work); clap_cudaFree(d_info);
 }
 
-// ── syev_impl ─────────────────────────────────────────────────────────────
 template<>
 void CuSolverBackend::syev_impl<float>(Job jobz, Uplo uplo, lapack_int n,
                                         float *A, lapack_int lda, float *w,
@@ -600,10 +578,6 @@ void CuSolverBackend::syev_impl<double>(Job jobz, Uplo uplo, lapack_int n,
     clap_cudaFree(d_work); clap_cudaFree(d_info);
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// PUBLIC API — dispatch to template implementations
-// ══════════════════════════════════════════════════════════════════════════
-
 void CuSolverBackend::sgetrf(Layout, lapack_int m, lapack_int n,
     float *A, lapack_int lda, lapack_int *ipiv, lapack_int *info) {
     getrf_impl<float>(m, n, A, lda, ipiv, info);
@@ -640,7 +614,6 @@ void CuSolverBackend::dgesv(lapack_int n, lapack_int nrhs,
 }
 void CuSolverBackend::sgetri(lapack_int, float*, lapack_int,
     const lapack_int*, lapack_int *info) {
-    // cuSOLVER has no direct getri — use trtri + CPU fallback
     std::cerr << "[CLAP] sgetri not supported in cuSOLVER, use CPU backend\n";
     *info = -1;
 }
@@ -683,7 +656,6 @@ void CuSolverBackend::dposv(Layout l, Uplo u, lapack_int n, lapack_int nrhs,
     potrf_impl<double>(u, n, A, lda, info);
     if (*info == 0) dpotrs(l, u, n, nrhs, A, lda, B, ldb, info);
 }
-// QR — cuSOLVER has geqrf via cusolverDnSgeqrf
 void CuSolverBackend::sgeqrf(Layout, lapack_int, lapack_int,
     float*, lapack_int, float*, lapack_int *info) {
     std::cerr << "[CLAP] cuSOLVER geqrf not yet wired\n"; *info = -1;
@@ -742,4 +714,4 @@ void CuSolverBackend::dtrtrs(Layout, Uplo, Transpose, Diag,
     std::cerr << "[CLAP] cuSOLVER trtrs not supported\n"; *info=-1;
 }
 
-} // namespace clap
+}

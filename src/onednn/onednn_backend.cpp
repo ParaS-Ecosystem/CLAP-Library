@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #include "clap/onednn_backend.hpp"
 #include "clap/dnn_dyn_backends.hpp"
 
@@ -23,9 +40,6 @@ namespace clap {
         void check(dnnl_status_t s, const char* what) {
             if (s != dnnl_success) throw std::runtime_error(std::string("oneDNN call failed: ") + what + " status=" + std::to_string(s));
         }
-        // dnnl_unimplemented from a primitive descriptor constructor means that
-        // the installed oneDNN has no implementation for the requested
-        // datatype/layout/ISA combination.
         void checkPd(dnnl_status_t s, const char* what) {
             if (s == dnnl_unimplemented) throw DnnUnsupportedError(std::string("CLAP_DNN oneDNN: no native implementation for ") + what + " with the requested datatype/layout");
             check(s, what);
@@ -130,11 +144,6 @@ namespace clap {
             }
         };
 
-        // Execution target of one CLAP call.  When the caller supplies a
-        // dnnl_stream_t the primitives are enqueued on it (and on its engine)
-        // and CLAP does not wait; otherwise a stream owned by the call is
-        // used and drained before returning, which preserves the historical
-        // synchronous host-pointer behavior.
         struct Cpu {
             dnnl_engine_t e {
             };
@@ -158,7 +167,6 @@ namespace clap {
             Cpu(const Cpu&) = delete;
             Cpu& operator=(const Cpu&) = delete;
 
-            // Always drain: used before host scratch buffers go out of scope.
             void complete() {
                 check(dnn_dyn::p_dnnl_stream_wait(s), "dnnl_stream_wait");
             }
@@ -174,7 +182,6 @@ namespace clap {
             if (m == ActivationMode::SiLU) return dnnl_eltwise_swish;
             return dnnl_eltwise_tanh;
         }
-        // SiLU is swish(x) = x * sigmoid(alpha * x) with alpha = 1.
         float act_alpha(const ActivationDesc& a) {
             return a.mode == ActivationMode::SiLU ? 1.0f : (float) a.alpha;
         }
@@ -215,7 +222,6 @@ namespace clap {
             return md ? dnn_dyn::p_dnnl_memory_desc_get_size(md) : 0;
         }
 
-        // [rows, inner] view of a tensor normalized over its last dimension.
         struct RowsMd {
             dnn_contract::RowsView view;
             std::unique_ptr<Md> data;
@@ -233,9 +239,6 @@ namespace clap {
             return std::unique_ptr<Md>(new Md(dnnlType(d.type), {inner}, {1}));
         }
 
-        // Layer normalization primitive descriptors.  The original C entry
-        // points assume Float32 scale/shift; other weight datatypes go through
-        // the _v2 entry points (oneDNN >= 3.3).
         dnnl_status_t lnForwardPd(Pd& pd, dnnl_engine_t e, dnnl_prop_kind_t prop, const Md& src, const Md& dst, const Md& stat, DataType scale_type, double eps, unsigned flags) {
             if (scale_type == DataType::Float32)
                 return dnn_dyn::p_dnnl_layer_normalization_forward_primitive_desc_create( &pd.v, e, prop, src.v, dst.v, stat.v, (float) eps, flags, nullptr);
@@ -251,11 +254,6 @@ namespace clap {
             return dnn_dyn::p_dnnl_layer_normalization_backward_primitive_desc_create_v2( &pd.v, e, dnnl_backward, diff_src.v, diff_dst.v, src.v, stat.v, dnnlType(scale_type), dnnlType(scale_type), (float) eps, flags, hint.v, nullptr);
         }
 
-        // Conversions between the oneDNN normalization statistic (variance
-        // or mean square) and the CLAP saved_rstd convention, expressed as
-        // oneDNN eltwise primitives executed in order on the call stream:
-        //   rstd     = (variance + eps)^-0.5   linear(1, eps)  then pow(1, -0.5)
-        //   variance = rstd^-2 - eps           pow(1, -2)      then linear(1, -eps)
         void eltwiseF32(Cpu& q, dnnl_alg_kind_t alg, float alpha, float beta, std::int64_t n, const void* src, void* dst, const char* what) {
             Md m(dnnl_f32, {n}, {1});
             Mem S(m, q.e, mut(src)), D(m, q.e, dst);
@@ -275,8 +273,6 @@ namespace clap {
             eltwiseF32(q, dnnl_eltwise_pow, 1.0f, -2.0f, rows, rstd, variance, "dnnl_eltwise_forward_primitive_desc_create(rstd^-2)");
             eltwiseF32(q, dnnl_eltwise_linear, 1.0f, (float) -eps, rows, variance, variance, "dnnl_eltwise_forward_primitive_desc_create(- eps)");
         }
-        // Copies a Float32 vector with an eltwise linear(1, 0) primitive so the
-        // copy is ordered on the same oneDNN stream as the producer.
         void copyF32(Cpu& q, std::int64_t n, const void* src, void* dst) {
             eltwiseF32(q, dnnl_eltwise_linear, 1.0f, 0.0f, n, src, dst, "dnnl_eltwise_forward_primitive_desc_create(copy)");
         }
@@ -312,13 +308,7 @@ namespace clap {
         }
     }
 
-    // ------------------------------------------------------------------
-    // Backend-owned oneDNN state.
-    // ------------------------------------------------------------------
     namespace onednn_detail {
-        // A compiled oneDNN Graph SDPA partition.  inputs holds the logical
-        // tensors in compile/execute order; slot_* map them back to CLAP
-        // arguments.
         struct CompiledSdpa {
             dnnl_graph_compiled_partition_t cp = nullptr;
             std::vector<dnnl_graph_logical_tensor_t> inputs;
@@ -361,11 +351,6 @@ namespace clap {
         return ExecutionBackend::CPU;
     }
 
-    // ------------------------------------------------------------------
-    // Historical host-pointer API.  oneDNN executes on host memory, so these
-    // forward directly to the framework contract with a CPU context.
-    // ------------------------------------------------------------------
-
     void OneDnnBackend::convolutionForward(const TensorDesc& xd, const float* x, const TensorDesc& wd, const float* w, const ConvolutionDesc& c, const TensorDesc& yd, float* y) {
         std::cerr<<"[MY CLAP] CPU convolution called through oneDNN function pointers\n";
         convolutionForward(xd, static_cast<const void*>(x), wd, static_cast<const void*>(w), c, yd, static_cast<void*>(y), ExecutionContext::cpu());
@@ -395,7 +380,6 @@ namespace clap {
         poolingBackward(p, xd, static_cast<const void*>(x), yd, static_cast<const void*>(y), dyd, static_cast<const void*>(dy), dxd, static_cast<void*>(dx), ExecutionContext::cpu());
     }
 
-    // Historical softmax: normalization over dimension 1 (channels).
     void OneDnnBackend::softmaxForward(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y) {
         SoftmaxDesc softmax;
         softmax.axis = 1;
@@ -499,10 +483,6 @@ void OneDnnBackend::tensorReduceProduct(const TensorDesc& xd, const float* x, co
     tensorReduceProduct(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
 }
 
-// ==========================================================================
-// Framework execution contract (host pointers, optional caller dnnl_stream_t)
-// ==========================================================================
-
 void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -572,8 +552,6 @@ void OneDnnBackend::convolutionBackwardWeights(const TensorDesc& xd, const void*
     });
 }
 
-// Bias gradient = sum of dy over every dimension except channels, computed
-// with the oneDNN reduction primitive.
 void OneDnnBackend::convolutionBackwardBias(const TensorDesc& dyd, const void* dy, const TensorDesc& dbd, void* db, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -711,10 +689,6 @@ void OneDnnBackend::poolingForward(const PoolingDesc& pool, const TensorDesc& xd
     });
 }
 
-
-// Max pooling backward needs the forward workspace (argmax positions).  It is
-// regenerated by running the oneDNN forward-training primitive on x into host
-// scratch memory owned by this call.
 void OneDnnBackend::poolingBackward(const PoolingDesc& pool, const TensorDesc& xd, const void* x, const TensorDesc& yd, const void* , const TensorDesc& dyd, const void* dy, const TensorDesc& dxd, void* dx, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -823,8 +797,6 @@ void OneDnnBackend::softmaxBackward(const SoftmaxDesc& softmax, const TensorDesc
     });
 }
 
-// Batch normalization statistics on oneDNN are Float32 [C] vectors and
-// saved_variance holds the batch variance.
 void OneDnnBackend::batchNormForwardTraining(const BatchNormDesc& bn, const TensorDesc& xd, const void* x, const void* scale, const void* bias, void* rm, void* rv, void* sm, void* sv, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -860,8 +832,6 @@ void OneDnnBackend::batchNormForwardTraining(const BatchNormDesc& bn, const Tens
         {DNNL_ARG_DST, Y.v}
     });
 
-    // Historical CLAP behavior: running statistics receive the batch
-    // statistics (exponential average factor 1.0, as in the cuDNN backend).
     if (rm) copyF32(q, c, sm, rm);
     if (rv) copyF32(q, c, sv, rv);
 
@@ -941,9 +911,6 @@ void OneDnnBackend::batchNormBackward(const BatchNormDesc& bn, const TensorDesc&
         q.complete();
 }
 
-// LayerNorm over the last dimension (oneDNN layer normalization primitive).
-// saved_rstd follows the CLAP convention 1/sqrt(var + eps); oneDNN produces
-// the variance, which is converted in place by a oneDNN eltwise primitive.
 void OneDnnBackend::layerNormForward(const LayerNormDesc& ln, const TensorDesc& xd, const void* x, const TensorDesc& sd, const void* scale, const void* bias, const TensorDesc& yd, void* y, void* saved_mean, void* saved_rstd, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -1062,13 +1029,6 @@ void OneDnnBackend::layerNormBackward(const LayerNormDesc& ln, const TensorDesc&
     q.complete();
 }
 
-// oneDNN 3.x CPU implementations of dnnl_rms_norm backward (ref and simple
-// layer normalization, verified on oneDNN 3.11.4) subtract the LayerNorm
-// mean-gradient term mean(dy * gamma) from diff_src, which RMSNorm does not
-// have; the resulting gradient disagrees with finite differences.  CLAP_DNN
-// therefore reports RMSNorm backward on oneDNN as unsupported instead of
-// returning wrong gradients.  Once a corrected oneDNN is installed, set
-// CLAP_DNN_ONEDNN_RMSNORM_BACKWARD=1 to use the native primitive.
 static bool rmsBackwardTrusted()
 {
     static const bool trusted = std::getenv("CLAP_DNN_ONEDNN_RMSNORM_BACKWARD") != nullptr;
@@ -1082,9 +1042,6 @@ static std::string rmsBackwardDefect()
            "set CLAP_DNN_ONEDNN_RMSNORM_BACKWARD=1 with a corrected oneDNN";
 }
 
-// RMSNorm through the oneDNN layer normalization primitive with the
-// dnnl_rms_norm flag (oneDNN >= 3.4).  The statistic returned by oneDNN is the
-// mean square, converted to saved_rstd = 1/sqrt(mean_square + eps).
 void OneDnnBackend::rmsNormForward(const RmsNormDesc& norm, const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* weight, const TensorDesc& yd, void* y, void* saved_rstd, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -1180,8 +1137,6 @@ void OneDnnBackend::rmsNormBackward(const RmsNormDesc& norm, const TensorDesc& x
     q.complete();
 }
 
-// oneDNN exposes dropout only as an attribute fused into other primitives;
-// there is no standalone dropout primitive to map this operation onto.
 std::size_t OneDnnBackend::dropoutReserveSpaceSize(const TensorDesc& , const ExecutionContext& )
 {
     throw DnnUnsupportedError("CLAP_DNN oneDNN: standalone dropout is not available as a native oneDNN primitive");
@@ -1215,9 +1170,6 @@ void OneDnnBackend::lrnForward(const LrnDesc& lrn, const TensorDesc& xd, const v
     });
 }
 
-// LRN backward may need the forward workspace; when the selected oneDNN
-// implementation requires one it is regenerated with the forward-training
-// primitive into host scratch memory owned by this call.
 void OneDnnBackend::lrnBackward(const LrnDesc& lrn, const TensorDesc& xd, const void* x, const TensorDesc& yd, const void* y, const TensorDesc& dyd, const void* dy, const TensorDesc& dxd, void* dx, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -1338,17 +1290,6 @@ void OneDnnBackend::tensorReduceProduct(const TensorDesc& xd, const void* x, con
     onednnReduce(native_->engine, ctx, dnnl_reduction_mul, xd, x, yd, y);
 }
 
-// ==========================================================================
-// Scaled dot-product attention: oneDNN Graph API SDPA fusion
-//
-//   MatMul(Q, K^T) -> Multiply(scale) -> [Add(mask)] -> [causal Select]
-//   -> SoftMax(axis=-1) -> MatMul(V)
-//
-// The subgraph must be fused into a single oneDNN partition; otherwise the
-// call is reported as unsupported.  GQA/MQA uses the documented 5-D grouped
-// pattern Q [B, Hkv, G, S, D] x K [B, Hkv, 1, S, D].
-// ==========================================================================
-
 namespace {
 
 struct GraphOp {
@@ -1442,7 +1383,6 @@ struct AttnView {
     std::vector<dnnl_dim_t> strides;
 };
 
-// [B, Hq, S, D] -> [B, Hkv, G, S, D] for grouped-query attention.
 AttnView queryView(const TensorDesc& d, std::int64_t kv_heads, bool grouped)
 {
     const auto s = d.effectiveStrides();
@@ -1456,7 +1396,6 @@ AttnView queryView(const TensorDesc& d, std::int64_t kv_heads, bool grouped)
     };
 }
 
-// [B, Hkv, S, D] -> [B, Hkv, 1, S, D] for grouped-query attention.
 AttnView keyValueView(const TensorDesc& d, bool grouped)
 {
     const auto s = d.effectiveStrides();
@@ -1692,7 +1631,7 @@ std::unique_ptr<onednn_detail::CompiledSdpa> compileSdpa(dnnl_engine_t engine,
     return sdpa;
 }
 
-} // namespace
+}
 
 static onednn_detail::CompiledSdpa& sdpaPartition(std::mutex& mutex,
                                                   std::map<std::string, std::unique_ptr<onednn_detail::CompiledSdpa>>& cache,
@@ -1781,14 +1720,8 @@ void OneDnnBackend::scaledDotProductAttentionForward(const AttentionDesc& attent
             out_tensors.data()),
         "dnnl_graph_compiled_partition_execute");
 
-    // scale and neg_inf live on this stack frame.
     q.complete();
 }
-
-// ==========================================================================
-// Capability model: oneDNN capabilities are probed by creating the primitive
-// descriptor (or compiling the graph partition) that execution would use.
-// ==========================================================================
 
 static DnnSupport probeResult(dnnl_status_t status, const char* what)
 {
@@ -1914,4 +1847,3 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
 }
 
 }
-// namespace clap

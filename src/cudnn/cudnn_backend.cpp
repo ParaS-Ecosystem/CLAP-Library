@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #include "clap/cudnn_backend.hpp"
 #include "clap/dnn_dyn_backends.hpp"
 
@@ -29,9 +46,6 @@ void checkCuda(abi::cudaError_t status, const char* where)
                                  " (status=" + std::to_string(status) + ")");
 }
 
-
-// CUDNN_STATUS_NOT_SUPPORTED means cuDNN has no native implementation for the
-// requested configuration; it is surfaced as DnnUnsupportedError.
 void checkCudnn(abi::cudnnStatus_t status, const char* where)
 {
     if (status == abi::CUDNN_STATUS_NOT_SUPPORTED)
@@ -42,9 +56,6 @@ void checkCudnn(abi::cudnnStatus_t status, const char* where)
                                  " (status=" + std::to_string(status) + ")");
 }
 
-
-// Device staging buffer used only by the historical host-pointer entry
-// points.  The framework execution contract never uses it.
 class DeviceBuffer {
 public:
     DeviceBuffer() = default;
@@ -108,11 +119,6 @@ private:
     std::size_t bytes_ = 0;
 };
 
-
-// Stream-ordered scratch memory for one framework call.  Requests are carved
-// from ExecutionContext::workspace when it is large enough; otherwise they are
-// allocated with cudaMallocAsync on the caller stream and released with
-// cudaFreeAsync on the same stream, so no device synchronization is needed.
 class StreamScratch {
 public:
     explicit StreamScratch(const ExecutionContext& ctx)
@@ -158,7 +164,6 @@ private:
     std::vector<void*> owned_;
 };
 
-
 abi::cudnnDataType_t toCudnnType(DataType type)
 {
     switch (type) {
@@ -169,7 +174,6 @@ abi::cudnnDataType_t toCudnnType(DataType type)
     return abi::CUDNN_DATA_FLOAT;
 }
 
-
 int toInt(std::int64_t value, const char* where)
 {
     if (value < 0 || value > INT_MAX)
@@ -178,11 +182,6 @@ int toInt(std::int64_t value, const char* where)
     return static_cast<int>(value);
 }
 
-
-// cuDNN tensor descriptor built from a CLAP TensorDesc: datatype, dims and
-// strides are honored.  Rank-4 tensors use cudnnSetTensor4dDescriptorEx; other
-// ranks use cudnnSetTensorNdDescriptor padded with leading unit dimensions to
-// the minimum rank of 4 (cuDNN supports at most 8 dimensions).
 class TensorDescriptor {
 public:
     explicit TensorDescriptor(const TensorDesc& d)
@@ -216,7 +215,6 @@ public:
             "cudnnSetTensor4dDescriptor");
     }
 
-    // [n, c, h, 1] view with explicit element strides (softmax along an axis).
     TensorDescriptor(DataType type,
                      std::int64_t n, std::int64_t c, std::int64_t h,
                      std::int64_t n_stride, std::int64_t c_stride, std::int64_t h_stride)
@@ -308,7 +306,6 @@ private:
     abi::cudnnTensorDescriptor_t desc_ = nullptr;
 };
 
-
 class FilterDescriptor {
 public:
     explicit FilterDescriptor(const TensorDesc& d)
@@ -344,7 +341,6 @@ private:
     abi::cudnnFilterDescriptor_t desc_ = nullptr;
 };
 
-
 class ConvolutionDescriptor {
 public:
     explicit ConvolutionDescriptor(const ConvolutionDesc& c)
@@ -378,7 +374,6 @@ private:
     abi::cudnnConvolutionDescriptor_t desc_ = nullptr;
 };
 
-
 abi::cudnnActivationMode_t toCudnnActivation(ActivationMode mode)
 {
     switch (mode) {
@@ -389,7 +384,6 @@ abi::cudnnActivationMode_t toCudnnActivation(ActivationMode mode)
     }
     return abi::CUDNN_ACTIVATION_RELU;
 }
-
 
 class ActivationDescriptor {
 public:
@@ -403,7 +397,6 @@ public:
                 desc_, toCudnnActivation(a.mode), abi::CUDNN_PROPAGATE_NAN, a.alpha),
             "cudnnSetActivationDescriptor");
 
-        // SiLU is cuDNN swish with beta = 1: x * sigmoid(beta * x).
         if (a.mode == ActivationMode::SiLU) {
             checkCudnn(
                 dnn_dyn::p_cudnnSetActivationDescriptorSwishBeta(desc_, 1.0),
@@ -423,14 +416,12 @@ private:
     abi::cudnnActivationDescriptor_t desc_ = nullptr;
 };
 
-
 abi::cudnnPoolingMode_t toCudnnPooling(PoolingMode mode)
 {
     return mode == PoolingMode::Max
         ? abi::CUDNN_POOLING_MAX
         : abi::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
 }
-
 
 class PoolingDescriptor {
 public:
@@ -465,7 +456,6 @@ private:
     abi::cudnnPoolingDescriptor_t desc_ = nullptr;
 };
 
-
 void requireCuda()
 {
     if (!dnn_dyn::loadCudaAndCudnn())
@@ -473,36 +463,27 @@ void requireCuda()
                                  dnn_dyn::lastError());
 }
 
-
 std::size_t channelCount(const TensorDesc& d)
 {
     d.require4d("channelCount");
     return static_cast<std::size_t>(d.dims[1]);
 }
 
-
-// Historical host-pointer entry points run on the legacy default stream and
-// return after the staged result has been copied back.
 ExecutionContext legacyContext()
 {
     return ExecutionContext::cuda(nullptr);
 }
-
 
 void synchronizeLegacy()
 {
     checkCuda(dnn_dyn::p_cudaStreamSynchronize(nullptr), "cudaStreamSynchronize");
 }
 
-
 void requireCudaContext(const ExecutionContext& ctx, const char* operation)
 {
     dnn_contract::requireBackend(ctx, ExecutionBackend::CUDA, "cuDNN", operation);
 }
 
-
-// cuDNN handle bound to the caller stream.  One handle is kept per CUDA
-// device; the backend mutex serializes the stream binding and the enqueue.
 class ScopedHandle {
 public:
     ScopedHandle(std::recursive_mutex& mutex,
@@ -531,11 +512,6 @@ private:
     abi::cudnnHandle_t handle_ = nullptr;
 };
 
-
-// Runtime-compiled CUDA LayerNorm.  The rest of the NVIDIA backend uses cuDNN.
-// cuDNN 9 exposes LayerNorm through the backend/graph API; this small JIT path
-// keeps CLAP_DNN build-time independent from CUDA/cuDNN headers and still makes
-// the LayerNorm arithmetic execute on the NVIDIA GPU.
 struct LayerNormJit {
     abi::CUmodule module = nullptr;
     abi::CUfunction forward = nullptr;
@@ -548,7 +524,6 @@ struct LayerNormJit {
             dnn_dyn::p_cuModuleUnload(module);
     }
 };
-
 
 LayerNormJit& layerNormJit()
 {
@@ -687,8 +662,6 @@ void clap_layernorm_backward(const float* x,
     return jit;
 }
 
-
-// Bytes spanned by a tensor passed through the historical float* API.
 std::size_t legacyBytes(const TensorDesc& d)
 {
     if (d.type != DataType::Float32)
@@ -697,16 +670,7 @@ std::size_t legacyBytes(const TensorDesc& d)
     return d.bytes();
 }
 
-} // namespace
-
-
-// ==========================================================================
-// cuDNN backend (graph) API helpers used for RMSNorm and fused SDPA.
-//
-// These build operation graphs with cudnnBackend* descriptors directly so
-// that CLAP_DNN stays independent of cuDNN headers at build time; the vendor
-// symbols are resolved by dnn_dyn like every other cuDNN entry point.
-// ==========================================================================
+}
 
 namespace cudnn_detail {
 
@@ -756,14 +720,11 @@ private:
     abi::cudnnBackendDescriptor_t desc_ = nullptr;
 };
 
-
-// A finalized execution plan together with every descriptor it references.
 struct GraphPlan {
     std::vector<std::unique_ptr<BackendDescriptor>> descriptors;
     std::unique_ptr<BackendDescriptor> plan;
     std::int64_t workspace_bytes = 0;
 };
-
 
 std::vector<std::int64_t> packedStrides(const std::vector<std::int64_t>& dims)
 {
@@ -776,11 +737,8 @@ std::vector<std::int64_t> packedStrides(const std::vector<std::int64_t>& dims)
     return s;
 }
 
-
 class GraphBuilder {
 public:
-    // Tensor bound through the variant pack (device memory, or a host scalar
-    // when by_value is set).
     abi::cudnnBackendDescriptor_t tensor(std::int64_t uid,
                                          abi::cudnnDataType_t type,
                                          const std::vector<std::int64_t>& dims,
@@ -790,7 +748,6 @@ public:
         return makeTensor(uid, type, dims, strides, false, by_value);
     }
 
-    // Intermediate tensor that cuDNN never materializes.
     abi::cudnnBackendDescriptor_t virtualTensor(abi::cudnnDataType_t type,
                                                 const std::vector<std::int64_t>& dims)
     {
@@ -903,9 +860,6 @@ public:
         ops_.push_back(op.get());
     }
 
-    // Finalizes the operation graph and selects the first engine
-    // configuration (heuristics mode A, then fallback) whose execution plan
-    // finalizes.  No engine => DnnUnsupportedError.
     std::unique_ptr<GraphPlan> build(abi::cudnnHandle_t handle, const char* what)
     {
         std::unique_ptr<GraphPlan> result(new GraphPlan());
@@ -1029,7 +983,6 @@ private:
     std::int64_t next_virtual_uid_ = 1000;
 };
 
-
 void executePlan(abi::cudnnHandle_t handle,
                  GraphPlan& plan,
                  const std::vector<std::int64_t>& uids,
@@ -1049,7 +1002,6 @@ void executePlan(abi::cudnnHandle_t handle,
         "cudnnBackendExecute");
 }
 
-
 void appendKey(std::ostringstream& key, const TensorDesc& d)
 {
     key << static_cast<int>(d.type) << ':';
@@ -1059,8 +1011,7 @@ void appendKey(std::ostringstream& key, const TensorDesc& d)
     key << ';';
 }
 
-} // namespace cudnn_detail
-
+}
 
 struct CuDnnBackend::NativeState {
     std::recursive_mutex mutex;
@@ -1077,39 +1028,23 @@ struct CuDnnBackend::NativeState {
     }
 };
 
-
 CuDnnBackend::CuDnnBackend()
 {
     requireCuda();
     native_.reset(new NativeState());
 }
 
-
 CuDnnBackend::~CuDnnBackend() = default;
-
 
 const char* CuDnnBackend::name() const noexcept
 {
     return "cuDNN/NVIDIA GPU";
 }
 
-
 ExecutionBackend CuDnnBackend::executionBackend() const noexcept
 {
     return ExecutionBackend::CUDA;
 }
-
-
-
-// ==========================================================================
-// Historical host-pointer API
-//
-// These entry points keep their original contract (host float* in, host
-// float* out).  They stage the tensors through temporary device buffers, run
-// the framework-contract implementation on the legacy default stream and copy
-// the result back.  Framework callers use the ExecutionContext overloads below,
-// which never stage through host memory.
-// ==========================================================================
 
 void CuDnnBackend::convolutionForward(const TensorDesc& xd,
                                       const float* x,
@@ -1137,7 +1072,6 @@ void CuDnnBackend::convolutionForward(const TensorDesc& xd,
     dy.copyToHost(y, dy.size());
 }
 
-
 void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
                                            const float* dy,
                                            const TensorDesc& wd,
@@ -1162,7 +1096,6 @@ void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
     synchronizeLegacy();
     d_dx.copyToHost(dx, d_dx.size());
 }
-
 
 void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
                                               const float* x,
@@ -1189,7 +1122,6 @@ void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
     d_dw.copyToHost(dw, d_dw.size());
 }
 
-
 void CuDnnBackend::convolutionBackwardBias(const TensorDesc& dyd,
                                            const float* dy,
                                            const TensorDesc& dbd,
@@ -1209,7 +1141,6 @@ void CuDnnBackend::convolutionBackwardBias(const TensorDesc& dyd,
     synchronizeLegacy();
     d_db.copyToHost(db, d_db.size());
 }
-
 
 void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
                                                const float* x,
@@ -1235,7 +1166,6 @@ void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
     synchronizeLegacy();
     d_y.copyToHost(y, d_y.size());
 }
-
 
 void CuDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd,
                                                   const float* x,
@@ -1266,7 +1196,6 @@ void CuDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd,
     d_y.copyToHost(y, d_y.size());
 }
 
-
 void CuDnnBackend::activationForward(const ActivationDesc& a,
                                      const TensorDesc& xd,
                                      const float* x,
@@ -1286,7 +1215,6 @@ void CuDnnBackend::activationForward(const ActivationDesc& a,
     synchronizeLegacy();
     d_y.copyToHost(y, d_y.size());
 }
-
 
 void CuDnnBackend::activationBackward(const ActivationDesc& a,
                                       const TensorDesc& xd,
@@ -1313,7 +1241,6 @@ void CuDnnBackend::activationBackward(const ActivationDesc& a,
     d_dx.copyToHost(dx, d_dx.size());
 }
 
-
 void CuDnnBackend::poolingForward(const PoolingDesc& p,
                                   const TensorDesc& xd,
                                   const float* x,
@@ -1333,7 +1260,6 @@ void CuDnnBackend::poolingForward(const PoolingDesc& p,
     synchronizeLegacy();
     d_y.copyToHost(y, d_y.size());
 }
-
 
 void CuDnnBackend::poolingBackward(const PoolingDesc& p,
                                    const TensorDesc& xd,
@@ -1364,9 +1290,6 @@ void CuDnnBackend::poolingBackward(const PoolingDesc& p,
     d_dx.copyToHost(dx, d_dx.size());
 }
 
-
-// Historical softmax: normalization over dimension 1 (CUDNN_SOFTMAX_MODE_CHANNEL
-// on an NCHW tensor), expressed through the axis-aware implementation.
 void CuDnnBackend::softmaxForward(const TensorDesc& xd,
                                   const float* x,
                                   const TensorDesc& yd,
@@ -1387,7 +1310,6 @@ void CuDnnBackend::softmaxForward(const TensorDesc& xd,
     synchronizeLegacy();
     d_y.copyToHost(y, d_y.size());
 }
-
 
 void CuDnnBackend::softmaxBackward(const TensorDesc& yd,
                                    const float* y,
@@ -1415,9 +1337,6 @@ void CuDnnBackend::softmaxBackward(const TensorDesc& yd,
     d_dx.copyToHost(dx, d_dx.size());
 }
 
-
-// The historical API exchanges the batch variance; cuDNN natively saves the
-// inverse standard deviation, so the host wrapper converts both ways.
 void CuDnnBackend::batchNormForwardTraining(const BatchNormDesc& bn,
                                             const TensorDesc& xd,
                                             const float* x,
@@ -1476,7 +1395,6 @@ void CuDnnBackend::batchNormForwardTraining(const BatchNormDesc& bn,
     }
 }
 
-
 void CuDnnBackend::batchNormForwardInference(const BatchNormDesc& bn,
                                              const TensorDesc& xd,
                                              const float* x,
@@ -1517,7 +1435,6 @@ void CuDnnBackend::batchNormForwardInference(const BatchNormDesc& bn,
     synchronizeLegacy();
     d_y.copyToHost(y, d_y.size());
 }
-
 
 void CuDnnBackend::batchNormBackward(const BatchNormDesc& bn,
                                      const TensorDesc& xd,
@@ -1573,7 +1490,6 @@ void CuDnnBackend::batchNormBackward(const BatchNormDesc& bn,
     d_dbias.copyToHost(dbias, d_dbias.size());
 }
 
-
 void CuDnnBackend::layerNormForward(const LayerNormDesc& ln,
                                     const TensorDesc& xd,
                                     const float* x,
@@ -1619,7 +1535,6 @@ void CuDnnBackend::layerNormForward(const LayerNormDesc& ln,
     if (saved_mean) d_mean.copyToHost(saved_mean, d_mean.size());
     if (saved_rstd) d_rstd.copyToHost(saved_rstd, d_rstd.size());
 }
-
 
 void CuDnnBackend::layerNormBackward(const LayerNormDesc& ln,
                                      const TensorDesc& xd,
@@ -1676,9 +1591,6 @@ void CuDnnBackend::layerNormBackward(const LayerNormDesc& ln,
     d_dbias.copyToHost(dbias, d_dbias.size());
 }
 
-
-// The historical dropout API keeps the cuDNN reserve space inside the backend
-// and reports a byte mask derived from the output.
 void CuDnnBackend::dropoutForward(const DropoutDesc& dropout,
                                   const TensorDesc& xd,
                                   const float* x,
@@ -1714,7 +1626,6 @@ void CuDnnBackend::dropoutForward(const DropoutDesc& dropout,
             mask[i] = static_cast<std::uint8_t>(y[i] != 0.0f || x[i] == 0.0f);
     }
 }
-
 
 void CuDnnBackend::dropoutBackward(const DropoutDesc& dropout,
                                    const TensorDesc& dyd,
@@ -1780,7 +1691,6 @@ void CuDnnBackend::lrnBackward(const LrnDesc& lrn, const TensorDesc& xd, const f
 
 namespace {
 
-// Host-pointer wrapper shared by the elementwise and reduction entry points.
 template <class Op>
 void stageBinary(const TensorDesc& ad, const float* a,
                  const TensorDesc& bd, const float* b,
@@ -1818,7 +1728,7 @@ void stageUnary(const TensorDesc& xd, const float* x,
     Y0.copyToHost(y, Y0.size());
 }
 
-} // namespace
+}
 
 void CuDnnBackend::tensorAdd(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
 {
@@ -1862,16 +1772,6 @@ void CuDnnBackend::tensorReduceProduct(const TensorDesc& xd, const float* x, con
     });
 }
 
-
-// ==========================================================================
-// Framework execution contract
-//
-// Every tensor pointer below is a CUDA device pointer owned by the caller.
-// The cuDNN handle of the current device is bound to ctx.stream and the
-// vendor call is enqueued on that stream.  No host staging, no duplicate
-// input/output allocation and no device-wide synchronization.
-// ==========================================================================
-
 void CuDnnBackend::convolutionForward(const TensorDesc& xd,
                                       const void* x,
                                       const TensorDesc& wd,
@@ -1904,7 +1804,6 @@ void CuDnnBackend::convolutionForward(const TensorDesc& xd,
             nullptr, 0, &beta, y_desc, y),
         "cudnnConvolutionForward");
 }
-
 
 void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
                                            const void* dy,
@@ -1939,7 +1838,6 @@ void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
         "cudnnConvolutionBackwardData");
 }
 
-
 void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
                                               const void* x,
                                               const TensorDesc& dyd,
@@ -1973,8 +1871,6 @@ void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
         "cudnnConvolutionBackwardFilter");
 }
 
-
-// db may be described either as [C] or as [1, C, 1, 1]; cuDNN uses the latter.
 void CuDnnBackend::convolutionBackwardBias(const TensorDesc& dyd,
                                            const void* dy,
                                            const TensorDesc& dbd,
@@ -2003,7 +1899,6 @@ void CuDnnBackend::convolutionBackwardBias(const TensorDesc& dyd,
         "cudnnConvolutionBackwardBias");
 }
 
-
 void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
                                                const void* x,
                                                const TensorDesc& wd,
@@ -2019,7 +1914,6 @@ void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
-    // ConvTranspose2D is the data-gradient form of convolution.
     TensorDescriptor x_desc(xd);
     FilterDescriptor w_desc(wd);
     TensorDescriptor y_desc(yd);
@@ -2038,9 +1932,6 @@ void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
         "cudnnConvolutionBackwardData(ConvTranspose2D)");
 }
 
-
-// cudnnConvolutionBiasActivationForward: y = act(conv(x, w) + bias).  z is
-// bound to y with alpha2 = 0, so no extra device buffer is needed.
 void CuDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd,
                                                   const void* x,
                                                   const TensorDesc& wd,
@@ -2087,7 +1978,6 @@ void CuDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd,
         "cudnnConvolutionBiasActivationForward");
 }
 
-
 void CuDnnBackend::activationForward(const ActivationDesc& a,
                                      const TensorDesc& xd,
                                      const void* x,
@@ -2116,9 +2006,6 @@ void CuDnnBackend::activationForward(const ActivationDesc& a,
         "cudnnActivationForward");
 }
 
-
-// cuDNN activation backward consumes both x and y.  y is recomputed on the
-// caller stream into stream-ordered scratch memory.
 void CuDnnBackend::activationBackward(const ActivationDesc& a,
                                       const TensorDesc& xd,
                                       const void* x,
@@ -2161,7 +2048,6 @@ void CuDnnBackend::activationBackward(const ActivationDesc& a,
         "cudnnActivationBackward");
 }
 
-
 void CuDnnBackend::poolingForward(const PoolingDesc& p,
                                   const TensorDesc& xd,
                                   const void* x,
@@ -2190,7 +2076,6 @@ void CuDnnBackend::poolingForward(const PoolingDesc& p,
             &beta, y_desc, y),
         "cudnnPoolingForward");
 }
-
 
 void CuDnnBackend::poolingBackward(const PoolingDesc& p,
                                    const TensorDesc& xd,
@@ -2228,13 +2113,8 @@ void CuDnnBackend::poolingBackward(const PoolingDesc& p,
         "cudnnPoolingBackward");
 }
 
-
 namespace {
 
-// cuDNN softmax normalizes over C of an NCHW tensor (CUDNN_SOFTMAX_MODE_CHANNEL).
-// An arbitrary-rank tensor is mapped onto that mode as [outer, axis, inner, 1]
-// with the original element strides; this is exact for any axis provided the
-// dimensions before and after the axis can each be collapsed.
 dnn_contract::AxisView softmaxView(const TensorDesc& d, int axis, const char* where)
 {
     dnn_contract::AxisView view;
@@ -2250,8 +2130,7 @@ void requireSameView(const dnn_contract::AxisView& a, const dnn_contract::AxisVi
         throw std::runtime_error(std::string(where) + ": tensor shapes do not match");
 }
 
-} // namespace
-
+}
 
 void CuDnnBackend::softmaxForward(const SoftmaxDesc& softmax,
                                   const TensorDesc& xd,
@@ -2285,7 +2164,6 @@ void CuDnnBackend::softmaxForward(const SoftmaxDesc& softmax,
             &alpha, x_desc, x, &beta, y_desc, y),
         "cudnnSoftmaxForward");
 }
-
 
 void CuDnnBackend::softmaxBackward(const SoftmaxDesc& softmax,
                                    const TensorDesc& yd,
@@ -2325,10 +2203,6 @@ void CuDnnBackend::softmaxBackward(const SoftmaxDesc& softmax,
         "cudnnSoftmaxBackward");
 }
 
-
-// cuDNN batch normalization.  Statistics are Float32 [C] device vectors;
-// saved_variance holds cuDNN's saved inverse standard deviation and is meant
-// to be passed back unchanged to batchNormBackward().
 void CuDnnBackend::batchNormForwardTraining(const BatchNormDesc& bn,
                                             const TensorDesc& xd,
                                             const void* x,
@@ -2376,7 +2250,6 @@ void CuDnnBackend::batchNormForwardTraining(const BatchNormDesc& bn,
         "cudnnBatchNormalizationForwardTraining");
 }
 
-
 void CuDnnBackend::batchNormForwardInference(const BatchNormDesc& bn,
                                              const TensorDesc& xd,
                                              const void* x,
@@ -2418,7 +2291,6 @@ void CuDnnBackend::batchNormForwardInference(const BatchNormDesc& bn,
             bn.epsilon),
         "cudnnBatchNormalizationForwardInference");
 }
-
 
 void CuDnnBackend::batchNormBackward(const BatchNormDesc& bn,
                                      const TensorDesc& xd,
@@ -2473,7 +2345,6 @@ void CuDnnBackend::batchNormBackward(const BatchNormDesc& bn,
         "cudnnBatchNormalizationBackward");
 }
 
-
 namespace {
 
 dnn_contract::RowsView packedRows(const TensorDesc& d, const char* where)
@@ -2492,11 +2363,8 @@ void requireFloat32(const TensorDesc& d, const char* where)
                                   ": the CUDA LayerNorm path (CLAP runtime-compiled kernel) supports Float32 only");
 }
 
-} // namespace
+}
 
-
-// LayerNorm on NVIDIA keeps the existing CLAP runtime-compiled CUDA kernel
-// (see layerNormJit above); it now runs on the caller pointers and stream.
 void CuDnnBackend::layerNormForward(const LayerNormDesc& ln,
                                     const TensorDesc& xd,
                                     const void* x,
@@ -2549,7 +2417,6 @@ void CuDnnBackend::layerNormForward(const LayerNormDesc& ln,
         throw std::runtime_error("cuLaunchKernel failed for LayerNorm forward");
 }
 
-
 void CuDnnBackend::layerNormBackward(const LayerNormDesc&,
                                      const TensorDesc& xd,
                                      const void* x,
@@ -2593,7 +2460,6 @@ void CuDnnBackend::layerNormBackward(const LayerNormDesc&,
     if (!dscale) dscale = scratch.get(param_bytes);
     if (!dbias) dbias = scratch.get(param_bytes);
 
-    // The kernel accumulates parameter gradients with atomicAdd.
     checkCuda(dnn_dyn::p_cudaMemsetAsync(dscale, 0, param_bytes, ctx.stream), "cudaMemsetAsync(dscale)");
     checkCuda(dnn_dyn::p_cudaMemsetAsync(dbias, 0, param_bytes, ctx.stream), "cudaMemsetAsync(dbias)");
 
@@ -2622,11 +2488,8 @@ void CuDnnBackend::layerNormBackward(const LayerNormDesc&,
         throw std::runtime_error("cuLaunchKernel failed for LayerNorm backward");
 }
 
-
 namespace {
 
-// [rows, inner, 1, 1] view used by the cuDNN normalization graph operations,
-// which normalize every dimension except the first.
 struct NormView {
     dnn_contract::RowsView rows;
     std::vector<std::int64_t> dims;
@@ -2650,12 +2513,8 @@ void requireCudnn9(const char* what)
         throw DnnUnsupportedError(std::string("CLAP_DNN cuDNN: ") + what + " requires cuDNN 9 or newer");
 }
 
-} // namespace
+}
 
-
-// RMSNorm through the cuDNN graph API: one CUDNN_BACKEND_OPERATION_NORM_FORWARD
-// operation in CUDNN_RMS_NORM mode.  In training mode cuDNN writes the inverse
-// RMS (1/sqrt(mean(x^2) + eps)) into saved_rstd.
 void CuDnnBackend::rmsNormForward(const RmsNormDesc& norm,
                                   const TensorDesc& xd,
                                   const void* x,
@@ -2728,7 +2587,6 @@ void CuDnnBackend::rmsNormForward(const RmsNormDesc& norm,
     dnn_contract::trace("CUDA", "rmsNormForward", "cudnnBackendExecute(NORM_FORWARD, CUDNN_RMS_NORM)");
     cudnn_detail::executePlan(h, *slot, uids, pointers, scratch);
 }
-
 
 void CuDnnBackend::rmsNormBackward(const RmsNormDesc& norm,
                                    const TensorDesc& xd,
@@ -2804,7 +2662,6 @@ void CuDnnBackend::rmsNormBackward(const RmsNormDesc& norm,
     cudnn_detail::executePlan(h, *slot, uids, pointers, scratch);
 }
 
-
 std::size_t CuDnnBackend::dropoutReserveSpaceSize(const TensorDesc& xd, const ExecutionContext& ctx)
 {
     requireCudaContext(ctx, "dropoutReserveSpaceSize");
@@ -2817,9 +2674,6 @@ std::size_t CuDnnBackend::dropoutReserveSpaceSize(const TensorDesc& xd, const Ex
     return reserve_size;
 }
 
-
-// cuDNN dropout on caller memory.  The RNG state buffer is stream-ordered
-// scratch initialized by cudnnSetDropoutDescriptor on the caller stream.
 void CuDnnBackend::dropoutForward(const DropoutDesc& dropout,
                                   const TensorDesc& xd,
                                   const void* x,
@@ -2875,9 +2729,6 @@ void CuDnnBackend::dropoutForward(const DropoutDesc& dropout,
     }
 }
 
-
-// Backward only needs the probability: cudnnSetDropoutDescriptor with null
-// states sets the dropout value without re-initializing the RNG.
 void CuDnnBackend::dropoutBackward(const DropoutDesc& dropout,
                                    const TensorDesc& dyd,
                                    const void* dy,
@@ -3106,24 +2957,6 @@ void CuDnnBackend::tensorReduceProduct(const TensorDesc& xd, const void* x, cons
     cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_MUL, xd, x, yd, y);
 }
 
-
-// ==========================================================================
-// Scaled dot-product attention through the cuDNN graph API.
-//
-// The operation graph follows the cuDNN fused flash-attention pattern:
-//
-//   S = Q x K^T                 (matmul, K^T expressed through strides)
-//   S = S * scale               (pointwise MUL with a by-value scalar)
-//   S = S + mask                (optional pointwise ADD)
-//   S = causal ? select(row >= col, S, -inf) : S
-//   P = softmax(S)              (max/sub/exp/sum/div decomposition, with the
-//                                log-sum-exp statistic as a virtual output)
-//   O = P x V                   (matmul)
-//
-// cuDNN fuses this into a single flash-attention kernel for Float16/BFloat16.
-// GQA/MQA is expressed by K/V tensors with fewer heads than Q.
-// ==========================================================================
-
 namespace {
 
 enum SdpaUid : std::int64_t {
@@ -3138,7 +2971,6 @@ enum SdpaUid : std::int64_t {
 
 float sdpaNegativeInfinity()
 {
-    // cuDNN releases before 9.1 prefer the lowest finite value for masking.
     if (dnn_dyn::p_cudnnGetVersion() < 91000)
         return std::numeric_limits<float>::lowest();
     return -std::numeric_limits<float>::infinity();
@@ -3237,8 +3069,7 @@ std::unique_ptr<cudnn_detail::GraphPlan> buildSdpaPlan(abi::cudnnHandle_t handle
     return g.build(handle, "scaled dot-product attention");
 }
 
-} // namespace
-
+}
 
 void CuDnnBackend::scaledDotProductAttentionForward(const AttentionDesc& attention,
                                                     const TensorDesc& qd,
@@ -3307,13 +3138,6 @@ void CuDnnBackend::scaledDotProductAttentionForward(const AttentionDesc& attenti
     dnn_contract::trace("CUDA", "scaledDotProductAttentionForward", "cudnnBackendExecute(fused flash attention graph)");
     cudnn_detail::executePlan(h, *slot, uids, pointers, scratch);
 }
-
-
-// ==========================================================================
-// Capability model.  cuDNN capabilities are decided from the datatype, the
-// descriptor layout and the cuDNN version; the cuDNN engine remains the final
-// arbiter (CUDNN_STATUS_NOT_SUPPORTED is reported as DnnUnsupportedError).
-// ==========================================================================
 
 DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const ExecutionContext& ctx) const
 {
@@ -3417,4 +3241,4 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
     }
 }
 
-} // namespace clap
+}

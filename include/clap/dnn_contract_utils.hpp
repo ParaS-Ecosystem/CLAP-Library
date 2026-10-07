@@ -1,9 +1,21 @@
-#pragma once
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
 
-// Backend-neutral helpers shared by the oneDNN, cuDNN and MIOpen backends for
-// the framework execution contract.  Nothing in this header talks to a vendor
-// library: it only validates CLAP descriptors and derives the shape views that
-// the vendor backends translate into their own descriptors.
+#pragma once
 
 #include "clap/dnn_types.hpp"
 
@@ -60,7 +72,6 @@ inline void requireSameType(const TensorDesc& a, const TensorDesc& b, const char
                                  dataTypeName(a.type) + " vs " + dataTypeName(b.type) + ")");
 }
 
-// Removes dimensions of extent 1 (their strides carry no information).
 inline void squeezeUnitDims(const TensorDesc& d,
                             std::vector<std::int64_t>& dims,
                             std::vector<std::int64_t>& strides)
@@ -76,8 +87,6 @@ inline void squeezeUnitDims(const TensorDesc& d,
     }
 }
 
-// Merges dims[first, last) into a single dimension when the memory layout
-// allows it.  Returns false when the range is not collapsible.
 inline bool collapseRange(const TensorDesc& d,
                           std::size_t first,
                           std::size_t last,
@@ -109,7 +118,6 @@ inline bool collapseRange(const TensorDesc& d,
     return true;
 }
 
-// View of a tensor around one axis: [outer, axis, inner] with element strides.
 struct AxisView {
     std::int64_t outer = 1;
     std::int64_t axis = 1;
@@ -139,8 +147,6 @@ inline bool makeAxisView(const TensorDesc& d, int axis, AxisView& view)
     return true;
 }
 
-// Rows view for normalizations over the last dimension: [rows, inner] with a
-// contiguous last dimension and uniformly strided rows.
 struct RowsView {
     std::int64_t rows = 1;
     std::int64_t inner = 1;
@@ -170,7 +176,6 @@ inline int normalizeLastAxis(const TensorDesc& d, int axis, const char* where)
     return a;
 }
 
-// Validated shape of a scaled dot-product attention call.
 struct AttentionShape {
     std::int64_t batch = 0;
     std::int64_t q_heads = 0;
@@ -242,5 +247,5 @@ inline AttentionShape validateAttention(const AttentionDesc& a,
     return shape;
 }
 
-} // namespace dnn_contract
-} // namespace clap
+}
+}

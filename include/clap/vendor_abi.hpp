@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #pragma once
 
 #include <cstddef>
@@ -5,12 +22,10 @@
 
 namespace clap::abi {
 
-// CUDA Runtime minimal ABI
 using cudaError_t = int;
 using cudaStream_t = void*;
 enum cudaMemcpyKind : int { cudaMemcpyHostToDevice = 1, cudaMemcpyDeviceToHost = 2 };
 
-// CUDA Driver + NVRTC minimal ABI used for runtime JIT LayerNorm on NVIDIA.
 using CUresult = int;
 using CUmodule = void*;
 using CUfunction = void*;
@@ -20,12 +35,10 @@ using nvrtcProgram = void*;
 constexpr int CUDA_SUCCESS = 0;
 constexpr int NVRTC_SUCCESS = 0;
 
-// HIP Runtime minimal ABI
 using hipError_t = int;
 using hipStream_t = void*;
 enum hipMemcpyKind : int { hipMemcpyHostToDevice = 1, hipMemcpyDeviceToHost = 2 };
 
-// cuDNN minimal ABI. Handles/descriptors are opaque.
 using cudnnStatus_t = int;
 using cudnnHandle_t = void*;
 using cudnnTensorDescriptor_t = void*;
@@ -92,7 +105,6 @@ constexpr int CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM = 0;
 constexpr int CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0;
 constexpr int CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0;
 
-// cuDNN backend (graph) API.  Values verified against cudnn_graph_v9.h.
 using cudnnBackendAttributeName_t = int;
 using cudnnBackendAttributeType_t = int;
 using cudnnBackendDescriptorType_t = int;
@@ -193,7 +205,6 @@ constexpr int CUDNN_NORM_FWD_TRAINING = 1;
 constexpr int CUDNN_HEUR_MODE_FALLBACK = 2;
 constexpr int CUDNN_HEUR_MODE_A = 3;
 
-// MIOpen minimal ABI
 using miopenStatus_t = int;
 using miopenHandle_t = void*;
 using miopenTensorDescriptor_t = void*;
@@ -227,7 +238,6 @@ using miopenSolution_t = void*;
 using miopenProblemDirection_t = int;
 using miopenTensorArgumentId_t = int;
 
-// Layout verified against miopen.h (24 bytes: id, descriptor*, buffer).
 struct miopenTensorArgument_t {
     miopenTensorArgumentId_t id;
     miopenTensorDescriptor_t* descriptor;
@@ -269,7 +279,6 @@ constexpr int miopenReduceTensorNoIndices = 0;
 constexpr int miopen32BitIndices = 0;
 constexpr int miopenLRNCrossChannel = 1;
 
-// MIOpen Find 2.0 / MHA (MIOPEN_BETA_API).
 constexpr int miopenProblemDirectionForward = 0;
 constexpr int miopenTensorMhaK = 4;
 constexpr int miopenTensorMhaQ = 5;
@@ -289,8 +298,6 @@ constexpr int miopenTensorMhaAmaxS = 18;
 constexpr int miopenTensorMhaM = 19;
 constexpr int miopenTensorMhaZInv = 20;
 
-// oneDNN minimal C ABI (opaque handles + values used by CLAP_DNN2).
-// Values verified against oneapi/dnnl/dnnl_types.h (oneDNN 3.11).
 using dnnl_status_t = int;
 using dnnl_dim_t = std::int64_t;
 using dnnl_engine_t = void*;
@@ -322,7 +329,7 @@ constexpr int dnnl_bf16 = 2;
 constexpr int dnnl_f32 = 3;
 constexpr int dnnl_s32 = 4;
 constexpr int dnnl_boolean = 8;
-constexpr int dnnl_abcd = 4; // undef=0, any=1, a=2, ab=3, abc=4? overridden below via strides path
+constexpr int dnnl_abcd = 4;
 constexpr int dnnl_forward_training = 64;
 constexpr int dnnl_forward_inference = 96;
 constexpr int dnnl_backward = 128;
@@ -333,7 +340,7 @@ constexpr int dnnl_deconvolution_direct = 0xA;
 constexpr int dnnl_eltwise_relu = 0x20;
 constexpr int dnnl_eltwise_tanh = 0x21;
 constexpr int dnnl_eltwise_linear = 0x26;
-constexpr int dnnl_eltwise_logistic = 0x29; // 0x28 is dnnl_eltwise_hardsigmoid
+constexpr int dnnl_eltwise_logistic = 0x29;
 constexpr int dnnl_eltwise_swish = 0x2c;
 constexpr int dnnl_eltwise_pow = 0x30;
 constexpr int dnnl_lrn_across_channels = 0xaff;
@@ -372,8 +379,6 @@ constexpr int DNNL_ARG_DIFF_SHIFT = 256;
 constexpr int DNNL_ARG_BIAS = 41;
 constexpr int dnnl_query_workspace_md = 135;
 
-// oneDNN Graph C API (SDPA fusion).  Values and the logical tensor layout are
-// verified against dnnl_graph_types.h (oneDNN 3.x, DNNL_MAX_NDIMS = 12).
 using dnnl_graph_op_t = void*;
 using dnnl_graph_graph_t = void*;
 using const_dnnl_graph_graph_t = const void*;
@@ -418,4 +423,4 @@ constexpr int dnnl_graph_layout_type_strided = 2;
 constexpr int dnnl_graph_tensor_property_variable = 1;
 constexpr int dnnl_graph_partition_policy_fusion = 1;
 
-} // namespace clap::abi
+}

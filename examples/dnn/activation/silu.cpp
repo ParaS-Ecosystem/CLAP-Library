@@ -4,14 +4,10 @@
 #include <iostream>
 #include <vector>
 
-// SiLU forward/backward through the framework execution contract:
-// framework-owned memory (host for CPU, device for CUDA/ROCm) and a caller
-// stream.  Run with -cpu, -cuda or -rocm (or CLAP_BACKEND=CPU|CUDA|ROCM).
 int main() {
     auto backend = clap::createDnnBackend();
     clap_example::Device device(*backend);
 
-    // [B, S, H] activation tensor, as produced by a transformer MLP.
     clap::TensorDesc d(clap::DataType::Float32, {2, 2, 4});
     clap::ActivationDesc silu;
     silu.mode = clap::ActivationMode::SiLU;

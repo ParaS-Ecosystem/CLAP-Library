@@ -15,20 +15,12 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
-// LAPACK type definitions following the same pattern as types.hpp
-
 #pragma once
 #include <complex>
 #include <cstdint>
 
-// ── LAPACK integer type ───────────────────────────────────────────────────
-// OpenBLAS LAPACK uses int (32-bit) for all dimensions
 typedef int lapack_int;
 
-// ── LAPACK job/option characters ─────────────────────────────────────────
-// These match LAPACK Fortran character arguments passed as char*
-
-// ── cuSOLVER status ───────────────────────────────────────────────────────
 typedef enum {
     CUSOLVER_STATUS_SUCCESS                 = 0,
     CUSOLVER_STATUS_NOT_INITIALIZED         = 1,
@@ -76,23 +68,19 @@ typedef enum {
     CUBLAS_OP_C_SOLVER = 2,
 } cusolverOperation_t;
 
-// cuSOLVER EigMode
 typedef enum {
     CUSOLVER_EIG_MODE_NOVECTOR = 0,
     CUSOLVER_EIG_MODE_VECTOR   = 1,
 } cusolverEigMode_t;
 
-// cuSOLVER EigRange
 typedef enum {
     CUSOLVER_EIG_RANGE_ALL = 0,
     CUSOLVER_EIG_RANGE_I   = 1,
     CUSOLVER_EIG_RANGE_V   = 2,
 } cusolverEigRange_t;
 
-// cuSOLVER handles
 typedef struct cusolverDnContext *cusolverDnHandle_t;
 
-// ── rocSOLVER status ──────────────────────────────────────────────────────
 typedef enum {
     rocblas_status_success_solver         = 0,
     rocblas_status_invalid_handle_solver  = 1,
@@ -106,7 +94,6 @@ typedef enum {
 typedef int rocblas_int_solver;
 typedef struct _rocblas_handle *rocsolver_handle;
 
-// rocSOLVER option values
 typedef enum {
     rocblas_svect_all_solver       = 191,
     rocblas_svect_singular_solver  = 192,
@@ -125,29 +112,28 @@ typedef enum {
     rocblas_evect_none_solver        = 213,
 } rocblas_evect_solver;
 
-// ── LAPACK character enums (CLAP abstraction) ─────────────────────────────
 namespace clap {
 
 enum class Job {
-    NoVec  = 'N',   // do not compute eigenvectors/singular vectors
-    Vec    = 'V',   // compute eigenvectors/singular vectors
-    Update = 'U',   // update matrix Q
-    All    = 'A',   // return all columns of U and V^T
-    Some   = 'S',   // return min(m,n) columns
-    Over   = 'O',   // overwrite A with singular vectors
+    NoVec  = 'N',
+    Vec    = 'V',
+    Update = 'U',
+    All    = 'A',
+    Some   = 'S',
+    Over   = 'O',
 };
 
 enum class Range {
-    All     = 'A',  // all eigenvalues
-    VRange  = 'V',  // eigenvalues in interval [vl, vu]
-    IRange  = 'I',  // eigenvalues with indices il through iu
+    All     = 'A',
+    VRange  = 'V',
+    IRange  = 'I',
 };
 
 enum class Norm {
-    One  = '1',     // 1-norm (max column sum)
-    Inf  = 'I',     // inf-norm (max row sum)
-    Fro  = 'F',     // Frobenius norm
-    Max  = 'M',     // max abs element
+    One  = '1',
+    Inf  = 'I',
+    Fro  = 'F',
+    Max  = 'M',
 };
 
-} // namespace clap
+}

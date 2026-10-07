@@ -11,15 +11,6 @@
 #include <string>
 #include <vector>
 
-// Focused validation of the CLAP_DNN framework execution contract and of the
-// Param2 primitives on the selected backend (-cpu / -cuda / -rocm).
-//
-// Every check runs the operation through the ExecutionContext overloads on
-// framework-owned memory and a caller stream, then compares against a plain
-// host reference computed here (test code only; the library never contains
-// reference kernels).  Checks that the backend reports as unsupported are
-// listed as SKIP with the backend's reason.
-
 namespace {
 
 int g_pass = 0;
@@ -80,14 +71,11 @@ std::vector<float> pattern(std::size_t n, float scale, float phase)
     return v;
 }
 
-// Values that survive a round trip through the datatype, so references see
-// exactly what the backend sees.
 std::vector<float> quantize(const std::vector<float>& v, clap::DataType type)
 {
     return clap_example::decode(clap_example::encode(v, type), type);
 }
 
-// Element offset of a logical index under explicit strides.
 std::size_t offsetOf(const std::vector<std::int64_t>& index, const std::vector<std::int64_t>& strides)
 {
     std::size_t off = 0;
@@ -109,10 +97,6 @@ void forEachIndex(const std::vector<std::int64_t>& dims, const std::function<voi
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Host references (test oracle only)
-// ---------------------------------------------------------------------------
 
 float sigmoid(float x) { return 1.0f / (1.0f + std::exp(-x)); }
 
@@ -234,10 +218,6 @@ void refAttention(const std::vector<float>& q, const std::vector<float>& k, cons
     }
 }
 
-// ---------------------------------------------------------------------------
-// Checks
-// ---------------------------------------------------------------------------
-
 void checkSilu(clap::IDnnBackend& backend, clap_example::Device& dev, clap::DataType type)
 {
     const std::string name = std::string("SiLU forward/backward ") + clap::dataTypeName(type) + " [2,3,5]";
@@ -303,7 +283,6 @@ void checkSoftmax(clap::IDnnBackend& backend, clap_example::Device& dev, clap::D
     std::vector<float> ry(span, 0.0f);
     refSoftmax(x, ry, dims, eff, d.normalizeAxis(axis, "test"), log_softmax);
 
-    // Guard band after the output to detect writes outside the tensor.
     const std::size_t guard = 64;
     std::vector<float> y_init(span + guard, 7.0f);
     void* X = dev.uploadVector(clap_example::encode(x, type));
@@ -482,8 +461,6 @@ void checkLayerNorm(clap::IDnnBackend& backend, clap_example::Device& dev)
                     close(dev.downloadVector<float>(R, rows), rrstd, 1.0e-4, rd);
     report(name + " forward", ok, "y " + yd + ", mean " + md + ", rstd " + rd);
 
-    // Backward: dy = 1 gives dx = 0 analytically for scale = 1; use the
-    // generic formula against random dy instead.
     const auto dy = pattern(rows * inner, 1.0f, 0.5f);
     std::vector<float> rdx(rows * inner), rds(inner, 0.0f), rdb(inner, 0.0f);
     for (std::size_t r = 0; r < rows; ++r) {
@@ -579,7 +556,7 @@ void checkCapabilities(clap::IDnnBackend& backend, clap_example::Device& dev)
     report("Capability rejects a mismatched ExecutionContext", !mismatch, mismatch.reason);
 }
 
-} // namespace
+}
 
 int main()
 {

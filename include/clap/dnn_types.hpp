@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #pragma once
 
 #include <cstddef>
@@ -23,11 +40,6 @@ enum class DataType {
     BFloat16
 };
 
-// NCHW is the historical CLAP_DNN layout used by convolution, pooling,
-// batch normalization and LRN.  Strided describes an arbitrary-rank tensor
-// whose memory layout is given by TensorDesc::strides (or is packed
-// row-major when no strides are supplied).  An NHWC tensor is described as
-// logical NCHW dims with NHWC strides.
 enum class TensorLayout {
     NCHW,
     Strided
@@ -81,7 +93,6 @@ struct TensorDesc {
     TensorLayout layout = TensorLayout::NCHW;
     std::vector<std::int64_t> dims;
 
-    // Element strides, one per dimension.  Empty means packed row-major.
     std::vector<std::int64_t> strides;
 
     TensorDesc() = default;
@@ -142,7 +153,6 @@ struct TensorDesc {
         return true;
     }
 
-    // Number of elements spanned in memory, including stride gaps.
     std::size_t spanElements() const {
         const auto s = effectiveStrides();
         std::size_t span = 1;
@@ -156,7 +166,6 @@ struct TensorDesc {
 
     std::size_t bytes() const { return spanElements() * elementSize(); }
 
-    // Normalizes a possibly negative axis against the tensor rank.
     int normalizeAxis(int axis, const char* where) const {
         const int r = static_cast<int>(dims.size());
         const int a = axis < 0 ? axis + r : axis;
@@ -209,10 +218,6 @@ struct DropoutDesc {
     std::uint64_t seed = 12345;
 };
 
-// ---------------------------------------------------------------------------
-// Framework execution contract
-// ---------------------------------------------------------------------------
-
 enum class ExecutionBackend {
     CPU,
     CUDA,
@@ -229,21 +234,6 @@ inline const char* executionBackendName(ExecutionBackend backend)
     return "unknown";
 }
 
-// Describes where tensor memory lives and on which stream work is enqueued.
-//
-//   CPU  : tensor pointers are host pointers.  stream is an optional
-//          dnnl_stream_t owned by the caller; when null the backend uses its
-//          own oneDNN stream and returns after the work has completed.
-//   CUDA : tensor pointers are CUDA device pointers valid on the current
-//          device.  stream is a cudaStream_t (null = legacy default stream).
-//          Work is enqueued asynchronously on that stream; CLAP_DNN does not
-//          stage through host memory and does not synchronize the device.
-//   ROCM : tensor pointers are HIP device pointers.  stream is a hipStream_t
-//          (null = default stream), with the same asynchronous semantics.
-//
-// workspace/workspace_bytes optionally provide caller-owned scratch memory
-// (device memory for CUDA/ROCM).  When it is absent or too small, backends
-// allocate stream-ordered scratch memory on the same stream.
 struct ExecutionContext {
     ExecutionBackend backend = ExecutionBackend::CPU;
     void* stream = nullptr;
@@ -262,34 +252,16 @@ struct ExecutionContext {
     static ExecutionContext rocm(void* hip_stream) { return {ExecutionBackend::ROCM, hip_stream}; }
 };
 
-// ---------------------------------------------------------------------------
-// Transformer-oriented descriptors
-// ---------------------------------------------------------------------------
-
-// Softmax / LogSoftmax along an explicit axis (negative values count from the
-// last dimension).  The historical softmaxForward()/softmaxBackward() entry
-// points keep their original semantics, which correspond to axis = 1.
 struct SoftmaxDesc {
     int axis = -1;
     bool log_softmax = false;
 };
 
-// RMSNorm: y = x * rsqrt(mean(x^2, axis) + epsilon) * weight.
-// RMSNorm is a dedicated operation; it is not LayerNorm.  The normalized
-// axis must currently be the last dimension.  saved_rstd, when requested,
-// is an Float32 tensor with one value per normalized row.
 struct RmsNormDesc {
     double epsilon = 1.0e-6;
     int axis = -1;
 };
 
-// Scaled dot-product attention:
-//   O = softmax(scale * Q K^T + mask [causal]) V
-// Q: [B, Hq, Sq, D]   K: [B, Hkv, Skv, D]   V: [B, Hkv, Skv, Dv]
-// O: [B, Hq, Sq, Dv]  optional additive mask broadcastable to [B, Hq, Sq, Skv]
-// Hq must be a multiple of Hkv (GQA/MQA); query head h uses key/value head
-// h / (Hq / Hkv).  scale == 0 selects 1/sqrt(D).  num_query_heads and
-// num_kv_heads are optional consistency checks (0 = take from tensors).
 struct AttentionDesc {
     double scale = 0.0;
     bool causal = false;
@@ -298,10 +270,6 @@ struct AttentionDesc {
     int num_query_heads = 0;
     int num_kv_heads = 0;
 };
-
-// ---------------------------------------------------------------------------
-// Capability model
-// ---------------------------------------------------------------------------
 
 enum class DnnOperation {
     ConvolutionForward,
@@ -336,13 +304,6 @@ enum class DnnOperation {
     ScaledDotProductAttentionForward
 };
 
-// Describes one prospective call.  tensors follows the argument order of the
-// corresponding IDnnBackend method (inputs first, then outputs), e.g.
-//   ActivationForward               : { x, y }
-//   SoftmaxForward / SoftmaxBackward: { x, y } / { y, dy, dx }
-//   RmsNormForward                  : { x, weight, y }
-//   ScaledDotProductAttentionForward: { q, k, v, o [, mask] }
-// Only tensors[0] is mandatory; missing tensors default to tensors[0].
 struct DnnCapabilityQuery {
     DnnOperation operation = DnnOperation::ActivationForward;
     std::vector<TensorDesc> tensors;
@@ -413,12 +374,6 @@ struct DnnCapabilityQuery {
     }
 };
 
-// Result of IDnnBackend::supports().  supported == true means the operation
-// maps onto a native vendor primitive (or a documented composition of native
-// vendor primitives) for the given descriptors and execution context.  The
-// vendor library remains the final arbiter at execution time; a refusal there
-// is reported as DnnUnsupportedError, never by silently substituting another
-// implementation.
 struct DnnSupport {
     bool supported = false;
     std::string reason;
@@ -429,9 +384,6 @@ struct DnnSupport {
     static DnnSupport no(std::string why) { return {false, std::move(why)}; }
 };
 
-// Thrown when an operation/dtype/shape/backend combination has no native
-// vendor implementation.  Callers (e.g. Torch-ParaS) can catch it and use
-// their own fallback policy.
 class DnnUnsupportedError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
@@ -474,4 +426,4 @@ inline const char* dnnOperationName(DnnOperation operation) noexcept
     return "unknown";
 }
 
-} // namespace clap
+}

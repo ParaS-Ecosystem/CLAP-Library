@@ -1,4 +1,3 @@
-
 #include "clap/lapack_factory.hpp"
 #include <stdio.h>
 #include <chrono>
@@ -33,7 +32,6 @@ int main() {
     for (int i = 0; i < n * n;    i++) A[i] = (float)(rand() % 10 + 1);
     for (int i = 0; i < n * nrhs; i++) B[i] = (float)(rand() % 10 + 1);
 
-    // Make diagonally dominant
     for (int i = 0; i < n; i++) {
         float s = 0.0f;
         for (int j = 0; j < n; j++) if (i != j) s += fabsf(A[i + j * n]);
@@ -44,7 +42,6 @@ int main() {
 
     int info = 0;
 
-    // Step 1: LU factorization
     auto t0 = high_resolution_clock::now();
     backend->sgetrf(Layout::ColMajor, n, n, A, n, ipiv, &info);
     auto t1 = high_resolution_clock::now();
@@ -52,7 +49,6 @@ int main() {
     printf("\nsgetrf info = %d  (0 = success)\n", info);
     if (info != 0) { printf("Factorization failed\n"); return 1; }
 
-    // Step 2: Solve
     backend->sgetrs(Layout::ColMajor, Transpose::NoTrans,
                     n, nrhs, A, n, ipiv, B, n, &info);
     auto t2 = high_resolution_clock::now();

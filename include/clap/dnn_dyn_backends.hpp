@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #pragma once
 
 #include "vendor_abi.hpp"
@@ -6,7 +23,6 @@
 
 namespace clap::dnn_dyn {
 
-// ---------------- oneDNN ----------------
 extern abi::dnnl_status_t (*p_dnnl_engine_create)(abi::dnnl_engine_t*, abi::dnnl_engine_kind_t, std::size_t);
 extern abi::dnnl_status_t (*p_dnnl_engine_destroy)(abi::dnnl_engine_t);
 extern abi::dnnl_status_t (*p_dnnl_stream_create)(abi::dnnl_stream_t*, abi::dnnl_engine_t, unsigned);
@@ -50,11 +66,9 @@ extern abi::dnnl_status_t (*p_dnnl_reduction_primitive_desc_create)(abi::dnnl_pr
 extern abi::dnnl_status_t (*p_dnnl_stream_get_engine)(const void*, abi::dnnl_engine_t*);
 extern abi::const_dnnl_memory_desc_t (*p_dnnl_primitive_desc_query_md)(abi::const_dnnl_primitive_desc_t, int, int);
 extern std::size_t (*p_dnnl_memory_desc_get_size)(abi::const_dnnl_memory_desc_t);
-// Layer normalization with an explicit scale/shift datatype (optional; oneDNN >= 3.3).
 extern abi::dnnl_status_t (*p_dnnl_layer_normalization_forward_primitive_desc_create_v2)(abi::dnnl_primitive_desc_t*, abi::dnnl_engine_t, abi::dnnl_prop_kind_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::dnnl_data_type_t, float, unsigned, const void*);
 extern abi::dnnl_status_t (*p_dnnl_layer_normalization_backward_primitive_desc_create_v2)(abi::dnnl_primitive_desc_t*, abi::dnnl_engine_t, abi::dnnl_prop_kind_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::dnnl_data_type_t, abi::dnnl_data_type_t, float, unsigned, abi::const_dnnl_primitive_desc_t, const void*);
 
-// oneDNN Graph API (optional; used for native SDPA fusion).
 extern abi::dnnl_status_t (*p_dnnl_graph_logical_tensor_init_with_strides)(abi::dnnl_graph_logical_tensor_t*, std::size_t, abi::dnnl_data_type_t, std::int32_t, const abi::dnnl_dim_t*, const abi::dnnl_dim_t*, abi::dnnl_graph_tensor_property_t);
 extern abi::dnnl_status_t (*p_dnnl_graph_op_create)(abi::dnnl_graph_op_t*, std::size_t, abi::dnnl_graph_op_kind_t, const char*);
 extern abi::dnnl_status_t (*p_dnnl_graph_op_destroy)(abi::dnnl_graph_op_t);
@@ -79,7 +93,6 @@ extern abi::dnnl_status_t (*p_dnnl_graph_compiled_partition_execute)(abi::const_
 extern abi::dnnl_status_t (*p_dnnl_graph_tensor_create)(abi::dnnl_graph_tensor_t*, const abi::dnnl_graph_logical_tensor_t*, abi::dnnl_engine_t, void*);
 extern abi::dnnl_status_t (*p_dnnl_graph_tensor_destroy)(abi::dnnl_graph_tensor_t);
 
-// ---------------- CUDA/cuDNN ----------------
 extern abi::cudaError_t (*p_cudaGetDeviceCount)(int*);
 extern abi::cudaError_t (*p_cudaMalloc)(void**, std::size_t);
 extern abi::cudaError_t (*p_cudaFree)(void*);
@@ -87,7 +100,6 @@ extern abi::cudaError_t (*p_cudaMemcpy)(void*, const void*, std::size_t, abi::cu
 extern abi::cudaError_t (*p_cudaDeviceSynchronize)();
 extern abi::cudaError_t (*p_cudaMemset)(void*, int, std::size_t);
 
-// Stream-ordered CUDA runtime entry points used by the framework execution path.
 extern abi::cudaError_t (*p_cudaGetDevice)(int*);
 extern abi::cudaError_t (*p_cudaStreamCreate)(abi::cudaStream_t*);
 extern abi::cudaError_t (*p_cudaStreamDestroy)(abi::cudaStream_t);
@@ -97,7 +109,6 @@ extern abi::cudaError_t (*p_cudaMemsetAsync)(void*, int, std::size_t, abi::cudaS
 extern abi::cudaError_t (*p_cudaMallocAsync)(void**, std::size_t, abi::cudaStream_t);
 extern abi::cudaError_t (*p_cudaFreeAsync)(void*, abi::cudaStream_t);
 
-// CUDA driver + NVRTC are loaded only for runtime-JIT LayerNorm.
 extern abi::CUresult (*p_cuInit)(unsigned);
 extern abi::CUresult (*p_cuModuleLoadData)(abi::CUmodule*, const void*);
 extern abi::CUresult (*p_cuModuleGetFunction)(abi::CUfunction*, abi::CUmodule, const char*);
@@ -180,14 +191,12 @@ extern abi::cudnnStatus_t (*p_cudnnSetTensorNdDescriptor)(abi::cudnnTensorDescri
 extern abi::cudnnStatus_t (*p_cudnnSetTensor4dDescriptorEx)(abi::cudnnTensorDescriptor_t,abi::cudnnDataType_t,int,int,int,int,int,int,int,int);
 extern abi::cudnnStatus_t (*p_cudnnSetActivationDescriptorSwishBeta)(abi::cudnnActivationDescriptor_t,double);
 
-// ---------------- HIP/MIOpen ----------------
 extern abi::hipError_t (*p_hipGetDeviceCount)(int*);
 extern abi::hipError_t (*p_hipMalloc)(void**, std::size_t);
 extern abi::hipError_t (*p_hipFree)(void*);
 extern abi::hipError_t (*p_hipMemcpy)(void*, const void*, std::size_t, abi::hipMemcpyKind);
 extern abi::hipError_t (*p_hipDeviceSynchronize)();
 
-// Stream-ordered HIP runtime entry points used by the framework execution path.
 extern abi::hipError_t (*p_hipGetDevice)(int*);
 extern abi::hipError_t (*p_hipStreamCreate)(abi::hipStream_t*);
 extern abi::hipError_t (*p_hipStreamDestroy)(abi::hipStream_t);
@@ -250,7 +259,6 @@ extern abi::miopenStatus_t (*p_miopenDropoutGetReserveSpaceSize)(abi::miopenTens
 extern abi::miopenStatus_t (*p_miopenDropoutForward)(abi::miopenHandle_t,abi::miopenDropoutDescriptor_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,void*,void*,std::size_t);
 extern abi::miopenStatus_t (*p_miopenDropoutBackward)(abi::miopenHandle_t,abi::miopenDropoutDescriptor_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,void*,void*,std::size_t);
 
-// MIOpen beta APIs (optional; null when the installed MIOpen lacks them).
 extern abi::miopenStatus_t (*p_miopenT5LayerNormForward)(abi::miopenHandle_t,abi::miopenNormMode_t,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,const void*,float,abi::miopenTensorDescriptor_t,void*,abi::miopenTensorDescriptor_t,void*);
 extern abi::miopenStatus_t (*p_miopenGetT5LayerNormBackwardWorkspaceSize)(abi::miopenHandle_t,abi::miopenNormMode_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,abi::miopenTensorDescriptor_t,std::size_t*);
 extern abi::miopenStatus_t (*p_miopenT5LayerNormBackward)(abi::miopenHandle_t,abi::miopenNormMode_t,void*,std::size_t,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,void*,abi::miopenTensorDescriptor_t,void*);
@@ -268,9 +276,6 @@ bool loadOneDnn();
 bool loadCudaAndCudnn();
 bool loadHipAndMiopen();
 
-// Optional vendor feature groups.  Each requires the corresponding base
-// runtime to be loaded and returns false when the installed library does not
-// export the required entry points.
 bool hasOneDnnGraph();
 bool hasMiopenT5LayerNorm();
 bool hasMiopenMha();
@@ -278,4 +283,4 @@ bool hasNvidiaGpu();
 bool hasAmdGpu();
 const char* lastError();
 
-} // namespace clap::dnn_dyn
+}

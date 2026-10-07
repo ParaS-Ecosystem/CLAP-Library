@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #include "clap/dnn_factory.hpp"
 #include "clap/cudnn_backend.hpp"
 #include "clap/dnn_dyn_backends.hpp"
@@ -23,11 +40,9 @@ std::unique_ptr<IDnnBackend> DnnFactory::create(DnnBackendType requested)
     }
      
     else {
-	// 2. Check command-line arguments natively by reading process memory (Linux specific)
         std::ifstream cmdline("/proc/self/cmdline");
         if (cmdline.is_open()) {
             std::string arg;
-            // Arguments in cmdline are separated by null bytes ('\0')
             while (std::getline(cmdline, arg, '\0')) {
                 if (arg == "-cuda") { requested = DnnBackendType::CUDA; break; }
                 if (arg == "-rocm") { requested = DnnBackendType::ROCM; break; }
@@ -55,7 +70,6 @@ std::unique_ptr<IDnnBackend> DnnFactory::create(DnnBackendType requested)
         return std::make_unique<MiOpenBackend>();
     }
 
-    // -gpu => automatic runtime vendor selection.
     if (dnn_dyn::loadCudaAndCudnn())
         return std::make_unique<CuDnnBackend>();
 
@@ -65,4 +79,4 @@ std::unique_ptr<IDnnBackend> DnnFactory::create(DnnBackendType requested)
     throw std::runtime_error("CLAP_DNN -gpu selected, but neither NVIDIA+cuDNN nor AMD+MIOpen could be loaded at runtime");
 }
 
-} // namespace clap
+}

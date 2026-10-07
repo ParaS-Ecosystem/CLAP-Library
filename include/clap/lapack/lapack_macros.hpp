@@ -15,14 +15,8 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
-// Macros for calling LAPACK function pointers.
-// Follows the exact same pattern as macros.hpp for BLAS.
-
 #pragma once
 
-// ── OpenBLAS LAPACK (LAPACKE C interface) ────────────────────────────────
-
-// Linear solvers
 #define clap_LAPACKE_sgetrf  clap::dyn_lapack::p_LAPACKE_sgetrf
 #define clap_LAPACKE_dgetrf  clap::dyn_lapack::p_LAPACKE_dgetrf
 #define clap_LAPACKE_sgetrs  clap::dyn_lapack::p_LAPACKE_sgetrs
@@ -32,7 +26,6 @@
 #define clap_LAPACKE_sgetri  clap::dyn_lapack::p_LAPACKE_sgetri
 #define clap_LAPACKE_dgetri  clap::dyn_lapack::p_LAPACKE_dgetri
 
-// Cholesky
 #define clap_LAPACKE_spotrf  clap::dyn_lapack::p_LAPACKE_spotrf
 #define clap_LAPACKE_dpotrf  clap::dyn_lapack::p_LAPACKE_dpotrf
 #define clap_LAPACKE_spotri  clap::dyn_lapack::p_LAPACKE_spotri
@@ -42,7 +35,6 @@
 #define clap_LAPACKE_sposv   clap::dyn_lapack::p_LAPACKE_sposv
 #define clap_LAPACKE_dposv   clap::dyn_lapack::p_LAPACKE_dposv
 
-// QR
 #define clap_LAPACKE_sgeqrf  clap::dyn_lapack::p_LAPACKE_sgeqrf
 #define clap_LAPACKE_dgeqrf  clap::dyn_lapack::p_LAPACKE_dgeqrf
 #define clap_LAPACKE_sorgqr  clap::dyn_lapack::p_LAPACKE_sorgqr
@@ -50,25 +42,20 @@
 #define clap_LAPACKE_sgels   clap::dyn_lapack::p_LAPACKE_sgels
 #define clap_LAPACKE_dgels   clap::dyn_lapack::p_LAPACKE_dgels
 
-// Eigenvalues
 #define clap_LAPACKE_ssyev   clap::dyn_lapack::p_LAPACKE_ssyev
 #define clap_LAPACKE_dsyev   clap::dyn_lapack::p_LAPACKE_dsyev
 #define clap_LAPACKE_sgeev   clap::dyn_lapack::p_LAPACKE_sgeev
 #define clap_LAPACKE_dgeev   clap::dyn_lapack::p_LAPACKE_dgeev
 
-// SVD
 #define clap_LAPACKE_sgesvd  clap::dyn_lapack::p_LAPACKE_sgesvd
 #define clap_LAPACKE_dgesvd  clap::dyn_lapack::p_LAPACKE_dgesvd
 
-// Triangular
 #define clap_LAPACKE_strtrs  clap::dyn_lapack::p_LAPACKE_strtrs
 #define clap_LAPACKE_dtrtrs  clap::dyn_lapack::p_LAPACKE_dtrtrs
 
-// LAPACKE matrix layout constants (matches CBLAS_ORDER values)
 #define LAPACK_ROW_MAJOR  101
 #define LAPACK_COL_MAJOR  102
 
-// ── cuSOLVER ──────────────────────────────────────────────────────────────
 #define clap_cusolverDnCreate               clap::dyn_lapack::p_cusolverDnCreate
 #define clap_cusolverDnDestroy              clap::dyn_lapack::p_cusolverDnDestroy
 
@@ -102,7 +89,6 @@
 #define clap_cusolverDnSsyevd               clap::dyn_lapack::p_cusolverDnSsyevd
 #define clap_cusolverDnDsyevd               clap::dyn_lapack::p_cusolverDnDsyevd
 
-// ── rocSOLVER ─────────────────────────────────────────────────────────────
 #define clap_rocsolver_sgetrf   clap::dyn_lapack::p_rocsolver_sgetrf
 #define clap_rocsolver_dgetrf   clap::dyn_lapack::p_rocsolver_dgetrf
 #define clap_rocsolver_sgetrs   clap::dyn_lapack::p_rocsolver_sgetrs

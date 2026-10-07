@@ -15,7 +15,7 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
-#include "../include/clap/dyn_backends.hpp"
+#include "clap/dyn_backends.hpp"
 #include <mutex>
 
 namespace clap {

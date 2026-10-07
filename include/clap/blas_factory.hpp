@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "dyn_backends.hpp"
+#include "clap/dyn_backends.hpp"
 #include <memory>
 
 namespace clap {

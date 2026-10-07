@@ -25,7 +25,7 @@ int main() {
     return 1;
   }
 
-    double* y =(double*)mallocn * sizeof(double));
+    double* y =(double*)malloc(n * sizeof(double));
 
     for (int i = 0; i < n; i++) {
       x[i] = (double)((rand() % 10) + 1);

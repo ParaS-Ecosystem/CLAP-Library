@@ -17,9 +17,9 @@
 
 #include "clap/blas_factory.hpp"
 
-#include "clap/cublas_backend.hpp"
-#include "clap/openblas_backend.hpp"
-#include "clap/rocblas_backend.hpp"
+#include "clap/blas/cublas/cublas_backend.hpp"
+#include "clap/blas/openblas/openblas_backend.hpp"
+#include "clap/blas/rocblas/rocblas_backend.hpp"
 #include <fstream>
 
 namespace clap {

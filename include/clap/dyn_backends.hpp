@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include "macros.hpp"
-#include "types.hpp"
+#include "clap/blas/macros.hpp"
+#include "clap/blas/types.hpp"
 #include <complex>
 #include <cstddef>
 #include <cstdint>

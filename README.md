@@ -2,7 +2,7 @@
 
 The mathematical libraries of the ParaS ecosystem form a critical cornerstone of High-Performance Computing (HPC) and Artificial Intelligence (AI) workloads. At the center of this effort is the **CLAP (Cross-platform Linear-algebra And PDE Library)** library, which provides a unified interface for numerical computing across multiple hardware architectures.
 
-CLAP delivers optimized implementations of BLAS, LAPACK, FFT, and PDE kernels while abstracting backend-specific details behind a common API. Unlike traditional approaches that require separate vendor-specific libraries, CLAP enables applications to use a single programming interface while transparently leveraging the most appropriate backend. By consolidating numerical kernels under one framework, CLAP simplifies application development, improves portability, reduces vendor lock-in, and enables efficient execution across CPUs and GPUs.
+CLAP delivers optimized implementations of BLAS, LAPACK, DNN, FFT, and PDE kernels while abstracting backend-specific details behind a common API. Unlike traditional approaches that require separate vendor-specific libraries, CLAP enables applications to use a single programming interface while transparently leveraging the most appropriate backend. By consolidating numerical kernels under one framework, CLAP simplifies application development, improves portability, reduces vendor lock-in, and enables efficient execution across CPUs and GPUs.
 
 ---
 
@@ -31,6 +31,41 @@ Currently, **CLAP** supports both CPU and GPU architectures, providing a unified
 
 - **NVIDIA cuBLAS**
   - Recommended Version: **CUDA Toolkit 12.2 or newer**
+
+#### LAPACK Backends
+
+CLAP LAPACK also loads its libraries at runtime (`dlopen`). Install the one(s) for the hardware you will run on.
+
+- **LAPACK on CPU** (via OpenBLAS)
+  - Version: **OpenBLAS 0.3.30 or newer** built with LAPACK/LAPACKE (the same OpenBLAS used for BLAS)
+  - Libraries searched: `libopenblas.so`, `libopenblas.so.0`, `libopenblas64.so`, `liblapacke.so`, `liblapacke.so.3`
+
+- **NVIDIA cuSOLVER** (GPU)
+  - Version: shipped with **CUDA Toolkit 12.2 or newer**
+  - Libraries searched: `libcusolver.so`, `libcusolver.so.11`, `libcusolver.so.12`
+
+- **AMD rocSOLVER** (GPU)
+  - Version: shipped with **ROCm 7.1 or newer**
+  - Libraries searched: `librocsolver.so`, `librocsolver.so.0`
+
+#### DNN Backends
+
+The CLAP DNN component loads its vendor libraries at runtime (`dlopen`), so they are not link-time dependencies. Install only the one(s) for the hardware you will run on.
+
+- **Intel oneDNN** (CPU)
+  - Version: **3.x** (validated with **3.11.4**)
+  - Must be built with the **oneDNN Graph API** (default build) for the SDPA operation
+  - Library loaded: `libdnnl.so` / `libdnnl.so.3`
+
+- **NVIDIA cuDNN** (GPU)
+  - Version: **9.x or newer** (CUDA Toolkit 12.2 or newer)
+  - cuDNN 9 is required for RMSNorm and SDPA (cuDNN backend graph API)
+  - Library loaded: `libcudnn.so` / `libcudnn.so.9`
+
+- **AMD MIOpen** (GPU)
+  - Version: the MIOpen shipped with **ROCm 7.1 or newer**
+  - RMSNorm needs an MIOpen that exports `miopenT5LayerNorm*`
+  - Library loaded: `libMIOpen.so` / `libMIOpen.so.1`
 
 ---
 
@@ -72,7 +107,7 @@ cmake -S . -B build \
 ```bash
 cd build
 
-make -j1
+make -j
 
 make install
 ```
@@ -104,6 +139,20 @@ export LD_LIBRARY_PATH=/path/to/rocm/lib64:$LD_LIBRARY_PATH
 ```bash
 export LD_LIBRARY_PATH=/path/to/cuda/lib64:$LD_LIBRARY_PATH
 ```
+```
+```
+
+### DNN Library Paths
+
+CLAP DNN finds the vendor libraries through `LD_LIBRARY_PATH`. Export the path of each DNN backend you intend to use.
+
+#### Intel oneDNN (CPU)
+
+```bash
+export LD_LIBRARY_PATH=/path/to/onednn/lib:$LD_LIBRARY_PATH
+```
+
+If a library is not found, CLAP reports an error such as `cannot dlopen libcudnn.so; set LD_LIBRARY_PATH to cuDNN lib directory`.
 
 ---
 
@@ -150,6 +199,16 @@ CLAP supports backend selection through command-line arguments.
 ./a.out -cuda
 ```
 
+### DNN Backends
+
+The same flags select the DNN backend: `-cpu` (oneDNN), `-cuda` (cuDNN) and `-rocm` (MIOpen). The `CLAP_BACKEND` environment variable (`CPU`, `CUDA`, `ROCM`) can be used instead.
+
+```bash
+./a.out -cpu                      # oneDNN
+./a.out -cuda                     # cuDNN
+CLAP_BACKEND=ROCM ./a.out         # MIOpen
+```
+
 ---
 
 ## 📋 Backend Compatibility Summary
@@ -157,25 +216,35 @@ CLAP supports backend selection through command-line arguments.
 | Backend | Recommended Version |
 |----------|---------------------|
 | OpenBLAS | Latest Stable Release (0.3.30+) |
-| AMD rocBLAS | 7.1+ |
+| AMD rocBLAS | ROCm 7.1+ |
 | NVIDIA cuBLAS | CUDA Toolkit 12.2+ |
+| LAPACK (CPU, OpenBLAS) | OpenBLAS 0.3.30+ with LAPACK/LAPACKE |
+| NVIDIA cuSOLVER | CUDA Toolkit 12.2+ |
+| AMD rocSOLVER | ROCm 7.1+ |
+| Intel oneDNN | 3.14.x  |
+| NVIDIA cuDNN | CUDA Toolkit 12.2+ |
+| AMD MIOpen | ROCm 7.1+ |
 
 ---
 
 ## 📝 Notes
 
-- CLAP provides a unified BLAS interface across CPU and GPU architectures.
+- CLAP provides a unified BLAS, LAPACK and DNN interface across CPU and GPU architectures.
 - Backend selection is performed at runtime using command-line arguments.
 - The same executable can be executed with different backends without recompilation.
 - Ensure the required backend libraries are installed and available in the system library path.
 - OpenBLAS is recommended for CPU execution.
 - rocBLAS is recommended for AMD GPU execution.
 - cuBLAS is recommended for NVIDIA GPU execution.
+- LAPACK runs on OpenBLAS/LAPACKE (CPU), cuSOLVER (NVIDIA GPU) and rocSOLVER (AMD GPU), all loaded at runtime.
+- oneDNN, cuDNN and MIOpen are the DNN backends for CPU, NVIDIA GPU and AMD GPU respectively. They are loaded at runtime, so only the backend you select needs to be installed.
+- DNN operations that a vendor library does not support natively are reported through `supports()` / `DnnUnsupportedError`; there is no CPU fallback. See `DNN_PARAM2_EXECUTION_CONTRACT.md`.
 
 ## Reporting Issues
 
 For reporting issues, it can be done using either of the following ways: 
 + Raising an issue on the github repository under issues section
   
+
 
 

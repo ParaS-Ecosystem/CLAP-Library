@@ -1,4 +1,3 @@
-
 #include "clap/lapack_factory.hpp"
 #include <stdio.h>
 #include <chrono>
@@ -44,8 +43,8 @@ int main() {
     auto start = high_resolution_clock::now();
 
     backend->dgesvd(Layout::ColMajor,
-                    Job::All,   // all U
-                    Job::All,   // all VT
+                    Job::All,
+                    Job::All,
                     m, n,
                     A, m,
                     s,

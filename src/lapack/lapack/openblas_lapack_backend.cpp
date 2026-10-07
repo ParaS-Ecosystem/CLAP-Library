@@ -23,7 +23,6 @@
 
 namespace clap {
 
-// ── Helper: convert CLAP enums to LAPACKE characters ─────────────────────
 static int to_lapack_layout(Layout l) {
     return (l == Layout::ColMajor) ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR;
 }
@@ -49,16 +48,11 @@ static char to_lapack_job(Job j) {
     return static_cast<char>(j);
 }
 
-// ── Constructor ───────────────────────────────────────────────────────────
 OpenBlasLapackBackend::OpenBlasLapackBackend() {
     std::cout << "Using OpenBLAS LAPACK backend\n";
     if (!dyn_lapack::loadOpenBLASLapack())
         throw std::runtime_error("OpenBLAS LAPACK load failed");
 }
-
-// ══════════════════════════════════════════════════════════════════════════
-// LINEAR SYSTEM SOLVERS
-// ══════════════════════════════════════════════════════════════════════════
 
 void OpenBlasLapackBackend::sgetrf(Layout layout,
                                    lapack_int m, lapack_int n,
@@ -118,10 +112,6 @@ void OpenBlasLapackBackend::dgetri(lapack_int n,
     *info = clap_LAPACKE_dgetri(LAPACK_COL_MAJOR, n, A, lda, ipiv);
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// CHOLESKY
-// ══════════════════════════════════════════════════════════════════════════
-
 void OpenBlasLapackBackend::spotrf(Layout layout, Uplo uplo, lapack_int n,
                                    float  *A, lapack_int lda, lapack_int *info) {
     *info = clap_LAPACKE_spotrf(to_lapack_layout(layout),
@@ -178,10 +168,6 @@ void OpenBlasLapackBackend::dposv(Layout layout, Uplo uplo,
                                 to_lapack_uplo(uplo), n, nrhs, A, lda, B, ldb);
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// QR
-// ══════════════════════════════════════════════════════════════════════════
-
 void OpenBlasLapackBackend::sgeqrf(Layout layout, lapack_int m, lapack_int n,
                                    float  *A, lapack_int lda, float  *tau,
                                    lapack_int *info) {
@@ -227,10 +213,6 @@ void OpenBlasLapackBackend::dgels(Layout layout, Transpose trans,
                                 to_lapack_trans(trans),
                                 m, n, nrhs, A, lda, B, ldb);
 }
-
-// ══════════════════════════════════════════════════════════════════════════
-// EIGENVALUES
-// ══════════════════════════════════════════════════════════════════════════
 
 void OpenBlasLapackBackend::ssyev(Layout layout, Job jobz, Uplo uplo,
                                   lapack_int n,
@@ -280,10 +262,6 @@ void OpenBlasLapackBackend::dgeev(Layout layout, Job jobvl, Job jobvr,
                                 VL, ldvl, VR, ldvr);
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// SVD
-// ══════════════════════════════════════════════════════════════════════════
-
 void OpenBlasLapackBackend::sgesvd(Layout layout, Job jobu, Job jobvt,
                                    lapack_int m, lapack_int n,
                                    float  *A, lapack_int lda, float  *s,
@@ -310,10 +288,6 @@ void OpenBlasLapackBackend::dgesvd(Layout layout, Job jobu, Job jobvt,
                                  U, ldu, VT, ldvt, superb);
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// TRIANGULAR
-// ══════════════════════════════════════════════════════════════════════════
-
 void OpenBlasLapackBackend::strtrs(Layout layout, Uplo uplo,
                                    Transpose trans, Diag diag,
                                    lapack_int n, lapack_int nrhs,
@@ -338,4 +312,4 @@ void OpenBlasLapackBackend::dtrtrs(Layout layout, Uplo uplo,
                                  n, nrhs, A, lda, B, ldb);
 }
 
-} // namespace clap
+}

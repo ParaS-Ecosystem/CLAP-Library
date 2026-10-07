@@ -23,9 +23,6 @@
 namespace clap {
 namespace dyn_lapack {
 
-// ── Define all function pointers (initialized to nullptr) ─────────────────
-
-// OpenBLAS LAPACK
 lapack_int (*p_LAPACKE_sgetrf)(int,lapack_int,lapack_int,float*,lapack_int,lapack_int*)=nullptr;
 lapack_int (*p_LAPACKE_dgetrf)(int,lapack_int,lapack_int,double*,lapack_int,lapack_int*)=nullptr;
 lapack_int (*p_LAPACKE_sgetrs)(int,char,lapack_int,lapack_int,const float*,lapack_int,const lapack_int*,float*,lapack_int)=nullptr;
@@ -57,7 +54,6 @@ lapack_int (*p_LAPACKE_dgesvd)(int,char,char,lapack_int,lapack_int,double*,lapac
 lapack_int (*p_LAPACKE_strtrs)(int,char,char,char,lapack_int,lapack_int,const float*,lapack_int,float*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_dtrtrs)(int,char,char,char,lapack_int,lapack_int,const double*,lapack_int,double*,lapack_int)=nullptr;
 
-// cuSOLVER
 cusolverStatus_t (*p_cusolverDnCreate)(cusolverDnHandle_t*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDestroy)(cusolverDnHandle_t)=nullptr;
 cusolverStatus_t (*p_cusolverDnSgetrf_bufferSize)(cusolverDnHandle_t,int,int,float*,int,int*)=nullptr;
@@ -85,7 +81,6 @@ cusolverStatus_t (*p_cusolverDnDsyevd_bufferSize)(cusolverDnHandle_t,int,int,int
 cusolverStatus_t (*p_cusolverDnSsyevd)(cusolverDnHandle_t,int,int,int,float*,int,float*,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDsyevd)(cusolverDnHandle_t,int,int,int,double*,int,double*,double*,int,int*)=nullptr;
 
-// rocSOLVER
 int (*p_rocsolver_sgetrf)(rocsolver_handle,rocblas_int_solver,rocblas_int_solver,float*,rocblas_int_solver,rocblas_int_solver*,rocblas_int_solver*)=nullptr;
 int (*p_rocsolver_dgetrf)(rocsolver_handle,rocblas_int_solver,rocblas_int_solver,double*,rocblas_int_solver,rocblas_int_solver*,rocblas_int_solver*)=nullptr;
 int (*p_rocsolver_sgetrs)(rocsolver_handle,int,rocblas_int_solver,rocblas_int_solver,const float*,rocblas_int_solver,const rocblas_int_solver*,float*,rocblas_int_solver)=nullptr;
@@ -101,7 +96,6 @@ int (*p_rocsolver_dgesvd)(rocsolver_handle,int,int,rocblas_int_solver,rocblas_in
 int (*p_rocsolver_ssyev)(rocsolver_handle,int,int,rocblas_int_solver,float*,rocblas_int_solver,float*,float*,rocblas_int_solver*)=nullptr;
 int (*p_rocsolver_dsyev)(rocsolver_handle,int,int,rocblas_int_solver,double*,rocblas_int_solver,double*,double*,rocblas_int_solver*)=nullptr;
 
-// ── Helper macro for dlsym ────────────────────────────────────────────────
 #define LOAD_SYM(handle, ptr, name)                                    \
     do {                                                               \
         ptr = reinterpret_cast<decltype(ptr)>(dlsym(handle, #name));  \
@@ -111,14 +105,12 @@ int (*p_rocsolver_dsyev)(rocsolver_handle,int,int,rocblas_int_solver,double*,roc
         }                                                              \
     } while(0)
 
-// ── loadOpenBLASLapack ────────────────────────────────────────────────────
 bool loadOpenBLASLapack() {
     static bool loaded = false;
     static std::mutex mtx;
     std::lock_guard<std::mutex> lock(mtx);
     if (loaded) return true;
 
-    // Try common OpenBLAS library names that include LAPACKE
     void *handle = nullptr;
     const char *libs[] = {
         "libopenblas.so",
@@ -143,7 +135,6 @@ bool loadOpenBLASLapack() {
         return false;
     }
 
-    // Load all LAPACKE symbols
     LOAD_SYM(handle, p_LAPACKE_sgetrf, LAPACKE_sgetrf);
     LOAD_SYM(handle, p_LAPACKE_dgetrf, LAPACKE_dgetrf);
     LOAD_SYM(handle, p_LAPACKE_sgetrs, LAPACKE_sgetrs);
@@ -179,7 +170,6 @@ bool loadOpenBLASLapack() {
     return true;
 }
 
-// ── loadCuSolver ─────────────────────────────────────────────────────────
 bool loadCuSolver() {
     static bool loaded = false;
     static std::mutex mtx;
@@ -239,7 +229,6 @@ bool loadCuSolver() {
     return true;
 }
 
-// ── loadRocSolver ─────────────────────────────────────────────────────────
 bool loadRocSolver() {
     static bool loaded = false;
     static std::mutex mtx;
@@ -286,5 +275,5 @@ bool loadRocSolver() {
     return true;
 }
 
-} // namespace dyn_lapack
-} // namespace clap
+}
+}

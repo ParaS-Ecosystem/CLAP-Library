@@ -1,4 +1,3 @@
-
 #include "clap/lapack_factory.hpp"
 #include <stdio.h>
 #include <chrono>
@@ -30,19 +29,17 @@ int main() {
         return 1;
     }
 
-    // Fill A with random values, make diagonally dominant for stability
     for (int i = 0; i < n; i++) {
         double row_sum = 0.0;
         for (int j = 0; j < n; j++) {
             A[i + j * n] = (double)(rand() % 10 + 1);
             if (i != j) row_sum += fabs(A[i + j * n]);
         }
-        A[i + i * n] = row_sum + 10.0;  // diagonal dominance
+        A[i + i * n] = row_sum + 10.0;
         B[i] = (double)(rand() % 20 + 1);
-        Aorig[i * n + 0] = 0.0;  // placeholder
+        Aorig[i * n + 0] = 0.0;
     }
 
-    // Save originals
     for (int i = 0; i < n * n; i++) Aorig[i] = A[i];
     for (int i = 0; i < n;     i++) Borig[i] = B[i];
 
@@ -52,7 +49,6 @@ int main() {
 
     auto start = high_resolution_clock::now();
 
-    // Solve AX = B
     backend->dgesv(n, 1, A, n, ipiv, B, n, &info);
 
     auto end = high_resolution_clock::now();
@@ -67,7 +63,6 @@ int main() {
     for (int i = 0; i < show; i++)
         printf("  x[%d] = %.8f\n", i, B[i]);
 
-    // Verify: compute ||Ax - b|| / ||b||
     double res_norm = 0.0, b_norm = 0.0;
     for (int i = 0; i < n; i++) {
         double ax = 0.0;

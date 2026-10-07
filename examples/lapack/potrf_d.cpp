@@ -1,4 +1,3 @@
-
 #include "clap/lapack_factory.hpp"
 #include <stdio.h>
 #include <chrono>
@@ -27,13 +26,11 @@ int main() {
         return 1;
     }
 
-    // Build symmetric positive definite matrix: A = L*L^T + n*I
     double *L = (double *)calloc(n * n, sizeof(double));
     for (int i = 0; i < n; i++)
         for (int j = 0; j <= i; j++)
             L[i + j * n] = (double)(rand() % 5 + 1);
 
-    // A = L * L^T (col-major)
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++) {
             double s = 0.0;
@@ -51,7 +48,6 @@ int main() {
 
     auto start = high_resolution_clock::now();
 
-    // Cholesky factorization A = L*L^T
     backend->dpotrf(Layout::ColMajor, Uplo::Lower, n, A, n, &info);
 
     auto end = high_resolution_clock::now();
@@ -64,7 +60,6 @@ int main() {
     printf("dpotrf info = %d  (0 = success)\n", info);
     printf("Cholesky factor L[0][0] = %.8f\n", A[0]);
 
-    // Solve using Cholesky factor
     backend->dpotrs(Layout::ColMajor, Uplo::Lower, n, 1, A, n, B, n, &info);
     printf("dpotrs info = %d  (0 = success)\n", info);
 

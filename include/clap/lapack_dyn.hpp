@@ -15,9 +15,6 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
-// Dynamic loader declarations for LAPACK (OpenBLAS), cuSOLVER, rocSOLVER.
-// Follows the exact same pattern as dyn_backends.hpp for BLAS.
-
 #pragma once
 #include "clap/lapack/lapack_types.hpp"
 #include <cstdint>
@@ -27,11 +24,6 @@
 namespace clap {
 namespace dyn_lapack {
 
-// ══════════════════════════════════════════════════════════════════════════
-// OpenBLAS LAPACK function pointers (Fortran-style via LAPACKE C interface)
-// ══════════════════════════════════════════════════════════════════════════
-
-// ── Linear solvers ────────────────────────────────────────────────────────
 extern lapack_int (*p_LAPACKE_sgetrf)(int matrix_layout,
                                       lapack_int m, lapack_int n,
                                       float  *a, lapack_int lda,
@@ -72,7 +64,6 @@ extern lapack_int (*p_LAPACKE_dgetri)(int matrix_layout,
                                       double *a, lapack_int lda,
                                       const lapack_int *ipiv);
 
-// ── Cholesky ──────────────────────────────────────────────────────────────
 extern lapack_int (*p_LAPACKE_spotrf)(int matrix_layout, char uplo,
                                       lapack_int n,
                                       float  *a, lapack_int lda);
@@ -104,7 +95,6 @@ extern lapack_int (*p_LAPACKE_dposv)(int matrix_layout, char uplo,
                                      double *a, lapack_int lda,
                                      double *b, lapack_int ldb);
 
-// ── QR factorization ──────────────────────────────────────────────────────
 extern lapack_int (*p_LAPACKE_sgeqrf)(int matrix_layout,
                                       lapack_int m, lapack_int n,
                                       float  *a, lapack_int lda,
@@ -132,7 +122,6 @@ extern lapack_int (*p_LAPACKE_dgels)(int matrix_layout, char trans,
                                      double *a, lapack_int lda,
                                      double *b, lapack_int ldb);
 
-// ── Eigenvalues ───────────────────────────────────────────────────────────
 extern lapack_int (*p_LAPACKE_ssyev)(int matrix_layout, char jobz, char uplo,
                                      lapack_int n,
                                      float  *a, lapack_int lda,
@@ -157,7 +146,6 @@ extern lapack_int (*p_LAPACKE_dgeev)(int matrix_layout,
                                      double *vl, lapack_int ldvl,
                                      double *vr, lapack_int ldvr);
 
-// ── SVD ───────────────────────────────────────────────────────────────────
 extern lapack_int (*p_LAPACKE_sgesvd)(int matrix_layout,
                                       char jobu, char jobvt,
                                       lapack_int m, lapack_int n,
@@ -175,7 +163,6 @@ extern lapack_int (*p_LAPACKE_dgesvd)(int matrix_layout,
                                       double *vt, lapack_int ldvt,
                                       double *superb);
 
-// ── Triangular solve ──────────────────────────────────────────────────────
 extern lapack_int (*p_LAPACKE_strtrs)(int matrix_layout,
                                       char uplo, char trans, char diag,
                                       lapack_int n, lapack_int nrhs,
@@ -187,14 +174,9 @@ extern lapack_int (*p_LAPACKE_dtrtrs)(int matrix_layout,
                                       const double *a, lapack_int lda,
                                       double *b, lapack_int ldb);
 
-// ══════════════════════════════════════════════════════════════════════════
-// cuSOLVER function pointers
-// ══════════════════════════════════════════════════════════════════════════
-
 extern cusolverStatus_t (*p_cusolverDnCreate)(cusolverDnHandle_t *handle);
 extern cusolverStatus_t (*p_cusolverDnDestroy)(cusolverDnHandle_t handle);
 
-// ── getrf buffer size + factorization ─────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSgetrf_bufferSize)(
     cusolverDnHandle_t handle,
     int m, int n,
@@ -219,7 +201,6 @@ extern cusolverStatus_t (*p_cusolverDnDgetrf)(
     double *Workspace,
     int *devIpiv, int *devInfo);
 
-// ── getrs ─────────────────────────────────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSgetrs)(
     cusolverDnHandle_t handle,
     int trans,
@@ -237,7 +218,6 @@ extern cusolverStatus_t (*p_cusolverDnDgetrs)(
     double *B, int ldb,
     int *devInfo);
 
-// ── potrf ─────────────────────────────────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSpotrf_bufferSize)(
     cusolverDnHandle_t handle,
     int uplo, int n,
@@ -261,7 +241,6 @@ extern cusolverStatus_t (*p_cusolverDnDpotrf)(
     double *Workspace, int Lwork,
     int *devInfo);
 
-// ── potri ─────────────────────────────────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSpotri_bufferSize)(
     cusolverDnHandle_t handle,
     int uplo, int n,
@@ -288,7 +267,6 @@ extern cusolverStatus_t (*p_cusolverDnDpotri)(
     double *Workspace, int Lwork,
     int *devInfo );
 
-// ── potrs ─────────────────────────────────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSpotrs)(
     cusolverDnHandle_t handle,
     int uplo, int n,
@@ -303,7 +281,6 @@ extern cusolverStatus_t (*p_cusolverDnDpotrs)(
     int lda, double *B,
     int ldb, int *devInfo);
 
-// ── gesvd ─────────────────────────────────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSgesvd_bufferSize)(
     cusolverDnHandle_t handle,
     int m, int n,
@@ -335,7 +312,6 @@ extern cusolverStatus_t (*p_cusolverDnDgesvd)(
     double *rwork,
     int *devInfo);
 
-// ── syev (dsyevd on GPU) ──────────────────────────────────────────────────
 extern cusolverStatus_t (*p_cusolverDnSsyevd_bufferSize)(
     cusolverDnHandle_t handle,
     int jobz, int uplo,
@@ -366,10 +342,6 @@ extern cusolverStatus_t (*p_cusolverDnDsyevd)(
     double *W,
     double *work, int lwork,
     int *devInfo);
-
-// ══════════════════════════════════════════════════════════════════════════
-// rocSOLVER function pointers
-// ══════════════════════════════════════════════════════════════════════════
 
 extern int (*p_rocsolver_sgetrf)(rocsolver_handle handle,
                                   rocblas_int_solver m, rocblas_int_solver n,
@@ -468,10 +440,9 @@ extern int (*p_rocsolver_dsyev)(rocsolver_handle handle,
                                  double *D, double *E,
                                  rocblas_int_solver *info);
 
-// ── Loader functions ──────────────────────────────────────────────────────
 bool loadOpenBLASLapack();
 bool loadCuSolver();
 bool loadRocSolver();
 
-} // namespace dyn_lapack
-} // namespace clap
+}
+}

@@ -29,14 +29,11 @@ namespace clap {
 
 using detail::checked_call;
 
-// ── rocSOLVER enum helpers ─────────────────────────────────────────────────
 static int to_roc_uplo(Uplo u) {
-    // rocblas_fill_upper=121, rocblas_fill_lower=122
     return (u == Uplo::Upper) ? 121 : 122;
 }
 
 static int to_roc_trans(Transpose t) {
-    // rocblas_operation_none=111, transpose=112, conjugate=113
     switch (t) {
         case Transpose::NoTrans:   return 111;
         case Transpose::Trans:     return 112;
@@ -72,7 +69,6 @@ static void check_rocsolver(int status, const char *operation) {
                                  std::to_string(status));
 }
 
-
 const auto clap_hipMalloc = checked_call(dyn::p_hipMalloc, check_hip, "hipMalloc");
 const auto clap_hipFree = checked_call(dyn::p_hipFree, check_hip, "hipFree");
 const auto clap_hipMemcpy = checked_call(dyn::p_hipMemcpy, check_hip, "hipMemcpy");
@@ -91,7 +87,6 @@ const auto clap_rocsolver_dgesvd = checked_call(dyn_lapack::p_rocsolver_dgesvd, 
 const auto clap_rocsolver_ssyev = checked_call(dyn_lapack::p_rocsolver_ssyev, check_rocsolver, "rocsolver_ssyev");
 const auto clap_rocsolver_dsyev = checked_call(dyn_lapack::p_rocsolver_dsyev, check_rocsolver, "rocsolver_dsyev");
 
-// ── Constructor ───────────────────────────────────────────────────────────
 RocSolverBackend::RocSolverBackend() : m_handle(nullptr) {
     std::cout << "Using rocSOLVER backend\n";
 
@@ -101,7 +96,6 @@ RocSolverBackend::RocSolverBackend() : m_handle(nullptr) {
     if (!dyn::loadHipAndRocblas())
         throw std::runtime_error("HIP/rocBLAS runtime load failed for rocSOLVER");
 
-    // rocSOLVER uses the rocBLAS handle
     if (dyn::p_rocblas_create_handle(&m_handle) != 0)
         throw std::runtime_error("rocblas_create_handle failed for rocSOLVER");
 }
@@ -110,10 +104,6 @@ RocSolverBackend::~RocSolverBackend() {
     if (m_handle && dyn::p_rocblas_destroy_handle)
         dyn::p_rocblas_destroy_handle(m_handle);
 }
-
-// ══════════════════════════════════════════════════════════════════════════
-// INTERNAL TEMPLATE HELPERS
-// ══════════════════════════════════════════════════════════════════════════
 
 template<>
 void RocSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
@@ -135,7 +125,6 @@ void RocSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
 
     clap_rocsolver_sgetrf(m_handle, m, n, dA, lda, d_ipiv, d_info);
 
-    // Synchronize via rocblas handle
     clap_hipMemcpy(A,    dA,     szA,                  hipMemcpyDeviceToHost);
     clap_hipMemcpy(ipiv, d_ipiv, (size_t)k*sizeof(int), hipMemcpyDeviceToHost);
     int h_info = 0;
@@ -300,7 +289,7 @@ void RocSolverBackend::potri_impl<float>(Uplo uplo, lapack_int n,
     clap_hipMemcpy(info, d_info, sizeof(int), hipMemcpyDeviceToHost);
 
     clap_hipFree(dA); 
-    clap_hipFree(d_info);                          
+    clap_hipFree(d_info);
 }
 
 template<>
@@ -323,9 +312,8 @@ void RocSolverBackend::potri_impl<double>(Uplo uplo, lapack_int n,
     clap_hipMemcpy(info, d_info, sizeof(int), hipMemcpyDeviceToHost);
 
     clap_hipFree(dA);
-    clap_hipFree(d_info);                          
+    clap_hipFree(d_info);
 }
-
 
 template<>
 void RocSolverBackend::potrs_impl<float>(Uplo uplo, lapack_int n,
@@ -526,10 +514,6 @@ void RocSolverBackend::syev_impl<double>(Job jobz, Uplo uplo, lapack_int n,
     clap_hipFree(dA); clap_hipFree(dD); clap_hipFree(dE); clap_hipFree(d_info);
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// PUBLIC API
-// ══════════════════════════════════════════════════════════════════════════
-
 void RocSolverBackend::sgetrf(Layout, lapack_int m, lapack_int n,
     float *A, lapack_int lda, lapack_int *ipiv, lapack_int *info) {
     getrf_impl<float>(m, n, A, lda, ipiv, info);
@@ -661,4 +645,4 @@ void RocSolverBackend::dtrtrs(Layout, Uplo, Transpose, Diag,
     std::cerr << "[CLAP] rocSOLVER trtrs not supported\n"; *info=-1;
 }
 
-} // namespace clap
+}

@@ -1,0 +1,82 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
+#include "clap/dnn_factory.hpp"
+#include "clap/cudnn_backend.hpp"
+#include "clap/dnn_dyn_backends.hpp"
+#include "clap/miopen_backend.hpp"
+#include "clap/onednn_backend.hpp"
+
+#include <cstdlib>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <fstream>
+
+namespace clap {
+
+std::unique_ptr<IDnnBackend> DnnFactory::create(DnnBackendType requested)
+{
+    if (const char* env = std::getenv("CLAP_BACKEND")) {
+        const std::string s(env);
+        if (s == "CPU") requested = DnnBackendType::CPU;
+        else if (s == "CUDA") requested = DnnBackendType::CUDA;
+        else if (s == "ROCM" || s == "AMD") requested = DnnBackendType::ROCM;
+        else if (s == "GPU") requested = DnnBackendType::GPU;
+    }
+     
+    else {
+        std::ifstream cmdline("/proc/self/cmdline");
+        if (cmdline.is_open()) {
+            std::string arg;
+            while (std::getline(cmdline, arg, '\0')) {
+                if (arg == "-cuda") { requested = DnnBackendType::CUDA; break; }
+                if (arg == "-rocm") { requested = DnnBackendType::ROCM; break; }
+                if (arg == "-cpu")  { requested = DnnBackendType::CPU;  break; }
+                if (arg == "-gpu")  { requested = DnnBackendType::GPU;  break; }
+          }
+	 }
+	}
+
+    if (requested == DnnBackendType::CPU) {
+        if (!dnn_dyn::loadOneDnn())
+            throw std::runtime_error(std::string("CLAP_DNN oneDNN runtime load failed: ") + dnn_dyn::lastError());
+        return std::make_unique<OneDnnBackend>();
+    }
+
+    if (requested == DnnBackendType::CUDA) {
+        if (!dnn_dyn::loadCudaAndCudnn())
+            throw std::runtime_error(std::string("CLAP_DNN CUDA/cuDNN runtime load failed: ") + dnn_dyn::lastError());
+        return std::make_unique<CuDnnBackend>();
+    }
+
+    if (requested == DnnBackendType::ROCM) {
+        if (!dnn_dyn::loadHipAndMiopen())
+            throw std::runtime_error(std::string("CLAP_DNN HIP/MIOpen runtime load failed: ") + dnn_dyn::lastError());
+        return std::make_unique<MiOpenBackend>();
+    }
+
+    if (dnn_dyn::loadCudaAndCudnn())
+        return std::make_unique<CuDnnBackend>();
+
+    if (dnn_dyn::loadHipAndMiopen())
+        return std::make_unique<MiOpenBackend>();
+
+    throw std::runtime_error("CLAP_DNN -gpu selected, but neither NVIDIA+cuDNN nor AMD+MIOpen could be loaded at runtime");
+}
+
+}

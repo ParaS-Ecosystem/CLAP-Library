@@ -1,4 +1,3 @@
-
 #include "clap/lapack_factory.hpp"
 #include <stdio.h>
 #include <chrono>
@@ -27,13 +26,11 @@ int main() {
         return 1;
     }
 
-    // Build symmetric matrix: A = B + B^T
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++) {
             double val = (double)(rand() % 10 + 1);
             A[i + j * n] = val;
         }
-    // Symmetrize
     for (int i = 0; i < n; i++)
         for (int j = i + 1; j < n; j++) {
             double avg = 0.5 * (A[i + j * n] + A[j + i * n]);
@@ -47,9 +44,8 @@ int main() {
 
     auto start = high_resolution_clock::now();
 
-    // Compute eigenvalues (Job::NoVec) — fast
     backend->dsyev(Layout::ColMajor,
-                   Job::Vec,       // also compute eigenvectors
+                   Job::Vec,
                    Uplo::Lower,
                    n, A, n, w, &info);
 

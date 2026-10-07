@@ -26,7 +26,6 @@ public:
     CuSolverBackend();
     ~CuSolverBackend() override;
 
-    // Linear solvers
     void sgetrf(Layout layout, lapack_int m, lapack_int n,
                 float  *A, lapack_int lda, lapack_int *ipiv,
                 lapack_int *info) override;
@@ -57,7 +56,6 @@ public:
                 double *A, lapack_int lda, const lapack_int *ipiv,
                 lapack_int *info) override;
 
-    // Cholesky
     void spotrf(Layout layout, Uplo uplo, lapack_int n,
                 float  *A, lapack_int lda, lapack_int *info) override;
     void dpotrf(Layout layout, Uplo uplo, lapack_int n,
@@ -83,7 +81,6 @@ public:
                double *A, lapack_int lda,
                double *B, lapack_int ldb, lapack_int *info) override;
 
-    // QR
     void sgeqrf(Layout layout, lapack_int m, lapack_int n,
                 float  *A, lapack_int lda, float  *tau,
                 lapack_int *info) override;
@@ -107,7 +104,6 @@ public:
                double *A, lapack_int lda,
                double *B, lapack_int ldb, lapack_int *info) override;
 
-    // Eigenvalues
     void ssyev(Layout layout, Job jobz, Uplo uplo, lapack_int n,
                float  *A, lapack_int lda, float  *w,
                lapack_int *info) override;
@@ -128,7 +124,6 @@ public:
                double *VR, lapack_int ldvr,
                lapack_int *info) override;
 
-    // SVD
     void sgesvd(Layout layout, Job jobu, Job jobvt,
                 lapack_int m, lapack_int n,
                 float  *A, lapack_int lda, float  *s,
@@ -142,7 +137,6 @@ public:
                 double *VT, lapack_int ldvt,
                 double *superb, lapack_int *info) override;
 
-    // Triangular
     void strtrs(Layout layout, Uplo uplo, Transpose trans, Diag diag,
                 lapack_int n, lapack_int nrhs,
                 const float  *A, lapack_int lda,
@@ -155,7 +149,6 @@ public:
 private:
     cusolverDnHandle_t m_handle;
 
-    // Internal helpers
     template<typename T>
     void getrf_impl(lapack_int m, lapack_int n,
                     T *A, lapack_int lda,
@@ -192,4 +185,4 @@ private:
                    T *A, lapack_int lda, T *w, lapack_int *info);
 };
 
-} // namespace clap
+}

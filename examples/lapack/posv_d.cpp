@@ -51,11 +51,9 @@ int main() {
         }
     }
 
-
     for (int i = 0; i < n; i++) {
         B[i] = (double)(rand() % 20 + 1);
     }
-
 
     for (int i = 0; i < n * n; i++)
         Aorig[i] = A[i];

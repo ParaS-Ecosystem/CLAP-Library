@@ -9,6 +9,7 @@ include(GNUInstallDirs)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(BUILD_BLAS_EXAMPLES "Build BLAS examples" ON)
 option(BUILD_LAPACK_EXAMPLES "Build LAPACK examples" ON)
+option(BUILD_DNN_EXAMPLES "Build DNN examples" ON)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -17,11 +18,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message(STATUS "[CLAP] C compiler:   ${CMAKE_C_COMPILER}")
 message(STATUS "[CLAP] C++ compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "[CLAP] Components: BLAS + LAPACK + DNN")
 message(STATUS "[CLAP] Runtime backend selection: -cpu / -cuda / -rocm or CLAP_BACKEND=CPU|CUDA|ROCM")
 
 # -----------------------------------------------------------------------------
 # ONE CLAP LIBRARY
-# BLAS + LAPACK are all part of this target.
+# BLAS + LAPACK + DNN are all part of this target.
 # Produces libclap.so.
 # -----------------------------------------------------------------------------
 
@@ -43,10 +45,22 @@ file(GLOB_RECURSE CLAP_LAPACK_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lapack/*.cpp"
 )
 
+# DNN: oneDNN (CPU), cuDNN (NVIDIA), MIOpen (AMD); vendor libraries are
+# loaded at runtime by src/common/dnn_dyn_backends.cpp.
+set(CLAP_DNN_SOURCES
+    src/common/dnn_dyn_backends.cpp
+    src/common/dnn_factory.cpp
+
+    src/onednn/onednn_backend.cpp
+    src/cudnn/cudnn_backend.cpp
+    src/miopen/miopen_backend.cpp
+)
+
 add_library(clap SHARED
     ${CLAP_COMMON_SOURCES}
     ${CLAP_BLAS_SOURCES}
     ${CLAP_LAPACK_SOURCES}
+    ${CLAP_DNN_SOURCES}
 )
 
 target_include_directories(clap
@@ -111,6 +125,52 @@ if(BUILD_LAPACK_EXAMPLES)
 
 endif()
 
+if(BUILD_DNN_EXAMPLES)
+    set(CLAP_DNN_EXAMPLES
+        activation/relu
+
+        convolution/convolution
+        convolution/convolution_backward_bias
+        convolution/convolution_gpu_test
+        convolution/convolution_transpose
+        convolution/fused_conv_bias_activation
+        convolution/one
+
+        dropout/dropout
+        normalization/batchnorm
+        normalization/layernorm
+        normalization/lrn
+        elementwise/add
+        elementwise/multiply
+        elementwise/min
+        elementwise/max
+        reduction/sum
+        reduction/product
+        pooling/maxpool
+        softmax/softmax
+
+        # Framework execution contract / Param2 primitives
+        activation/silu
+        normalization/rmsnorm
+        softmax/softmax_axis
+        softmax/log_softmax
+        attention/sdpa
+        validation/param2_dnn_validation
+    )
+
+    foreach(rel IN LISTS CLAP_DNN_EXAMPLES)
+        string(REPLACE "/" "_" target "dnn_${rel}")
+        get_filename_component(exe "${rel}" NAME)
+        get_filename_component(group "${rel}" DIRECTORY)
+        add_executable(${target} "examples/dnn/${rel}.cpp")
+        set_target_properties(${target} PROPERTIES
+            OUTPUT_NAME "${exe}"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/examples/dnn/${group}"
+        )
+        target_link_libraries(${target} PRIVATE clap)
+    endforeach()
+endif()
+
 # -----------------------------------------------------------------------------
 # Install the library and all public headers with one `cmake --install`.
 # -----------------------------------------------------------------------------
@@ -127,3 +187,4 @@ install(EXPORT clapTargets
     NAMESPACE clap::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/clap
 )
+

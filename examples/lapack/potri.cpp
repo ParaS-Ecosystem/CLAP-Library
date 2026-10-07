@@ -8,10 +8,6 @@
 using namespace clap;
 using namespace std::chrono;
 
-
-// ================================================================
-// Single precision: SPOTRI
-// ================================================================
 void test_spotri(int n)
 {
     printf("\n========================================\n");
@@ -32,15 +28,6 @@ void test_spotri(int n)
 
     srand(1234);
 
-    /*
-     * Generate random matrix M.
-     *
-     * Construct:
-     *
-     *          A = M * M^T + nI
-     *
-     * This guarantees that A is symmetric positive definite.
-     */
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             M[i + j * n] =
@@ -48,7 +35,6 @@ void test_spotri(int n)
         }
     }
 
-    // A = M * M^T + nI
     for (int i = 0; i < n; i++) {
 
         for (int j = 0; j < n; j++) {
@@ -67,7 +53,6 @@ void test_spotri(int n)
         }
     }
 
-    // Save original A
     for (int i = 0; i < n * n; i++)
         Aorig[i] = A[i];
 
@@ -79,13 +64,6 @@ void test_spotri(int n)
 
     auto start = high_resolution_clock::now();
 
-    /*
-     * Step 1:
-     *
-     * A = L * L^T
-     *
-     * dpotrf/spotrf overwrites A with L.
-     */
     backend->spotrf(
         Layout::ColMajor,
         Uplo::Lower,
@@ -103,17 +81,6 @@ void test_spotri(int n)
         return;
     }
 
-    /*
-     * Step 2:
-     *
-     * Compute inverse from Cholesky factor.
-     *
-     * On entry:
-     *     A contains L
-     *
-     * On exit:
-     *     A contains A^(-1)
-     */
     backend->spotri(
         Layout::ColMajor,
         Uplo::Lower,
@@ -133,12 +100,6 @@ void test_spotri(int n)
         return;
     }
 
-    /*
-     * SPOTRI computes only the lower triangle.
-     *
-     * Since A^(-1) is symmetric, copy the lower
-     * triangle into the upper triangle.
-     */
     for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
             A[i + j * n] = A[j + i * n];
@@ -156,15 +117,6 @@ void test_spotri(int n)
         printf("\n");
     }
 
-    /*
-     * Verify:
-     *
-     *             Aorig * Ainv = I
-     *
-     * Calculate:
-     *
-     *       ||Aorig*Ainv - I|| / ||I||
-     */
     float res_norm = 0.0f;
     float identity_norm = 0.0f;
 
@@ -206,10 +158,6 @@ void test_spotri(int n)
     free(Aorig);
 }
 
-
-// ================================================================
-// Double precision: DPOTRI
-// ================================================================
 void test_dpotri(int n)
 {
     printf("\n========================================\n");
@@ -230,15 +178,6 @@ void test_dpotri(int n)
 
     srand(1234);
 
-    /*
-     * Generate random matrix M.
-     *
-     * Construct:
-     *
-     *          A = M * M^T + nI
-     *
-     * This guarantees that A is symmetric positive definite.
-     */
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             M[i + j * n] =
@@ -246,7 +185,6 @@ void test_dpotri(int n)
         }
     }
 
-    // A = M * M^T + nI
     for (int i = 0; i < n; i++) {
 
         for (int j = 0; j < n; j++) {
@@ -265,7 +203,6 @@ void test_dpotri(int n)
         }
     }
 
-    // Save original A
     for (int i = 0; i < n * n; i++)
         Aorig[i] = A[i];
 
@@ -277,11 +214,6 @@ void test_dpotri(int n)
 
     auto start = high_resolution_clock::now();
 
-    /*
-     * Step 1:
-     *
-     * A = L * L^T
-     */
     backend->dpotrf(
         Layout::ColMajor,
         Uplo::Lower,
@@ -299,11 +231,6 @@ void test_dpotri(int n)
         return;
     }
 
-    /*
-     * Step 2:
-     *
-     * Compute inverse from Cholesky factor.
-     */
     backend->dpotri(
         Layout::ColMajor,
         Uplo::Lower,
@@ -323,12 +250,6 @@ void test_dpotri(int n)
         return;
     }
 
-    /*
-     * DPOTRI computes only the lower triangle.
-     *
-     * Copy lower triangle into upper triangle
-     * because the inverse is symmetric.
-     */
     for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
             A[i + j * n] = A[j + i * n];
@@ -346,11 +267,6 @@ void test_dpotri(int n)
         printf("\n");
     }
 
-    /*
-     * Verify:
-     *
-     *             Aorig * Ainv = I
-     */
     double res_norm = 0.0;
     double identity_norm = 0.0;
 
@@ -392,10 +308,6 @@ void test_dpotri(int n)
     free(Aorig);
 }
 
-
-// ================================================================
-// Main
-// ================================================================
 int main()
 {
     int n;
@@ -405,12 +317,6 @@ int main()
 
     printf("n = %d\n", n);
 
-    /*
-     * Test both:
-     *
-     *     SPOTRI -> float
-     *     DPOTRI -> double
-     */
     test_spotri(n);
     test_dpotri(n);
 

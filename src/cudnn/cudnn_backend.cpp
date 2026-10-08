@@ -381,6 +381,8 @@ abi::cudnnActivationMode_t toCudnnActivation(ActivationMode mode)
         case ActivationMode::Sigmoid: return abi::CUDNN_ACTIVATION_SIGMOID;
         case ActivationMode::Tanh:    return abi::CUDNN_ACTIVATION_TANH;
         case ActivationMode::SiLU:    return abi::CUDNN_ACTIVATION_SWISH;
+        case ActivationMode::ELU:     return abi::CUDNN_ACTIVATION_ELU;
+        case ActivationMode::ClippedReLU: return abi::CUDNN_ACTIVATION_CLIPPED_RELU;
     }
     return abi::CUDNN_ACTIVATION_RELU;
 }
@@ -1772,6 +1774,41 @@ void CuDnnBackend::tensorReduceProduct(const TensorDesc& xd, const float* x, con
     });
 }
 
+void CuDnnBackend::tensorReduceMax(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        tensorReduceMax(xd, X, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::tensorReduceMin(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        tensorReduceMin(xd, X, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::tensorReduceMean(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        tensorReduceMean(xd, X, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::tensorReduceNorm1(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        tensorReduceNorm1(xd, X, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        tensorReduceNorm2(xd, X, yd, Y, legacyContext());
+    });
+}
+
 void CuDnnBackend::convolutionForward(const TensorDesc& xd,
                                       const void* x,
                                       const TensorDesc& wd,
@@ -2957,6 +2994,46 @@ void CuDnnBackend::tensorReduceProduct(const TensorDesc& xd, const void* x, cons
     cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_MUL, xd, x, yd, y);
 }
 
+void CuDnnBackend::tensorReduceMax(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorReduceMax");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    StreamScratch scratch(ctx);
+    cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_MAX, xd, x, yd, y);
+}
+
+void CuDnnBackend::tensorReduceMin(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorReduceMin");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    StreamScratch scratch(ctx);
+    cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_MIN, xd, x, yd, y);
+}
+
+void CuDnnBackend::tensorReduceMean(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorReduceMean");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    StreamScratch scratch(ctx);
+    cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_AVG, xd, x, yd, y);
+}
+
+void CuDnnBackend::tensorReduceNorm1(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorReduceNorm1");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    StreamScratch scratch(ctx);
+    cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_NORM1, xd, x, yd, y);
+}
+
+void CuDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorReduceNorm2");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    StreamScratch scratch(ctx);
+    cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_NORM2, xd, x, yd, y);
+}
+
 namespace {
 
 enum SdpaUid : std::int64_t {
@@ -3228,6 +3305,11 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
 
             case DnnOperation::TensorReduceSum:
             case DnnOperation::TensorReduceProduct:
+            case DnnOperation::TensorReduceMax:
+            case DnnOperation::TensorReduceMin:
+            case DnnOperation::TensorReduceMean:
+            case DnnOperation::TensorReduceNorm1:
+            case DnnOperation::TensorReduceNorm2:
                 return DnnSupport::yes("cudnnReduceTensor");
 
             default:

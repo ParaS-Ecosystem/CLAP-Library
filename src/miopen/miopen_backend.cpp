@@ -113,6 +113,8 @@ namespace clap {
         miopenActivationMode_t actMode(ActivationMode m) {
             if (m == ActivationMode::ReLU) return miopenActivationRELU;
             if (m == ActivationMode::Tanh) return miopenActivationTANH;
+            if (m == ActivationMode::ELU) return miopenActivationELU;
+            if (m == ActivationMode::ClippedReLU) return miopenActivationCLIPPEDRELU;
             return miopenActivationLOGISTIC;
         }
         struct Act {
@@ -554,6 +556,51 @@ void MiOpenBackend::tensorReduceProduct(const TensorDesc& xd, const float* x, co
     Buf X0(bytes(xd)), Y0(bytes(yd));
     X0.h2d(x);
     tensorReduceProduct(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorReduceMax(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorReduceMax(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorReduceMin(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorReduceMin(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorReduceMean(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorReduceMean(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorReduceNorm1(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorReduceNorm1(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorReduceNorm2(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorReduceNorm2(xd, X0.p, yd, Y0.p, legacyContext());
     syncLegacy();
     Y0.d2h(y);
 }
@@ -1292,6 +1339,46 @@ void MiOpenBackend::tensorReduceProduct(const TensorDesc& xd, const void* x, con
     miopenReduce(h.v, scratch, miopenReduceTensorMul, xd, x, yd, y);
 }
 
+void MiOpenBackend::tensorReduceMax(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorReduceMax");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Scratch scratch(ctx);
+    miopenReduce(h.v, scratch, miopenReduceTensorMax, xd, x, yd, y);
+}
+
+void MiOpenBackend::tensorReduceMin(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorReduceMin");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Scratch scratch(ctx);
+    miopenReduce(h.v, scratch, miopenReduceTensorMin, xd, x, yd, y);
+}
+
+void MiOpenBackend::tensorReduceMean(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorReduceMean");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Scratch scratch(ctx);
+    miopenReduce(h.v, scratch, miopenReduceTensorAvg, xd, x, yd, y);
+}
+
+void MiOpenBackend::tensorReduceNorm1(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorReduceNorm1");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Scratch scratch(ctx);
+    miopenReduce(h.v, scratch, miopenReduceTensorNorm1, xd, x, yd, y);
+}
+
+void MiOpenBackend::tensorReduceNorm2(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorReduceNorm2");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Scratch scratch(ctx);
+    miopenReduce(h.v, scratch, miopenReduceTensorNorm2, xd, x, yd, y);
+}
+
 namespace {
 
 struct MhaConstants {
@@ -1568,6 +1655,11 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
 
             case DnnOperation::TensorReduceSum:
             case DnnOperation::TensorReduceProduct:
+            case DnnOperation::TensorReduceMax:
+            case DnnOperation::TensorReduceMin:
+            case DnnOperation::TensorReduceMean:
+            case DnnOperation::TensorReduceNorm1:
+            case DnnOperation::TensorReduceNorm2:
                 return DnnSupport::yes("miopenReduceTensor");
 
             default:

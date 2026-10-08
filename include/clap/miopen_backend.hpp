@@ -76,6 +76,11 @@ public:
     void tensorMax(const TensorDesc&, const float*, const TensorDesc&, const float*, const TensorDesc&, float*) override;
     void tensorReduceSum(const TensorDesc&, const float*, const TensorDesc&, float*) override;
     void tensorReduceProduct(const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorReduceMax(const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorReduceMin(const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorReduceMean(const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorReduceNorm1(const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorReduceNorm2(const TensorDesc&, const float*, const TensorDesc&, float*) override;
 
     ExecutionBackend executionBackend() const noexcept override;
     DnnSupport supports(const DnnCapabilityQuery&, const ExecutionContext&) const override;
@@ -110,6 +115,11 @@ public:
     void tensorMax(const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
     void tensorReduceSum(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
     void tensorReduceProduct(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorReduceMax(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorReduceMin(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorReduceMean(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorReduceNorm1(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorReduceNorm2(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
     void scaledDotProductAttentionForward(const AttentionDesc&, const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc*, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
 
 private:

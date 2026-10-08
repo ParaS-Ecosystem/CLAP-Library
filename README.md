@@ -53,7 +53,7 @@ CLAP LAPACK also loads its libraries at runtime (`dlopen`). Install the one(s) f
 The CLAP DNN component loads its vendor libraries at runtime (`dlopen`), so they are not link-time dependencies. Install only the one(s) for the hardware you will run on.
 
 - **Intel oneDNN** (CPU)
-  - Version: **3.x** (validated with **3.11.4**)
+  - Version: **3.14.x**
   - Must be built with the **oneDNN Graph API** (default build) for the SDPA operation
   - Library loaded: `libdnnl.so` / `libdnnl.so.3`
 
@@ -138,8 +138,6 @@ export LD_LIBRARY_PATH=/path/to/rocm/lib64:$LD_LIBRARY_PATH
 
 ```bash
 export LD_LIBRARY_PATH=/path/to/cuda/lib64:$LD_LIBRARY_PATH
-```
-```
 ```
 
 ### DNN Library Paths

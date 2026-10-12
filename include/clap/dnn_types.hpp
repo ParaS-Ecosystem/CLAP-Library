@@ -49,7 +49,9 @@ enum class ActivationMode {
     ReLU,
     Sigmoid,
     Tanh,
-    SiLU
+    SiLU,
+    ELU,
+    ClippedReLU
 };
 
 enum class PoolingMode {
@@ -301,7 +303,12 @@ enum class DnnOperation {
     TensorMax,
     TensorReduceSum,
     TensorReduceProduct,
-    ScaledDotProductAttentionForward
+    ScaledDotProductAttentionForward,
+    TensorReduceMax,
+    TensorReduceMin,
+    TensorReduceMean,
+    TensorReduceNorm1,
+    TensorReduceNorm2
 };
 
 struct DnnCapabilityQuery {
@@ -355,6 +362,14 @@ struct DnnCapabilityQuery {
             q.tensors.push_back(*mask_desc);
             q.has_mask = true;
         }
+        return q;
+    }
+
+    static DnnCapabilityQuery forReduction(DnnOperation op, const TensorDesc& x, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q;
+        q.operation = op;
+        q.tensors = {x, y};
         return q;
     }
 
@@ -422,6 +437,11 @@ inline const char* dnnOperationName(DnnOperation operation) noexcept
         case DnnOperation::TensorReduceSum:                  return "TensorReduceSum";
         case DnnOperation::TensorReduceProduct:              return "TensorReduceProduct";
         case DnnOperation::ScaledDotProductAttentionForward: return "ScaledDotProductAttentionForward";
+        case DnnOperation::TensorReduceMax:                  return "TensorReduceMax";
+        case DnnOperation::TensorReduceMin:                  return "TensorReduceMin";
+        case DnnOperation::TensorReduceMean:                 return "TensorReduceMean";
+        case DnnOperation::TensorReduceNorm1:                return "TensorReduceNorm1";
+        case DnnOperation::TensorReduceNorm2:                return "TensorReduceNorm2";
     }
     return "unknown";
 }

@@ -158,6 +158,11 @@ public:
     virtual void tensorMax(const TensorDesc&, const float*, const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
     virtual void tensorReduceSum(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
     virtual void tensorReduceProduct(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
+    virtual void tensorReduceMax(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
+    virtual void tensorReduceMin(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
+    virtual void tensorReduceMean(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
+    virtual void tensorReduceNorm1(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
+    virtual void tensorReduceNorm2(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
 
     virtual ExecutionBackend executionBackend() const noexcept = 0;
 
@@ -372,6 +377,31 @@ public:
         const ExecutionContext& ctx) = 0;
 
     virtual void tensorReduceProduct(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorReduceMax(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorReduceMin(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorReduceMean(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorReduceNorm1(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorReduceNorm2(
         const TensorDesc& x_desc, const void* x,
         const TensorDesc& y_desc, void* y,
         const ExecutionContext& ctx) = 0;

@@ -180,10 +180,17 @@ namespace clap {
             if (m == ActivationMode::ReLU) return dnnl_eltwise_relu;
             if (m == ActivationMode::Sigmoid) return dnnl_eltwise_logistic;
             if (m == ActivationMode::SiLU) return dnnl_eltwise_swish;
+            if (m == ActivationMode::ELU) return dnnl_eltwise_elu;
+            if (m == ActivationMode::ClippedReLU) return dnnl_eltwise_clip_v2;
             return dnnl_eltwise_tanh;
         }
         float act_alpha(const ActivationDesc& a) {
-            return a.mode == ActivationMode::SiLU ? 1.0f : (float) a.alpha;
+            if (a.mode == ActivationMode::SiLU) return 1.0f;
+            if (a.mode == ActivationMode::ClippedReLU) return 0.0f;
+            return (float) a.alpha;
+        }
+        float act_beta(const ActivationDesc& a) {
+            return a.mode == ActivationMode::ClippedReLU ? (float) a.alpha : 0.0f;
         }
         dnnl_alg_kind_t pool_alg(PoolingMode m) {
             return m == PoolingMode::Max ? dnnl_pooling_max: dnnl_pooling_avg_include_padding;
@@ -483,6 +490,31 @@ void OneDnnBackend::tensorReduceProduct(const TensorDesc& xd, const float* x, co
     tensorReduceProduct(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
 }
 
+void OneDnnBackend::tensorReduceMax(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    tensorReduceMax(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorReduceMin(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    tensorReduceMin(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorReduceMean(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    tensorReduceMean(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorReduceNorm1(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    tensorReduceNorm1(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    tensorReduceNorm2(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
 void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -611,7 +643,7 @@ void OneDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd, const v
     TensorDesc bd(yd.type, {yd.dims.at(1)});
 
     Attr attr;
-    attr.appendEltwise(act_alg(a.mode), act_alpha(a), 0.0f);
+    attr.appendEltwise(act_alg(a.mode), act_alpha(a), act_beta(a));
 
     dnn_contract::trace("CPU", "fusedConvolutionBiasActivation", "dnnl convolution + eltwise post-op");
     conv_fwd(q, xd, x, wd, w, c, yd, y, &bd, bias, attr.v);
@@ -627,7 +659,7 @@ void OneDnnBackend::activationForward(const ActivationDesc& a, const TensorDesc&
     checkPd(
         dnn_dyn::p_dnnl_eltwise_forward_primitive_desc_create(
             &pd.v, q.e, dnnl_forward_inference, act_alg(a.mode),
-            xm.v, ym.v, act_alpha(a), 0.0f, nullptr),
+            xm.v, ym.v, act_alpha(a), act_beta(a), nullptr),
         "dnnl_eltwise_forward_primitive_desc_create");
 
     Prim p(pd);
@@ -648,7 +680,7 @@ void OneDnnBackend::activationBackward(const ActivationDesc& a, const TensorDesc
     checkPd(
         dnn_dyn::p_dnnl_eltwise_forward_primitive_desc_create(
             &hint.v, q.e, dnnl_forward_training, act_alg(a.mode),
-            xm.v, xm.v, act_alpha(a), 0.0f, nullptr),
+            xm.v, xm.v, act_alpha(a), act_beta(a), nullptr),
         "dnnl_eltwise_forward_primitive_desc_create(hint)");
 
     Pd pd;
@@ -656,7 +688,7 @@ void OneDnnBackend::activationBackward(const ActivationDesc& a, const TensorDesc
         dnn_dyn::p_dnnl_eltwise_backward_primitive_desc_create(
             &pd.v, q.e, act_alg(a.mode),
             dxm.v, dym.v, xm.v,
-            act_alpha(a), 0.0f, hint.v, nullptr),
+            act_alpha(a), act_beta(a), hint.v, nullptr),
         "dnnl_eltwise_backward_primitive_desc_create");
 
     Prim p(pd);
@@ -1263,7 +1295,7 @@ void OneDnnBackend::tensorMax(const TensorDesc& ad, const void* a, const TensorD
     onednnBinary(native_->engine, ctx, dnnl_binary_max, ad, a, bd, b, yd, y);
 }
 
-static void onednnReduce(dnnl_engine_t engine, const ExecutionContext& ctx, dnnl_alg_kind_t alg, const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y)
+static void onednnReduce(dnnl_engine_t engine, const ExecutionContext& ctx, dnnl_alg_kind_t alg, const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, float power = 0.0f)
 {
     Cpu q(engine, ctx);
     Md xm(xd), ym(yd);
@@ -1271,7 +1303,7 @@ static void onednnReduce(dnnl_engine_t engine, const ExecutionContext& ctx, dnnl
     Pd pd;
     checkPd(
         dnn_dyn::p_dnnl_reduction_primitive_desc_create(
-            &pd.v, q.e, alg, xm.v, ym.v, 0, 0, nullptr),
+            &pd.v, q.e, alg, xm.v, ym.v, power, 0, nullptr),
         "dnnl_reduction_primitive_desc_create");
     Prim p(pd);
     exec(p, q, {
@@ -1288,6 +1320,31 @@ void OneDnnBackend::tensorReduceSum(const TensorDesc& xd, const void* x, const T
 void OneDnnBackend::tensorReduceProduct(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     onednnReduce(native_->engine, ctx, dnnl_reduction_mul, xd, x, yd, y);
+}
+
+void OneDnnBackend::tensorReduceMax(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    onednnReduce(native_->engine, ctx, dnnl_reduction_max, xd, x, yd, y);
+}
+
+void OneDnnBackend::tensorReduceMin(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    onednnReduce(native_->engine, ctx, dnnl_reduction_min, xd, x, yd, y);
+}
+
+void OneDnnBackend::tensorReduceMean(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    onednnReduce(native_->engine, ctx, dnnl_reduction_mean, xd, x, yd, y);
+}
+
+void OneDnnBackend::tensorReduceNorm1(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    onednnReduce(native_->engine, ctx, dnnl_reduction_norm_lp_sum, xd, x, yd, y, 1.0f);
+}
+
+void OneDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    onednnReduce(native_->engine, ctx, dnnl_reduction_norm_lp_sum, xd, x, yd, y, 2.0f);
 }
 
 namespace {
@@ -1749,7 +1806,7 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
                 return probeResult(
                     dnn_dyn::p_dnnl_eltwise_forward_primitive_desc_create(
                         &pd.v, engine, dnnl_forward_training, act_alg(query.activation.mode),
-                        xm.v, xm.v, act_alpha(query.activation), 0.0f, nullptr),
+                        xm.v, xm.v, act_alpha(query.activation), act_beta(query.activation), nullptr),
                     "eltwise");
             }
 
@@ -1822,16 +1879,30 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
             }
 
             case DnnOperation::TensorReduceSum:
-            case DnnOperation::TensorReduceProduct: {
+            case DnnOperation::TensorReduceProduct:
+            case DnnOperation::TensorReduceMax:
+            case DnnOperation::TensorReduceMin:
+            case DnnOperation::TensorReduceMean:
+            case DnnOperation::TensorReduceNorm1:
+            case DnnOperation::TensorReduceNorm2: {
                 if (query.tensors.size() < 2)
                     return DnnSupport::no("reduction capability queries need {x, y} descriptors");
+                dnnl_alg_kind_t alg = dnnl_reduction_sum;
+                float p = 0.0f;
+                switch (query.operation) {
+                    case DnnOperation::TensorReduceProduct: alg = dnnl_reduction_mul; break;
+                    case DnnOperation::TensorReduceMax:     alg = dnnl_reduction_max; break;
+                    case DnnOperation::TensorReduceMin:     alg = dnnl_reduction_min; break;
+                    case DnnOperation::TensorReduceMean:    alg = dnnl_reduction_mean; break;
+                    case DnnOperation::TensorReduceNorm1:   alg = dnnl_reduction_norm_lp_sum; p = 1.0f; break;
+                    case DnnOperation::TensorReduceNorm2:   alg = dnnl_reduction_norm_lp_sum; p = 2.0f; break;
+                    default: break;
+                }
                 Md xm(query.tensor(0)), ym(query.tensor(1));
                 Pd pd;
                 return probeResult(
                     dnn_dyn::p_dnnl_reduction_primitive_desc_create(
-                        &pd.v, engine,
-                        query.operation == DnnOperation::TensorReduceSum ? dnnl_reduction_sum : dnnl_reduction_mul,
-                        xm.v, ym.v, 0.0f, 0.0f, nullptr),
+                        &pd.v, engine, alg, xm.v, ym.v, p, 0.0f, nullptr),
                     "reduction");
             }
 

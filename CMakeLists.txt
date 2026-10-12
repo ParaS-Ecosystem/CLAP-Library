@@ -156,6 +156,15 @@ if(BUILD_DNN_EXAMPLES)
         softmax/log_softmax
         attention/sdpa
         validation/param2_dnn_validation
+
+        activation/elu
+        activation/clipped_relu
+        reduction/max
+        reduction/min
+        reduction/mean
+        reduction/norm1
+        reduction/norm2
+        validation/dnn_reduction_activation_validation
     )
 
     foreach(rel IN LISTS CLAP_DNN_EXAMPLES)

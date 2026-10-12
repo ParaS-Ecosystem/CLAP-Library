@@ -151,15 +151,15 @@ void OpenBlasBackend::trsm(Layout layout, Side side, Uplo uplo,
 }
 
 // Complex Float GEMM
-void OpenBlasBackend::gemm(Layout layout, Transpose trans, Transpose transB,
+void OpenBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
                            int m, int n, int K,
                            const std::complex<float> *alpha,
                            const std::complex<float> *A, int lda,
                            const std::complex<float> *B, int ldb,
                            const std::complex<float> *beta,
                            std::complex<float> *C, int ldc) {
-  clap_cblas_cgemm(to_cblas_order(layout), to_cblas_trans(trans),
-                   to_cblas_trans(trans), (int)m, (int)n, (int)K, alpha, A,
+  clap_cblas_cgemm(to_cblas_order(layout), to_cblas_trans(transA),
+                   to_cblas_trans(transB), (int)m, (int)n, (int)K, alpha, A,
                    (int)lda, B, (int)ldb, beta, C, (int)ldc);
 }
 
@@ -228,15 +228,15 @@ void OpenBlasBackend::trsm(Layout layout, Side side, Uplo uplo, Transpose trans,
 }
 
 // Complex Double GEMM
-void OpenBlasBackend::gemm(Layout layout, Transpose trans, Transpose transB,
+void OpenBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
                            int m, int n, int K,
                            const std::complex<double> *alpha,
                            const std::complex<double> *A, int lda,
                            const std::complex<double> *B, int ldb,
                            const std::complex<double> *beta,
                            std::complex<double> *C, int ldc) {
-  clap_cblas_zgemm(to_cblas_order(layout), to_cblas_trans(trans),
-                   to_cblas_trans(trans), (int)m, (int)n, (int)K, alpha, A,
+  clap_cblas_zgemm(to_cblas_order(layout), to_cblas_trans(transA),
+                   to_cblas_trans(transB), (int)m, (int)n, (int)K, alpha, A,
                    (int)lda, B, (int)ldb, beta, C, (int)ldc);
 }
 

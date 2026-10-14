@@ -16,6 +16,7 @@
 // -----------------------------------------------------------------------------
 
 #include "clap/lapack_dyn.hpp"
+#include "clap/blas/types.hpp"
 #include <dlfcn.h>
 #include <iostream>
 #include <mutex>
@@ -25,14 +26,24 @@ namespace dyn_lapack {
 
 lapack_int (*p_LAPACKE_sgetrf)(int,lapack_int,lapack_int,float*,lapack_int,lapack_int*)=nullptr;
 lapack_int (*p_LAPACKE_dgetrf)(int,lapack_int,lapack_int,double*,lapack_int,lapack_int*)=nullptr;
+lapack_int (*p_LAPACKE_cgetrf)(int,lapack_int,lapack_int,lapack_complex_float*,lapack_int,lapack_int*)=nullptr;
+lapack_int (*p_LAPACKE_zgetrf)(int,lapack_int,lapack_int,lapack_complex_double*,lapack_int,lapack_int*)=nullptr;
 lapack_int (*p_LAPACKE_sgetrs)(int,char,lapack_int,lapack_int,const float*,lapack_int,const lapack_int*,float*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_dgetrs)(int,char,lapack_int,lapack_int,const double*,lapack_int,const lapack_int*,double*,lapack_int)=nullptr;
+lapack_int (*p_LAPACKE_cgetrs)(int,char,lapack_int,lapack_int,const lapack_complex_float*,lapack_int,const lapack_int*,lapack_complex_float*,lapack_int)=nullptr;
+lapack_int (*p_LAPACKE_zgetrs)(int,char,lapack_int,lapack_int,const lapack_complex_double*,lapack_int,const lapack_int*,lapack_complex_double*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_sgesv)(int,lapack_int,lapack_int,float*,lapack_int,lapack_int*,float*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_dgesv)(int,lapack_int,lapack_int,double*,lapack_int,lapack_int*,double*,lapack_int)=nullptr;
+lapack_int (*p_LAPACKE_cgesv)(int,lapack_int,lapack_int,lapack_complex_float*,lapack_int,lapack_int*,lapack_complex_float*,lapack_int)=nullptr;
+lapack_int (*p_LAPACKE_zgesv)(int,lapack_int,lapack_int,lapack_complex_double*,lapack_int,lapack_int*,lapack_complex_double*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_sgetri)(int,lapack_int,float*,lapack_int,const lapack_int*)=nullptr;
 lapack_int (*p_LAPACKE_dgetri)(int,lapack_int,double*,lapack_int,const lapack_int*)=nullptr;
+lapack_int (*p_LAPACKE_cgetri)(int,lapack_int,lapack_complex_float*,lapack_int,const lapack_int*)=nullptr;
+lapack_int (*p_LAPACKE_zgetri)(int,lapack_int,lapack_complex_double*,lapack_int,const lapack_int*)=nullptr;
 lapack_int (*p_LAPACKE_spotrf)(int,char,lapack_int,float*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_dpotrf)(int,char,lapack_int,double*,lapack_int)=nullptr;
+lapack_int (*p_LAPACKE_cpotrf)(int,char,lapack_int,lapack_complex_float*,lapack_int)=nullptr;
+lapack_int (*p_LAPACKE_zpotrf)(int,char,lapack_int,lapack_complex_double*,lapack_int)=nullptr;
 lapack_int (*p_LAPACKE_spotri)(int, char, lapack_int, float*, lapack_int) = nullptr;
 lapack_int (*p_LAPACKE_dpotri)(int, char, lapack_int, double*, lapack_int) = nullptr;
 lapack_int (*p_LAPACKE_spotrs)(int,char,lapack_int,lapack_int,const float*,lapack_int,float*,lapack_int)=nullptr;
@@ -58,14 +69,24 @@ cusolverStatus_t (*p_cusolverDnCreate)(cusolverDnHandle_t*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDestroy)(cusolverDnHandle_t)=nullptr;
 cusolverStatus_t (*p_cusolverDnSgetrf_bufferSize)(cusolverDnHandle_t,int,int,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDgetrf_bufferSize)(cusolverDnHandle_t,int,int,double*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnCgetrf_bufferSize)(cusolverDnHandle_t,int,int,cuComplex*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnZgetrf_bufferSize)(cusolverDnHandle_t,int,int,cuDoubleComplex*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnSgetrf)(cusolverDnHandle_t,int,int,float*,int,float*,int*,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDgetrf)(cusolverDnHandle_t,int,int,double*,int,double*,int*,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnCgetrf)(cusolverDnHandle_t,int,int,cuComplex*,int,cuComplex*,int*,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnZgetrf)(cusolverDnHandle_t,int,int,cuDoubleComplex*,int,cuDoubleComplex*,int*,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnSgetrs)(cusolverDnHandle_t,int,int,int,const float*,int,const int*,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDgetrs)(cusolverDnHandle_t,int,int,int,const double*,int,const int*,double*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnCgetrs)(cusolverDnHandle_t,int,int,int,const cuComplex*,int,const int*,cuComplex*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnZgetrs)(cusolverDnHandle_t,int,int,int,const cuDoubleComplex*,int,const int*,cuDoubleComplex*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnSpotrf_bufferSize)(cusolverDnHandle_t,int,int,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDpotrf_bufferSize)(cusolverDnHandle_t,int,int,double*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnCpotrf_bufferSize)(cusolverDnHandle_t,int,int,cuComplex*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnZpotrf_bufferSize)(cusolverDnHandle_t,int,int,cuDoubleComplex*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnSpotrf)(cusolverDnHandle_t,int,int,float*,int,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDpotrf)(cusolverDnHandle_t,int,int,double*,int,double*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnCpotrf)(cusolverDnHandle_t,int,int,cuComplex*,int,cuComplex*,int,int*)=nullptr;
+cusolverStatus_t (*p_cusolverDnZpotrf)(cusolverDnHandle_t,int,int,cuDoubleComplex*,int,cuDoubleComplex*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnSpotri_bufferSize)(cusolverDnHandle_t,int,int,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDpotri_bufferSize)(cusolverDnHandle_t,int,int,double*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnSpotri)(cusolverDnHandle_t,int,int,float*,int,float*,int,int*)=nullptr;
@@ -81,20 +102,34 @@ cusolverStatus_t (*p_cusolverDnDsyevd_bufferSize)(cusolverDnHandle_t,int,int,int
 cusolverStatus_t (*p_cusolverDnSsyevd)(cusolverDnHandle_t,int,int,int,float*,int,float*,float*,int,int*)=nullptr;
 cusolverStatus_t (*p_cusolverDnDsyevd)(cusolverDnHandle_t,int,int,int,double*,int,double*,double*,int,int*)=nullptr;
 
-int (*p_rocsolver_sgetrf)(rocsolver_handle,rocblas_int_solver,rocblas_int_solver,float*,rocblas_int_solver,rocblas_int_solver*,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_dgetrf)(rocsolver_handle,rocblas_int_solver,rocblas_int_solver,double*,rocblas_int_solver,rocblas_int_solver*,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_sgetrs)(rocsolver_handle,int,rocblas_int_solver,rocblas_int_solver,const float*,rocblas_int_solver,const rocblas_int_solver*,float*,rocblas_int_solver)=nullptr;
-int (*p_rocsolver_dgetrs)(rocsolver_handle,int,rocblas_int_solver,rocblas_int_solver,const double*,rocblas_int_solver,const rocblas_int_solver*,double*,rocblas_int_solver)=nullptr;
-int (*p_rocsolver_spotrf)(rocsolver_handle,int,rocblas_int_solver,float*,rocblas_int_solver,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_dpotrf)(rocsolver_handle,int,rocblas_int_solver,double*,rocblas_int_solver,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_spotri)(rocsolver_handle,int,rocblas_int_solver,float*,rocblas_int_solver,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_dpotri)(rocsolver_handle,int,rocblas_int_solver,double*,rocblas_int_solver,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_spotrs)(rocsolver_handle,int,rocblas_int_solver,rocblas_int_solver,const float*,rocblas_int_solver,float*,rocblas_int_solver) = nullptr;
-int (*p_rocsolver_dpotrs)(rocsolver_handle,int,rocblas_int_solver,rocblas_int_solver,const double*,rocblas_int_solver,double*,rocblas_int_solver) = nullptr;
-int (*p_rocsolver_sgesvd)(rocsolver_handle,int,int,rocblas_int_solver,rocblas_int_solver,float*,rocblas_int_solver,float*,float*,rocblas_int_solver,float*,rocblas_int_solver,float*,int,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_dgesvd)(rocsolver_handle,int,int,rocblas_int_solver,rocblas_int_solver,double*,rocblas_int_solver,double*,double*,rocblas_int_solver,double*,rocblas_int_solver,double*,int,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_ssyev)(rocsolver_handle,int,int,rocblas_int_solver,float*,rocblas_int_solver,float*,float*,rocblas_int_solver*)=nullptr;
-int (*p_rocsolver_dsyev)(rocsolver_handle,int,int,rocblas_int_solver,double*,rocblas_int_solver,double*,double*,rocblas_int_solver*)=nullptr;
+int (*p_rocsolver_sgetrf)(rocsolver_handle,rocblas_int,rocblas_int,float*,rocblas_int,rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_dgetrf)(rocsolver_handle,rocblas_int,rocblas_int,double*,rocblas_int,rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_cgetrf)(rocsolver_handle,rocblas_int,rocblas_int,rocblas_float_complex*,rocblas_int,rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_zgetrf)(rocsolver_handle,rocblas_int,rocblas_int,rocblas_double_complex*,rocblas_int,rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_sgetrs)(rocsolver_handle,int,rocblas_int,rocblas_int,const float*,rocblas_int,const rocblas_int*,float*,rocblas_int)=nullptr;
+int (*p_rocsolver_dgetrs)(rocsolver_handle,int,rocblas_int,rocblas_int,const double*,rocblas_int,const rocblas_int*,double*,rocblas_int)=nullptr;
+int (*p_rocsolver_cgetrs)(rocsolver_handle,int,rocblas_int,rocblas_int,const rocblas_float_complex*,rocblas_int,const rocblas_int*,rocblas_float_complex*,rocblas_int)=nullptr;
+int (*p_rocsolver_zgetrs)(rocsolver_handle,int,rocblas_int,rocblas_int,const rocblas_double_complex*,rocblas_int,const rocblas_int*,rocblas_double_complex*,rocblas_int)=nullptr;
+int (*p_rocsolver_sgesv)(rocsolver_handle,rocblas_int,rocblas_int,float*,rocblas_int,rocblas_int*,float*,rocblas_int, rocblas_int*)=nullptr;
+int (*p_rocsolver_dgesv)(rocsolver_handle,rocblas_int,rocblas_int,double*,rocblas_int,rocblas_int*,double*,rocblas_int, rocblas_int*)=nullptr;
+int (*p_rocsolver_cgesv)(rocsolver_handle,rocblas_int,rocblas_int,rocblas_float_complex*,rocblas_int,rocblas_int*,rocblas_float_complex*,rocblas_int, rocblas_int*)=nullptr;
+int (*p_rocsolver_zgesv)(rocsolver_handle,rocblas_int,rocblas_int,rocblas_double_complex*,rocblas_int,rocblas_int*,rocblas_double_complex*,rocblas_int, rocblas_int*)=nullptr;
+int (*p_rocsolver_sgetri)(rocsolver_handle,rocblas_int,float*,rocblas_int,const rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_dgetri)(rocsolver_handle,rocblas_int,double*,rocblas_int,const rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_cgetri)(rocsolver_handle,rocblas_int,rocblas_float_complex*,rocblas_int,const rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_zgetri)(rocsolver_handle,rocblas_int,rocblas_double_complex*,rocblas_int,const rocblas_int*,rocblas_int*)=nullptr;
+int (*p_rocsolver_spotrf)(rocsolver_handle,int,rocblas_int,float*,rocblas_int,rocblas_int*)=nullptr;
+int (*p_rocsolver_dpotrf)(rocsolver_handle,int,rocblas_int,double*,rocblas_int,rocblas_int*)=nullptr;
+int (*p_rocsolver_cpotrf)(rocsolver_handle,int,rocblas_int,rocblas_float_complex*,rocblas_int,rocblas_int*)=nullptr;
+int (*p_rocsolver_zpotrf)(rocsolver_handle,int,rocblas_int,rocblas_double_complex*,rocblas_int,rocblas_int*)=nullptr;
+int (*p_rocsolver_spotri)(rocsolver_handle,int,rocblas_int,float*,rocblas_int,rocblas_int*)=nullptr;
+int (*p_rocsolver_dpotri)(rocsolver_handle,int,rocblas_int,double*,rocblas_int,rocblas_int*)=nullptr;
+int (*p_rocsolver_spotrs)(rocsolver_handle,int,rocblas_int,rocblas_int,const float*,rocblas_int,float*,rocblas_int) = nullptr;
+int (*p_rocsolver_dpotrs)(rocsolver_handle,int,rocblas_int,rocblas_int,const double*,rocblas_int,double*,rocblas_int) = nullptr;
+int (*p_rocsolver_sgesvd)(rocsolver_handle,int,int,rocblas_int,rocblas_int,float*,rocblas_int,float*,float*,rocblas_int,float*,rocblas_int,float*,int,rocblas_int*)=nullptr;
+int (*p_rocsolver_dgesvd)(rocsolver_handle,int,int,rocblas_int,rocblas_int,double*,rocblas_int,double*,double*,rocblas_int,double*,rocblas_int,double*,int,rocblas_int*)=nullptr;
+int (*p_rocsolver_ssyev)(rocsolver_handle,int,int,rocblas_int,float*,rocblas_int,float*,float*,rocblas_int*)=nullptr;
+int (*p_rocsolver_dsyev)(rocsolver_handle,int,int,rocblas_int,double*,rocblas_int,double*,double*,rocblas_int*)=nullptr;
 
 #define LOAD_SYM(handle, ptr, name)                                    \
     do {                                                               \
@@ -137,14 +172,24 @@ bool loadOpenBLASLapack() {
 
     LOAD_SYM(handle, p_LAPACKE_sgetrf, LAPACKE_sgetrf);
     LOAD_SYM(handle, p_LAPACKE_dgetrf, LAPACKE_dgetrf);
+    LOAD_SYM(handle, p_LAPACKE_cgetrf, LAPACKE_cgetrf);
+    LOAD_SYM(handle, p_LAPACKE_zgetrf, LAPACKE_zgetrf);
     LOAD_SYM(handle, p_LAPACKE_sgetrs, LAPACKE_sgetrs);
     LOAD_SYM(handle, p_LAPACKE_dgetrs, LAPACKE_dgetrs);
+    LOAD_SYM(handle, p_LAPACKE_cgetrs, LAPACKE_cgetrs);
+    LOAD_SYM(handle, p_LAPACKE_zgetrs, LAPACKE_zgetrs);
     LOAD_SYM(handle, p_LAPACKE_sgesv,  LAPACKE_sgesv);
     LOAD_SYM(handle, p_LAPACKE_dgesv,  LAPACKE_dgesv);
+    LOAD_SYM(handle, p_LAPACKE_cgesv,  LAPACKE_cgesv);
+    LOAD_SYM(handle, p_LAPACKE_zgesv,  LAPACKE_zgesv);
     LOAD_SYM(handle, p_LAPACKE_sgetri, LAPACKE_sgetri);
     LOAD_SYM(handle, p_LAPACKE_dgetri, LAPACKE_dgetri);
+    LOAD_SYM(handle, p_LAPACKE_cgetri, LAPACKE_cgetri);
+    LOAD_SYM(handle, p_LAPACKE_zgetri, LAPACKE_zgetri);
     LOAD_SYM(handle, p_LAPACKE_spotrf, LAPACKE_spotrf);
     LOAD_SYM(handle, p_LAPACKE_dpotrf, LAPACKE_dpotrf);
+    LOAD_SYM(handle, p_LAPACKE_cpotrf, LAPACKE_cpotrf);
+    LOAD_SYM(handle, p_LAPACKE_zpotrf, LAPACKE_zpotrf);
     LOAD_SYM(handle, p_LAPACKE_spotri, LAPACKE_spotri);
     LOAD_SYM(handle, p_LAPACKE_dpotri, LAPACKE_dpotri);
     LOAD_SYM(handle, p_LAPACKE_spotrs, LAPACKE_spotrs);
@@ -202,14 +247,24 @@ bool loadCuSolver() {
     LOAD_SYM(handle, p_cusolverDnDestroy, cusolverDnDestroy);
     LOAD_SYM(handle, p_cusolverDnSgetrf_bufferSize, cusolverDnSgetrf_bufferSize);
     LOAD_SYM(handle, p_cusolverDnDgetrf_bufferSize, cusolverDnDgetrf_bufferSize);
+    LOAD_SYM(handle, p_cusolverDnCgetrf_bufferSize, cusolverDnCgetrf_bufferSize);
+    LOAD_SYM(handle, p_cusolverDnZgetrf_bufferSize, cusolverDnZgetrf_bufferSize);
     LOAD_SYM(handle, p_cusolverDnSgetrf,  cusolverDnSgetrf);
     LOAD_SYM(handle, p_cusolverDnDgetrf,  cusolverDnDgetrf);
+    LOAD_SYM(handle, p_cusolverDnCgetrf,  cusolverDnCgetrf);
+    LOAD_SYM(handle, p_cusolverDnZgetrf,  cusolverDnZgetrf);
     LOAD_SYM(handle, p_cusolverDnSgetrs,  cusolverDnSgetrs);
     LOAD_SYM(handle, p_cusolverDnDgetrs,  cusolverDnDgetrs);
+    LOAD_SYM(handle, p_cusolverDnCgetrs,  cusolverDnCgetrs);
+    LOAD_SYM(handle, p_cusolverDnZgetrs,  cusolverDnZgetrs);
     LOAD_SYM(handle, p_cusolverDnSpotrf_bufferSize, cusolverDnSpotrf_bufferSize);
     LOAD_SYM(handle, p_cusolverDnDpotrf_bufferSize, cusolverDnDpotrf_bufferSize);
+    LOAD_SYM(handle, p_cusolverDnCpotrf_bufferSize, cusolverDnCpotrf_bufferSize);
+    LOAD_SYM(handle, p_cusolverDnZpotrf_bufferSize, cusolverDnZpotrf_bufferSize);
     LOAD_SYM(handle, p_cusolverDnSpotrf,  cusolverDnSpotrf);
     LOAD_SYM(handle, p_cusolverDnDpotrf,  cusolverDnDpotrf);
+    LOAD_SYM(handle, p_cusolverDnCpotrf,  cusolverDnCpotrf);
+    LOAD_SYM(handle, p_cusolverDnZpotrf,  cusolverDnZpotrf);
     LOAD_SYM(handle, p_cusolverDnSpotri_bufferSize, cusolverDnSpotri_bufferSize);
     LOAD_SYM(handle, p_cusolverDnDpotri_bufferSize, cusolverDnDpotri_bufferSize);
     LOAD_SYM(handle, p_cusolverDnSpotri,  cusolverDnSpotri);
@@ -258,10 +313,24 @@ bool loadRocSolver() {
 
     LOAD_SYM(handle, p_rocsolver_sgetrf, rocsolver_sgetrf);
     LOAD_SYM(handle, p_rocsolver_dgetrf, rocsolver_dgetrf);
+    LOAD_SYM(handle, p_rocsolver_cgetrf, rocsolver_cgetrf);
+    LOAD_SYM(handle, p_rocsolver_zgetrf, rocsolver_zgetrf);
     LOAD_SYM(handle, p_rocsolver_sgetrs, rocsolver_sgetrs);
     LOAD_SYM(handle, p_rocsolver_dgetrs, rocsolver_dgetrs);
+    LOAD_SYM(handle, p_rocsolver_cgetrs, rocsolver_cgetrs);
+    LOAD_SYM(handle, p_rocsolver_zgetrs, rocsolver_zgetrs);
+    LOAD_SYM(handle, p_rocsolver_sgesv,  rocsolver_sgesv);
+    LOAD_SYM(handle, p_rocsolver_dgesv,  rocsolver_dgesv);
+    LOAD_SYM(handle, p_rocsolver_cgesv,  rocsolver_cgesv);
+    LOAD_SYM(handle, p_rocsolver_zgesv,  rocsolver_zgesv);
+    LOAD_SYM(handle, p_rocsolver_sgetri, rocsolver_sgetri);
+    LOAD_SYM(handle, p_rocsolver_dgetri, rocsolver_dgetri);
+    LOAD_SYM(handle, p_rocsolver_cgetri, rocsolver_cgetri);
+    LOAD_SYM(handle, p_rocsolver_zgetri, rocsolver_zgetri);
     LOAD_SYM(handle, p_rocsolver_spotrf, rocsolver_spotrf);
     LOAD_SYM(handle, p_rocsolver_dpotrf, rocsolver_dpotrf);
+    LOAD_SYM(handle, p_rocsolver_cpotrf, rocsolver_cpotrf);
+    LOAD_SYM(handle, p_rocsolver_zpotrf, rocsolver_zpotrf);
     LOAD_SYM(handle, p_rocsolver_spotri, rocsolver_spotri);
     LOAD_SYM(handle, p_rocsolver_dpotri, rocsolver_dpotri);
 	LOAD_SYM(handle, p_rocsolver_spotrs, rocsolver_spotrs);

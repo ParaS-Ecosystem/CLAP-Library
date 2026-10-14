@@ -114,15 +114,24 @@ if(BUILD_BLAS_EXAMPLES)
 endif()
 
 if(BUILD_LAPACK_EXAMPLES)
-    foreach(ex gesv_d getrf_getrs_f potrf_d syev_d gesvd_d)
+    set(LAPACK_EXAMPLES
+        getrf_s getrf_d getrf_c getrf_z
+        getrs_s getrs_d getrs_c getrs_z
+        gesv_s  gesv_d  gesv_c  gesv_z
+        getri_s getri_d getri_c getri_z
+        potrf_s potrf_d potrf_c potrf_z
+    )
+
+    foreach(ex IN LISTS LAPACK_EXAMPLES)
         add_executable(lapack_${ex} "examples/lapack/${ex}.cpp")
+
         set_target_properties(lapack_${ex} PROPERTIES
             OUTPUT_NAME "${ex}"
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/examples/lapack"
         )
+
         target_link_libraries(lapack_${ex} PRIVATE clap)
     endforeach()
-
 endif()
 
 if(BUILD_DNN_EXAMPLES)

@@ -83,14 +83,24 @@ const auto clap_cudaDeviceSynchronize = checked_call(dyn::p_cudaDeviceSynchroniz
 
 const auto clap_cusolverDnSgetrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnSgetrf_bufferSize, check_cusolver, "cusolverDnSgetrf_bufferSize");
 const auto clap_cusolverDnDgetrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnDgetrf_bufferSize, check_cusolver, "cusolverDnDgetrf_bufferSize");
+const auto clap_cusolverDnCgetrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnCgetrf_bufferSize, check_cusolver, "cusolverDnCgetrf_bufferSize");
+const auto clap_cusolverDnZgetrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnZgetrf_bufferSize, check_cusolver, "cusolverDnZgetrf_bufferSize");
 const auto clap_cusolverDnSgetrf = checked_call(dyn_lapack::p_cusolverDnSgetrf, check_cusolver, "cusolverDnSgetrf");
 const auto clap_cusolverDnDgetrf = checked_call(dyn_lapack::p_cusolverDnDgetrf, check_cusolver, "cusolverDnDgetrf");
+const auto clap_cusolverDnCgetrf = checked_call(dyn_lapack::p_cusolverDnCgetrf, check_cusolver, "cusolverDnCgetrf");
+const auto clap_cusolverDnZgetrf = checked_call(dyn_lapack::p_cusolverDnZgetrf, check_cusolver, "cusolverDnZgetrf");
 const auto clap_cusolverDnSgetrs = checked_call(dyn_lapack::p_cusolverDnSgetrs, check_cusolver, "cusolverDnSgetrs");
 const auto clap_cusolverDnDgetrs = checked_call(dyn_lapack::p_cusolverDnDgetrs, check_cusolver, "cusolverDnDgetrs");
+const auto clap_cusolverDnCgetrs = checked_call(dyn_lapack::p_cusolverDnCgetrs, check_cusolver, "cusolverDnCgetrs");
+const auto clap_cusolverDnZgetrs = checked_call(dyn_lapack::p_cusolverDnZgetrs, check_cusolver, "cusolverDnZgetrs");
 const auto clap_cusolverDnSpotrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnSpotrf_bufferSize, check_cusolver, "cusolverDnSpotrf_bufferSize");
 const auto clap_cusolverDnDpotrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnDpotrf_bufferSize, check_cusolver, "cusolverDnDpotrf_bufferSize");
+const auto clap_cusolverDnCpotrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnCpotrf_bufferSize, check_cusolver, "cusolverDnCpotrf_bufferSize");
+const auto clap_cusolverDnZpotrf_bufferSize = checked_call(dyn_lapack::p_cusolverDnZpotrf_bufferSize, check_cusolver, "cusolverDnZpotrf_bufferSize");
 const auto clap_cusolverDnSpotrf = checked_call(dyn_lapack::p_cusolverDnSpotrf, check_cusolver, "cusolverDnSpotrf");
 const auto clap_cusolverDnDpotrf = checked_call(dyn_lapack::p_cusolverDnDpotrf, check_cusolver, "cusolverDnDpotrf");
+const auto clap_cusolverDnCpotrf = checked_call(dyn_lapack::p_cusolverDnCpotrf, check_cusolver, "cusolverDnCpotrf");
+const auto clap_cusolverDnZpotrf = checked_call(dyn_lapack::p_cusolverDnZpotrf, check_cusolver, "cusolverDnZpotrf");
 const auto clap_cusolverDnSpotri_bufferSize = checked_call(dyn_lapack::p_cusolverDnSpotri_bufferSize, check_cusolver, "cusolverDnSpotri_bufferSize");
 const auto clap_cusolverDnDpotri_bufferSize = checked_call(dyn_lapack::p_cusolverDnDpotri_bufferSize, check_cusolver, "cusolverDnDpotri_bufferSize");
 const auto clap_cusolverDnSpotri = checked_call(dyn_lapack::p_cusolverDnSpotri, check_cusolver, "cusolverDnSpotri");
@@ -107,9 +117,9 @@ const auto clap_cusolverDnSsyevd = checked_call(dyn_lapack::p_cusolverDnSsyevd, 
 const auto clap_cusolverDnDsyevd = checked_call(dyn_lapack::p_cusolverDnDsyevd, check_cusolver, "cusolverDnDsyevd");
 
 template<>
-void CuSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
-                                         float *A, lapack_int lda,
-                                         lapack_int *ipiv, lapack_int *info) {
+void CuSolverBackend::getrf_impl<float>(int m, int n,
+                                         float *A, int lda,
+                                         int *ipiv, int *info) {
     
     size_t szA  = (size_t)lda * n * sizeof(float);
 
@@ -142,9 +152,9 @@ void CuSolverBackend::getrf_impl<float>(lapack_int m, lapack_int n,
 }
 
 template<>
-void CuSolverBackend::getrf_impl<double>(lapack_int m, lapack_int n,
-                                          double *A, lapack_int lda,
-                                          lapack_int *ipiv, lapack_int *info) {
+void CuSolverBackend::getrf_impl<double>(int m, int n,
+                                          double *A, int lda,
+                                          int *ipiv, int *info) {
     
     size_t szA = (size_t)lda * n * sizeof(double);
 
@@ -173,14 +183,83 @@ void CuSolverBackend::getrf_impl<double>(lapack_int m, lapack_int n,
     clap_cudaFree(dA); clap_cudaFree(d_ipiv);
     clap_cudaFree(d_info); clap_cudaFree(d_work);
 }
+ 
+template<>
+void CuSolverBackend::getrf_impl<cuComplex>(int m, int n,
+                                         cuComplex *A, int lda,
+                                         int *ipiv, int *info) {
+    
+    size_t szA  = (size_t)lda * n * sizeof(cuComplex);
+
+    cuComplex *dA       = nullptr;
+    int   *d_ipiv   = nullptr;
+    int   *d_info   = nullptr;
+    cuComplex *d_work   = nullptr;
+    int    lwork    = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)std::min(m,n) * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnCgetrf_bufferSize(m_handle, m, n, dA, lda, &lwork);
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(cuComplex));
+
+    clap_cusolverDnCgetrf(m_handle, m, n, dA, lda, d_work, d_ipiv, d_info);
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA,                              cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(ipiv, d_ipiv, (size_t)std::min(m,n)*sizeof(int), cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int),                       cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA);
+    clap_cudaFree(d_ipiv);
+    clap_cudaFree(d_info);
+    clap_cudaFree(d_work);
+}
+
+template<>
+void CuSolverBackend::getrf_impl<cuDoubleComplex>(int m, int n,
+                                          cuDoubleComplex *A, int lda,
+                                          int *ipiv, int *info) {
+    
+    size_t szA = (size_t)lda * n * sizeof(cuDoubleComplex);
+
+    cuDoubleComplex *dA     = nullptr;
+    int    *d_ipiv = nullptr;
+    int    *d_info = nullptr;
+    cuDoubleComplex *d_work = nullptr;
+    int     lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)std::min(m,n) * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnZgetrf_bufferSize(m_handle, m, n, dA, lda, &lwork);
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(cuDoubleComplex));
+
+    clap_cusolverDnZgetrf(m_handle, m, n, dA, lda, d_work, d_ipiv, d_info);
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA,                              cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(ipiv, d_ipiv, (size_t)std::min(m,n)*sizeof(int), cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int),                       cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA); clap_cudaFree(d_ipiv);
+    clap_cudaFree(d_info); clap_cudaFree(d_work);
+}
+
 
 template<>
 void CuSolverBackend::getrs_impl<float>(Transpose trans,
-                                         lapack_int n, lapack_int nrhs,
-                                         const float *A, lapack_int lda,
-                                         const lapack_int *ipiv,
-                                         float *B, lapack_int ldb,
-                                         lapack_int *info) {
+                                         int n, int nrhs,
+                                         const float *A, int lda,
+                                         const int *ipiv,
+                                         float *B, int ldb,
+                                         int *info) {
     
     size_t szA = (size_t)lda * n    * sizeof(float);
     size_t szB = (size_t)ldb * nrhs * sizeof(float);
@@ -210,11 +289,11 @@ void CuSolverBackend::getrs_impl<float>(Transpose trans,
 
 template<>
 void CuSolverBackend::getrs_impl<double>(Transpose trans,
-                                          lapack_int n, lapack_int nrhs,
-                                          const double *A, lapack_int lda,
-                                          const lapack_int *ipiv,
-                                          double *B, lapack_int ldb,
-                                          lapack_int *info) {
+                                          int n, int nrhs,
+                                          const double *A, int lda,
+                                          const int *ipiv,
+                                          double *B, int ldb,
+                                          int *info) {
    
     size_t szA = (size_t)lda * n    * sizeof(double);
     size_t szB = (size_t)ldb * nrhs * sizeof(double);
@@ -243,9 +322,269 @@ void CuSolverBackend::getrs_impl<double>(Transpose trans,
 }
 
 template<>
-void CuSolverBackend::potrf_impl<float>(Uplo uplo, lapack_int n,
-                                         float *A, lapack_int lda,
-                                         lapack_int *info) {
+void CuSolverBackend::getrs_impl<cuComplex>(Transpose trans,
+                                         int n, int nrhs,
+                                         const cuComplex *A, int lda,
+                                         const int *ipiv,
+                                         cuComplex *B, int ldb,
+                                         int *info) {
+    
+    size_t szA = (size_t)lda * n    * sizeof(cuComplex);
+    size_t szB = (size_t)ldb * nrhs * sizeof(cuComplex);
+
+    cuComplex *dA   = nullptr; int *d_ipiv = nullptr;
+    cuComplex *dB   = nullptr; int *d_info = nullptr;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&dB,     szB);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)n * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA,    A,    szA,                   cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(dB,    B,    szB,                   cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(d_ipiv,ipiv, (size_t)n*sizeof(int), cudaMemcpyHostToDevice);
+
+    clap_cusolverDnCgetrs(m_handle, to_cusolver_trans(trans),
+                          n, nrhs, dA, lda, d_ipiv, dB, ldb, d_info);
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(B,    dB,     szB,        cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA); clap_cudaFree(dB);
+    clap_cudaFree(d_ipiv); clap_cudaFree(d_info);
+}
+
+template<>
+void CuSolverBackend::getrs_impl<cuDoubleComplex>(Transpose trans,
+                                         int n, int nrhs,
+                                         const cuDoubleComplex *A, int lda,
+                                         const int *ipiv,
+                                         cuDoubleComplex *B, int ldb,
+                                         int *info) {
+    
+    size_t szA = (size_t)lda * n    * sizeof(cuDoubleComplex);
+    size_t szB = (size_t)ldb * nrhs * sizeof(cuDoubleComplex);
+
+    cuDoubleComplex *dA   = nullptr; int *d_ipiv = nullptr;
+    cuDoubleComplex *dB   = nullptr; int *d_info = nullptr;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&dB,     szB);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)n * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA,    A,    szA,                   cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(dB,    B,    szB,                   cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(d_ipiv,ipiv, (size_t)n*sizeof(int), cudaMemcpyHostToDevice);
+
+    clap_cusolverDnZgetrs(m_handle, to_cusolver_trans(trans),
+                          n, nrhs, dA, lda, d_ipiv, dB, ldb, d_info);
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(B,    dB,     szB,        cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA); clap_cudaFree(dB);
+    clap_cudaFree(d_ipiv); clap_cudaFree(d_info);
+}
+
+template<>
+void CuSolverBackend::gesv_impl<float>(Transpose trans, int n, int nrhs,
+                                        float *A, int lda, int *ipiv,
+                                        float *B, int ldb, int *info) {
+
+    size_t szA = (size_t)lda * n    * sizeof(float);
+    size_t szB = (size_t)ldb * nrhs * sizeof(float);
+
+    float *dA     = nullptr;
+    float *dB     = nullptr;
+    int   *d_ipiv = nullptr;
+    int   *d_info = nullptr;
+    float *d_work = nullptr;
+    int    lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&dB,     szB);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)n * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(dB, B, szB, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnSgetrf_bufferSize(m_handle, n, n, dA, lda, &lwork);
+
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(float));
+
+    clap_cusolverDnSgetrf(m_handle, n, n, dA, lda, d_work, d_ipiv, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cusolverDnSgetrs(m_handle, to_cusolver_trans(trans),
+        n, nrhs, dA, lda, d_ipiv, dB, ldb, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(ipiv, d_ipiv, (size_t)n * sizeof(int), cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(B,    dB,     szB, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA);
+    clap_cudaFree(dB);
+    clap_cudaFree(d_ipiv);
+    clap_cudaFree(d_info);
+    clap_cudaFree(d_work);
+}
+
+template<>
+void CuSolverBackend::gesv_impl<double>(Transpose trans, int n, int nrhs,
+                                         double *A, int lda, int *ipiv,
+                                         double *B, int ldb, int *info) {
+
+    size_t szA = (size_t)lda * n    * sizeof(double);
+    size_t szB = (size_t)ldb * nrhs * sizeof(double);
+
+    double *dA     = nullptr;
+    double *dB     = nullptr;
+    int   *d_ipiv = nullptr;
+    int   *d_info = nullptr;
+    double *d_work = nullptr;
+    int    lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&dB,     szB);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)n * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(dB, B, szB, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnDgetrf_bufferSize(m_handle, n, n, dA, lda, &lwork);
+
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(double));
+
+    clap_cusolverDnDgetrf(m_handle, n, n, dA, lda, d_work, d_ipiv, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cusolverDnDgetrs(m_handle, to_cusolver_trans(trans),
+        n, nrhs, dA, lda, d_ipiv, dB, ldb, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(ipiv, d_ipiv, (size_t)n * sizeof(int), cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(B,    dB,     szB, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA);
+    clap_cudaFree(dB);
+    clap_cudaFree(d_ipiv);
+    clap_cudaFree(d_info);
+    clap_cudaFree(d_work);              
+}
+
+template<>
+void CuSolverBackend::gesv_impl<cuComplex>(Transpose trans, int n, int nrhs,
+                                           cuComplex *A, int lda, int *ipiv,
+                                           cuComplex *B, int ldb, int *info) {
+
+    size_t szA = (size_t)lda * n    * sizeof(cuComplex);
+    size_t szB = (size_t)ldb * nrhs * sizeof(cuComplex);
+
+    cuComplex *dA     = nullptr;
+    cuComplex *dB     = nullptr;
+    int   *d_ipiv = nullptr;
+    int   *d_info = nullptr;
+    cuComplex *d_work = nullptr;
+    int    lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&dB,     szB);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)n * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(dB, B, szB, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnCgetrf_bufferSize(m_handle, n, n, dA, lda, &lwork);
+
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(cuComplex));
+
+    clap_cusolverDnCgetrf(m_handle, n, n, dA, lda, d_work, d_ipiv, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cusolverDnCgetrs(m_handle, to_cusolver_trans(trans),
+        n, nrhs, dA, lda, d_ipiv, dB, ldb, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(ipiv, d_ipiv, (size_t)n * sizeof(int), cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(B,    dB,     szB, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA);
+    clap_cudaFree(dB);
+    clap_cudaFree(d_ipiv);
+    clap_cudaFree(d_info);
+    clap_cudaFree(d_work);                                    
+}
+
+template<>
+void CuSolverBackend::gesv_impl<cuDoubleComplex>(Transpose trans, int n, int nrhs,
+                                                cuDoubleComplex *A, int lda, int *ipiv,
+                                                cuDoubleComplex *B, int ldb, int *info) {
+                                                    
+    size_t szA = (size_t)lda * n    * sizeof(cuDoubleComplex);
+    size_t szB = (size_t)ldb * nrhs * sizeof(cuDoubleComplex);
+
+    cuDoubleComplex *dA     = nullptr;
+    cuDoubleComplex *dB     = nullptr;
+    int   *d_ipiv = nullptr;
+    int   *d_info = nullptr;
+    cuDoubleComplex *d_work = nullptr;
+    int    lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&dB,     szB);
+    clap_cudaMalloc((void**)&d_ipiv, (size_t)n * sizeof(int));
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+    clap_cudaMemcpy(dB, B, szB, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnZgetrf_bufferSize(m_handle, n, n, dA, lda, &lwork);
+
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(cuDoubleComplex));
+
+    clap_cusolverDnZgetrf(m_handle, n, n, dA, lda, d_work, d_ipiv, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cusolverDnZgetrs(m_handle, to_cusolver_trans(trans),
+        n, nrhs, dA, lda, d_ipiv, dB, ldb, d_info);
+
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(ipiv, d_ipiv, (size_t)n * sizeof(int), cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(B,    dB,     szB, cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA);
+    clap_cudaFree(dB);
+    clap_cudaFree(d_ipiv);
+    clap_cudaFree(d_info);
+    clap_cudaFree(d_work);
+}
+
+template<>
+void CuSolverBackend::potrf_impl<float>(Uplo uplo, int n,
+                                         float *A, int lda,
+                                         int *info) {
     
     size_t szA = (size_t)lda * n * sizeof(float);
 
@@ -271,9 +610,9 @@ void CuSolverBackend::potrf_impl<float>(Uplo uplo, lapack_int n,
 }
 
 template<>
-void CuSolverBackend::potrf_impl<double>(Uplo uplo, lapack_int n,
-                                          double *A, lapack_int lda,
-                                          lapack_int *info) {
+void CuSolverBackend::potrf_impl<double>(Uplo uplo, int n,
+                                          double *A, int lda,
+                                          int *info) {
     
     size_t szA = (size_t)lda * n * sizeof(double);
 
@@ -297,9 +636,64 @@ void CuSolverBackend::potrf_impl<double>(Uplo uplo, lapack_int n,
 
     clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);
 }
+
 template<>
-void CuSolverBackend::potri_impl<float>(Uplo uplo, lapack_int n, float *A, lapack_int lda,
-                                         lapack_int *info) {
+void CuSolverBackend::potrf_impl<cuComplex>(Uplo uplo, int n,
+                                         cuComplex *A, int lda,
+                                         int *info) {
+    size_t szA = (size_t)lda * n * sizeof(cuComplex);
+    cuComplex *dA     = nullptr; int *d_info = nullptr;
+    cuComplex *d_work = nullptr; int  lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnCpotrf_bufferSize(m_handle,
+        to_cusolver_uplo(uplo), n, dA, lda, &lwork);
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(cuComplex));
+
+    clap_cusolverDnCpotrf(m_handle,
+        to_cusolver_uplo(uplo), n, dA, lda, d_work, lwork, d_info);
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA,        cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);
+
+}
+
+template<>
+void CuSolverBackend::potrf_impl<cuDoubleComplex>(Uplo uplo, int n,
+                                         cuDoubleComplex *A, int lda,
+                                         int *info) {
+    size_t szA = (size_t)lda * n * sizeof(cuDoubleComplex);
+    cuDoubleComplex *dA     = nullptr; int *d_info = nullptr;
+    cuDoubleComplex *d_work = nullptr; int  lwork  = 0;
+
+    clap_cudaMalloc((void**)&dA,     szA);
+    clap_cudaMalloc((void**)&d_info, sizeof(int));
+    clap_cudaMemcpy(dA, A, szA, cudaMemcpyHostToDevice);
+
+    clap_cusolverDnZpotrf_bufferSize(m_handle,
+        to_cusolver_uplo(uplo), n, dA, lda, &lwork);
+    clap_cudaMalloc((void**)&d_work, (size_t)lwork * sizeof(cuDoubleComplex));
+
+    clap_cusolverDnZpotrf(m_handle,
+        to_cusolver_uplo(uplo), n, dA, lda, d_work, lwork, d_info);
+    clap_cudaDeviceSynchronize();
+
+    clap_cudaMemcpy(A,    dA,     szA,        cudaMemcpyDeviceToHost);
+    clap_cudaMemcpy(info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    clap_cudaFree(dA); clap_cudaFree(d_info); clap_cudaFree(d_work);
+
+}
+
+template<>
+void CuSolverBackend::potri_impl<float>(Uplo uplo, int n, float *A, int lda,
+                                         int *info) {
     
     
     size_t szA = (size_t)lda * n * sizeof(float);
@@ -326,8 +720,8 @@ void CuSolverBackend::potri_impl<float>(Uplo uplo, lapack_int n, float *A, lapac
 }
 
 template<>
-void CuSolverBackend::potri_impl<double>(Uplo uplo, lapack_int n, double *A, lapack_int lda,
-                                         lapack_int *info) {
+void CuSolverBackend::potri_impl<double>(Uplo uplo, int n, double *A, int lda,
+                                         int *info) {
    
     
     size_t szA = (size_t)lda * n * sizeof(double);
@@ -354,9 +748,9 @@ void CuSolverBackend::potri_impl<double>(Uplo uplo, lapack_int n, double *A, lap
 }
 
 template<>
-void CuSolverBackend::potrs_impl<float>(Uplo uplo, lapack_int n, lapack_int nrhs,
-    									const float *A, lapack_int lda,float *B, 
-										lapack_int ldb,lapack_int *info) {
+void CuSolverBackend::potrs_impl<float>(Uplo uplo, int n, int nrhs,
+    									const float *A, int lda,float *B, 
+										int ldb,int *info) {
     
 
     size_t szA = (size_t)lda * n * sizeof(float);
@@ -389,9 +783,9 @@ void CuSolverBackend::potrs_impl<float>(Uplo uplo, lapack_int n, lapack_int nrhs
 }
 
 template<>
-void CuSolverBackend::potrs_impl<double>(Uplo uplo, lapack_int n, lapack_int nrhs,
-    									const double *A, lapack_int lda, double *B, 
-										lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::potrs_impl<double>(Uplo uplo, int n, int nrhs,
+    									const double *A, int lda, double *B, 
+										int ldb, int *info) {
     
 
     size_t szA = (size_t)lda * n * sizeof(double);
@@ -425,11 +819,11 @@ void CuSolverBackend::potrs_impl<double>(Uplo uplo, lapack_int n, lapack_int nrh
 
 template<>
 void CuSolverBackend::gesvd_impl<float>(Job jobu, Job jobvt,
-                                         lapack_int m, lapack_int n,
-                                         float *A, lapack_int lda, float *s,
-                                         float *U, lapack_int ldu,
-                                         float *VT, lapack_int ldvt,
-                                         lapack_int *info) {
+                                         int m, int n,
+                                         float *A, int lda, float *s,
+                                         float *U, int ldu,
+                                         float *VT, int ldvt,
+                                         int *info) {
     
     int k = std::min(m, n);
     size_t szA = (size_t)lda * n * sizeof(float);
@@ -470,11 +864,11 @@ void CuSolverBackend::gesvd_impl<float>(Job jobu, Job jobvt,
 
 template<>
 void CuSolverBackend::gesvd_impl<double>(Job jobu, Job jobvt,
-                                          lapack_int m, lapack_int n,
-                                          double *A, lapack_int lda, double *s,
-                                          double *U, lapack_int ldu,
-                                          double *VT, lapack_int ldvt,
-                                          lapack_int *info) {
+                                          int m, int n,
+                                          double *A, int lda, double *s,
+                                          double *U, int ldu,
+                                          double *VT, int ldvt,
+                                          int *info) {
     
     int k = std::min(m, n);
     size_t szA = (size_t)lda * n * sizeof(double);
@@ -513,9 +907,9 @@ void CuSolverBackend::gesvd_impl<double>(Job jobu, Job jobvt,
 }
 
 template<>
-void CuSolverBackend::syev_impl<float>(Job jobz, Uplo uplo, lapack_int n,
-                                        float *A, lapack_int lda, float *w,
-                                        lapack_int *info) {
+void CuSolverBackend::syev_impl<float>(Job jobz, Uplo uplo, int n,
+                                        float *A, int lda, float *w,
+                                        int *info) {
     
     size_t szA = (size_t)lda * n * sizeof(float);
 
@@ -546,9 +940,9 @@ void CuSolverBackend::syev_impl<float>(Job jobz, Uplo uplo, lapack_int n,
 }
 
 template<>
-void CuSolverBackend::syev_impl<double>(Job jobz, Uplo uplo, lapack_int n,
-                                         double *A, lapack_int lda, double *w,
-                                         lapack_int *info) {
+void CuSolverBackend::syev_impl<double>(Job jobz, Uplo uplo, int n,
+                                         double *A, int lda, double *w,
+                                         int *info) {
      
     size_t szA = (size_t)lda * n * sizeof(double);
 
@@ -578,139 +972,179 @@ void CuSolverBackend::syev_impl<double>(Job jobz, Uplo uplo, lapack_int n,
     clap_cudaFree(d_work); clap_cudaFree(d_info);
 }
 
-void CuSolverBackend::sgetrf(Layout, lapack_int m, lapack_int n,
-    float *A, lapack_int lda, lapack_int *ipiv, lapack_int *info) {
+void CuSolverBackend::sgetrf(Layout, int m, int n,
+    float *A, int lda, int *ipiv, int *info) {
     getrf_impl<float>(m, n, A, lda, ipiv, info);
 }
-void CuSolverBackend::dgetrf(Layout, lapack_int m, lapack_int n,
-    double *A, lapack_int lda, lapack_int *ipiv, lapack_int *info) {
+void CuSolverBackend::dgetrf(Layout, int m, int n,
+    double *A, int lda, int *ipiv, int *info) {
     getrf_impl<double>(m, n, A, lda, ipiv, info);
 }
-void CuSolverBackend::sgetrs(Layout, Transpose t, lapack_int n, lapack_int nrhs,
-    const float *A, lapack_int lda, const lapack_int *ipiv,
-    float *B, lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::cgetrf(Layout, int m, int n,
+    cuComplex *A, int lda, int *ipiv, int *info) {
+    getrf_impl<cuComplex>(m, n, A, lda, ipiv, info);
+}
+void CuSolverBackend::zgetrf(Layout, int m, int n,
+    cuDoubleComplex *A, int lda, int *ipiv, int *info) {
+    getrf_impl<cuDoubleComplex>(m, n, A, lda, ipiv, info);
+}
+void CuSolverBackend::sgetrs(Layout, Transpose t, int n, int nrhs,
+    const float *A, int lda, const int *ipiv,
+    float *B, int ldb, int *info) {
     getrs_impl<float>(t, n, nrhs, A, lda, ipiv, B, ldb, info);
 }
-void CuSolverBackend::dgetrs(Layout, Transpose t, lapack_int n, lapack_int nrhs,
-    const double *A, lapack_int lda, const lapack_int *ipiv,
-    double *B, lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::dgetrs(Layout, Transpose t, int n, int nrhs,
+    const double *A, int lda, const int *ipiv,
+    double *B, int ldb, int *info) {
     getrs_impl<double>(t, n, nrhs, A, lda, ipiv, B, ldb, info);
 }
-void CuSolverBackend::sgesv(lapack_int n, lapack_int nrhs,
-    float *A, lapack_int lda, lapack_int *ipiv,
-    float *B, lapack_int ldb, lapack_int *info) {
-   
-    getrf_impl<float>(n, n, A, lda, ipiv, info);
-    if (*info == 0)
-        getrs_impl<float>(Transpose::NoTrans, n, nrhs, A, lda, ipiv, B, ldb, info);
+void CuSolverBackend::cgetrs(Layout, Transpose t, int n, int nrhs,
+    const cuComplex *A, int lda, const int *ipiv,
+    cuComplex *B, int ldb, int *info) {
+    getrs_impl<cuComplex>(t, n, nrhs, A, lda, ipiv, B, ldb, info);
 }
-void CuSolverBackend::dgesv(lapack_int n, lapack_int nrhs,
-    double *A, lapack_int lda, lapack_int *ipiv,
-    double *B, lapack_int ldb, lapack_int *info) {
-    
-    getrf_impl<double>(n, n, A, lda, ipiv, info);
-    if (*info == 0)
-        getrs_impl<double>(Transpose::NoTrans, n, nrhs, A, lda, ipiv, B, ldb, info);
+void CuSolverBackend::zgetrs(Layout, Transpose t, int n, int nrhs,
+    const cuDoubleComplex *A, int lda, const int *ipiv,
+    cuDoubleComplex *B, int ldb, int *info) {
+    getrs_impl<cuDoubleComplex>(t, n, nrhs, A, lda, ipiv, B, ldb, info);
 }
-void CuSolverBackend::sgetri(lapack_int, float*, lapack_int,
-    const lapack_int*, lapack_int *info) {
+void CuSolverBackend::sgesv(int n, int nrhs,
+    float *A, int lda, int *ipiv,
+    float *B, int ldb, int *info) {
+   gesv_impl<float>(Transpose::NoTrans, n, nrhs, A, lda, ipiv, B, ldb, info);
+}
+void CuSolverBackend::dgesv(int n, int nrhs,
+    double *A, int lda, int *ipiv,
+    double *B, int ldb, int *info) {
+   gesv_impl<double>(Transpose::NoTrans, n, nrhs, A, lda, ipiv, B, ldb, info);
+}
+void CuSolverBackend::cgesv(int n, int nrhs,
+    cuComplex *A, int lda, int *ipiv,
+    cuComplex *B, int ldb, int *info) {
+   gesv_impl<cuComplex>(Transpose::NoTrans, n, nrhs, A, lda, ipiv, B, ldb, info);
+}
+void CuSolverBackend::zgesv(int n, int nrhs,
+    cuDoubleComplex *A, int lda, int *ipiv,
+    cuDoubleComplex *B, int ldb, int *info) {
+   gesv_impl<cuDoubleComplex>(Transpose::NoTrans, n, nrhs, A, lda, ipiv, B, ldb, info);
+}
+void CuSolverBackend::sgetri(int, float*, int,
+    const int*, int *info) {
     std::cerr << "[CLAP] sgetri not supported in cuSOLVER, use CPU backend\n";
     *info = -1;
 }
-void CuSolverBackend::dgetri(lapack_int, double*, lapack_int,
-    const lapack_int*, lapack_int *info) {
+void CuSolverBackend::dgetri(int, double*, int,
+    const int*, int *info) {
     std::cerr << "[CLAP] dgetri not supported in cuSOLVER, use CPU backend\n";
     *info = -1;
 }
-void CuSolverBackend::spotrf(Layout, Uplo u, lapack_int n,
-    float *A, lapack_int lda, lapack_int *info) {
+void CuSolverBackend::cgetri(int, cuComplex*, int,
+    const int*, int *info) {
+    std::cerr << "[CLAP] cgetri not supported in cuSOLVER, use CPU backend\n";
+    *info = -1;
+}
+void CuSolverBackend::zgetri(int, cuDoubleComplex*, int,
+    const int*, int *info) {
+    std::cerr << "[CLAP] zgetri not supported in cuSOLVER, use CPU backend\n";
+    *info = -1;
+}
+void CuSolverBackend::spotrf(Layout, Uplo u, int n,
+    float *A, int lda, int *info) {
     potrf_impl<float>(u, n, A, lda, info);
 }
-void CuSolverBackend::dpotrf(Layout, Uplo u, lapack_int n,
-    double *A, lapack_int lda, lapack_int *info) {
+void CuSolverBackend::dpotrf(Layout, Uplo u, int n,
+    double *A, int lda, int *info) {
     potrf_impl<double>(u, n, A, lda, info);
 }
-void CuSolverBackend::spotri(Layout, Uplo u, lapack_int n,
-    float* A, lapack_int lda, lapack_int *info) {
+void CuSolverBackend::cpotrf(Layout, Uplo u, int n,
+    cuComplex *A, int lda, int *info) {
+    potrf_impl<cuComplex>(u, n, A, lda, info);
+}
+void CuSolverBackend::zpotrf(Layout, Uplo u, int n,
+    cuDoubleComplex *A, int lda, int *info) {
+    potrf_impl<cuDoubleComplex>(u, n, A, lda, info);
+}
+void CuSolverBackend::spotri(Layout, Uplo u, int n,
+    float* A, int lda, int *info) {
     potri_impl<float>(u, n, A, lda, info);
 }
-void CuSolverBackend::dpotri(Layout, Uplo u, lapack_int n,
-    double* A, lapack_int lda, lapack_int *info) {
+void CuSolverBackend::dpotri(Layout, Uplo u, int n,
+    double* A, int lda, int *info) {
     potri_impl<double>(u, n, A, lda, info);
 }
-void CuSolverBackend::spotrs(Layout, Uplo u, lapack_int n, lapack_int nrhs,
-    const float *A, lapack_int lda, float *B, lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::spotrs(Layout, Uplo u, int n, int nrhs,
+    const float *A, int lda, float *B, int ldb, int *info) {
     potrs_impl<float>(u, n, nrhs, A, lda, B, ldb, info);
 }
-void CuSolverBackend::dpotrs(Layout, Uplo u, lapack_int n, lapack_int nrhs,
-    const double *A, lapack_int lda, double* B, lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::dpotrs(Layout, Uplo u, int n, int nrhs,
+    const double *A, int lda, double* B, int ldb, int *info) {
     potrs_impl<double>(u, n, nrhs, A, lda, B, ldb, info);
 }
-void CuSolverBackend::sposv(Layout l, Uplo u, lapack_int n, lapack_int nrhs,
-    float *A, lapack_int lda, float *B, lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::sposv(Layout l, Uplo u, int n, int nrhs,
+    float *A, int lda, float *B, int ldb, int *info) {
     potrf_impl<float>(u, n, A, lda, info);
     if (*info == 0) spotrs(l, u, n, nrhs, A, lda, B, ldb, info);
 }
-void CuSolverBackend::dposv(Layout l, Uplo u, lapack_int n, lapack_int nrhs,
-    double *A, lapack_int lda, double *B, lapack_int ldb, lapack_int *info) {
+void CuSolverBackend::dposv(Layout l, Uplo u, int n, int nrhs,
+    double *A, int lda, double *B, int ldb, int *info) {
     potrf_impl<double>(u, n, A, lda, info);
     if (*info == 0) dpotrs(l, u, n, nrhs, A, lda, B, ldb, info);
 }
-void CuSolverBackend::sgeqrf(Layout, lapack_int, lapack_int,
-    float*, lapack_int, float*, lapack_int *info) {
+void CuSolverBackend::sgeqrf(Layout, int, int,
+    float*, int, float*, int *info) {
     std::cerr << "[CLAP] cuSOLVER geqrf not yet wired\n"; *info = -1;
 }
-void CuSolverBackend::dgeqrf(Layout, lapack_int, lapack_int,
-    double*, lapack_int, double*, lapack_int *info) {
+void CuSolverBackend::dgeqrf(Layout, int, int,
+    double*, int, double*, int *info) {
     std::cerr << "[CLAP] cuSOLVER geqrf not yet wired\n"; *info = -1;
 }
-void CuSolverBackend::sorgqr(Layout, lapack_int, lapack_int, lapack_int,
-    float*, lapack_int, const float*, lapack_int *info) { *info=-1; }
-void CuSolverBackend::dorgqr(Layout, lapack_int, lapack_int, lapack_int,
-    double*, lapack_int, const double*, lapack_int *info) { *info=-1; }
-void CuSolverBackend::sgels(Layout, Transpose, lapack_int, lapack_int, lapack_int,
-    float*, lapack_int, float*, lapack_int, lapack_int *info) { *info=-1; }
-void CuSolverBackend::dgels(Layout, Transpose, lapack_int, lapack_int, lapack_int,
-    double*, lapack_int, double*, lapack_int, lapack_int *info) { *info=-1; }
+void CuSolverBackend::sorgqr(Layout, int, int, int,
+    float*, int, const float*, int *info) { *info=-1; }
+void CuSolverBackend::dorgqr(Layout, int, int, int,
+    double*, int, const double*, int *info) { *info=-1; }
+void CuSolverBackend::sgels(Layout, Transpose, int, int, int,
+    float*, int, float*, int, int *info) { *info=-1; }
+void CuSolverBackend::dgels(Layout, Transpose, int, int, int,
+    double*, int, double*, int, int *info) { *info=-1; }
 
-void CuSolverBackend::ssyev(Layout, Job j, Uplo u, lapack_int n,
-    float *A, lapack_int lda, float *w, lapack_int *info) {
+void CuSolverBackend::ssyev(Layout, Job j, Uplo u, int n,
+    float *A, int lda, float *w, int *info) {
     syev_impl<float>(j, u, n, A, lda, w, info);
 }
-void CuSolverBackend::dsyev(Layout, Job j, Uplo u, lapack_int n,
-    double *A, lapack_int lda, double *w, lapack_int *info) {
+void CuSolverBackend::dsyev(Layout, Job j, Uplo u, int n,
+    double *A, int lda, double *w, int *info) {
     syev_impl<double>(j, u, n, A, lda, w, info);
 }
-void CuSolverBackend::sgeev(Layout, Job, Job, lapack_int,
-    float*, lapack_int, float*, float*, float*, lapack_int, float*, lapack_int,
-    lapack_int *info) {
+void CuSolverBackend::sgeev(Layout, Job, Job, int,
+    float*, int, float*, float*, float*, int, float*, int,
+    int *info) {
     std::cerr << "[CLAP] cuSOLVER geev not supported\n"; *info=-1;
 }
-void CuSolverBackend::dgeev(Layout, Job, Job, lapack_int,
-    double*, lapack_int, double*, double*, double*, lapack_int, double*, lapack_int,
-    lapack_int *info) {
+void CuSolverBackend::dgeev(Layout, Job, Job, int,
+    double*, int, double*, double*, double*, int, double*, int,
+    int *info) {
     std::cerr << "[CLAP] cuSOLVER geev not supported\n"; *info=-1;
 }
-void CuSolverBackend::sgesvd(Layout, Job ju, Job jv, lapack_int m, lapack_int n,
-    float *A, lapack_int lda, float *s,
-    float *U, lapack_int ldu, float *VT, lapack_int ldvt,
-    float*, lapack_int *info) {
+void CuSolverBackend::sgesvd(Layout, Job ju, Job jv, int m, int n,
+    float *A, int lda, float *s,
+    float *U, int ldu, float *VT, int ldvt,
+    float*, int *info) {
     gesvd_impl<float>(ju, jv, m, n, A, lda, s, U, ldu, VT, ldvt, info);
 }
-void CuSolverBackend::dgesvd(Layout, Job ju, Job jv, lapack_int m, lapack_int n,
-    double *A, lapack_int lda, double *s,
-    double *U, lapack_int ldu, double *VT, lapack_int ldvt,
-    double*, lapack_int *info) {
+void CuSolverBackend::dgesvd(Layout, Job ju, Job jv, int m, int n,
+    double *A, int lda, double *s,
+    double *U, int ldu, double *VT, int ldvt,
+    double*, int *info) {
     gesvd_impl<double>(ju, jv, m, n, A, lda, s, U, ldu, VT, ldvt, info);
 }
 void CuSolverBackend::strtrs(Layout, Uplo, Transpose, Diag,
-    lapack_int, lapack_int, const float*, lapack_int, float*, lapack_int,
-    lapack_int *info) {
+    int, int, const float*, int, float*, int,
+    int *info) {
     std::cerr << "[CLAP] cuSOLVER trtrs not supported\n"; *info=-1;
 }
 void CuSolverBackend::dtrtrs(Layout, Uplo, Transpose, Diag,
-    lapack_int, lapack_int, const double*, lapack_int, double*, lapack_int,
-    lapack_int *info) {
+    int, int, const double*, int, double*, int,
+    int *info) {
     std::cerr << "[CLAP] cuSOLVER trtrs not supported\n"; *info=-1;
 }
 

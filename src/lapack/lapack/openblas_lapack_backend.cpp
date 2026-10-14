@@ -68,6 +68,20 @@ void OpenBlasLapackBackend::dgetrf(Layout layout,
     *info = clap_LAPACKE_dgetrf(to_lapack_layout(layout), m, n, A, lda, ipiv);
 }
 
+void OpenBlasLapackBackend::cgetrf(Layout layout,
+                                   lapack_int m, lapack_int n,
+                                   lapack_complex_float *A, lapack_int lda,
+                                   lapack_int *ipiv, lapack_int *info) {
+    *info = clap_LAPACKE_cgetrf(to_lapack_layout(layout), m, n, A, lda, ipiv);
+}
+
+void OpenBlasLapackBackend::zgetrf(Layout layout,
+                                   lapack_int m, lapack_int n,
+                                   lapack_complex_double *A, lapack_int lda,
+                                   lapack_int *ipiv, lapack_int *info) {
+    *info = clap_LAPACKE_zgetrf(to_lapack_layout(layout), m, n, A, lda, ipiv);
+}
+
 void OpenBlasLapackBackend::sgetrs(Layout layout, Transpose trans,
                                    lapack_int n, lapack_int nrhs,
                                    const float  *A, lapack_int lda,
@@ -88,6 +102,26 @@ void OpenBlasLapackBackend::dgetrs(Layout layout, Transpose trans,
                                  n, nrhs, A, lda, ipiv, B, ldb);
 }
 
+void OpenBlasLapackBackend::cgetrs(Layout layout, Transpose trans,
+                                   lapack_int n, lapack_int nrhs,
+                                   const lapack_complex_float *A, lapack_int lda,
+                                   const lapack_int *ipiv,
+                                   lapack_complex_float *B, lapack_int ldb, lapack_int *info) {
+    *info = clap_LAPACKE_cgetrs(to_lapack_layout(layout),
+                                 to_lapack_trans(trans),
+                                 n, nrhs, A, lda, ipiv, B, ldb);
+}
+
+void OpenBlasLapackBackend::zgetrs(Layout layout, Transpose trans,
+                                   lapack_int n, lapack_int nrhs,
+                                   const lapack_complex_double *A, lapack_int lda,
+                                   const lapack_int *ipiv,
+                                   lapack_complex_double *B, lapack_int ldb, lapack_int *info) {
+    *info = clap_LAPACKE_zgetrs(to_lapack_layout(layout),
+                                 to_lapack_trans(trans),
+                                 n, nrhs, A, lda, ipiv, B, ldb);
+}
+
 void OpenBlasLapackBackend::sgesv(lapack_int n, lapack_int nrhs,
                                   float  *A, lapack_int lda, lapack_int *ipiv,
                                   float  *B, lapack_int ldb, lapack_int *info) {
@@ -98,6 +132,18 @@ void OpenBlasLapackBackend::dgesv(lapack_int n, lapack_int nrhs,
                                   double *A, lapack_int lda, lapack_int *ipiv,
                                   double *B, lapack_int ldb, lapack_int *info) {
     *info = clap_LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, A, lda, ipiv, B, ldb);
+}
+
+void OpenBlasLapackBackend::cgesv(lapack_int n, lapack_int nrhs,
+                                  lapack_complex_float *A, lapack_int lda, lapack_int *ipiv,
+                                  lapack_complex_float *B, lapack_int ldb, lapack_int *info) {
+    *info = clap_LAPACKE_cgesv(LAPACK_COL_MAJOR, n, nrhs, A, lda, ipiv, B, ldb);
+}
+
+void OpenBlasLapackBackend::zgesv(lapack_int n, lapack_int nrhs,
+                                  lapack_complex_double *A, lapack_int lda, lapack_int *ipiv,
+                                  lapack_complex_double *B, lapack_int ldb, lapack_int *info) {
+    *info = clap_LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, A, lda, ipiv, B, ldb);
 }
 
 void OpenBlasLapackBackend::sgetri(lapack_int n,
@@ -112,6 +158,18 @@ void OpenBlasLapackBackend::dgetri(lapack_int n,
     *info = clap_LAPACKE_dgetri(LAPACK_COL_MAJOR, n, A, lda, ipiv);
 }
 
+void OpenBlasLapackBackend::cgetri(lapack_int n,
+                                   lapack_complex_float *A, lapack_int lda,
+                                   const lapack_int *ipiv, lapack_int *info) {
+    *info = clap_LAPACKE_cgetri(LAPACK_COL_MAJOR, n, A, lda, ipiv);
+}
+
+void OpenBlasLapackBackend::zgetri(lapack_int n,
+                                   lapack_complex_double *A, lapack_int lda,
+                                   const lapack_int *ipiv, lapack_int *info) {
+    *info = clap_LAPACKE_zgetri(LAPACK_COL_MAJOR, n, A, lda, ipiv);
+}
+
 void OpenBlasLapackBackend::spotrf(Layout layout, Uplo uplo, lapack_int n,
                                    float  *A, lapack_int lda, lapack_int *info) {
     *info = clap_LAPACKE_spotrf(to_lapack_layout(layout),
@@ -121,6 +179,18 @@ void OpenBlasLapackBackend::spotrf(Layout layout, Uplo uplo, lapack_int n,
 void OpenBlasLapackBackend::dpotrf(Layout layout, Uplo uplo, lapack_int n,
                                    double *A, lapack_int lda, lapack_int *info) {
     *info = clap_LAPACKE_dpotrf(to_lapack_layout(layout),
+                                 to_lapack_uplo(uplo), n, A, lda);
+}
+
+void OpenBlasLapackBackend::cpotrf(Layout layout, Uplo uplo, lapack_int n,
+                                   lapack_complex_float *A, lapack_int lda, lapack_int *info) {
+    *info = clap_LAPACKE_cpotrf(to_lapack_layout(layout),
+                                 to_lapack_uplo(uplo), n, A, lda);
+}
+
+void OpenBlasLapackBackend::zpotrf(Layout layout, Uplo uplo, lapack_int n,
+                                   lapack_complex_double *A, lapack_int lda, lapack_int *info) {
+    *info = clap_LAPACKE_zpotrf(to_lapack_layout(layout),
                                  to_lapack_uplo(uplo), n, A, lda);
 }
 

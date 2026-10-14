@@ -19,15 +19,29 @@
 
 #define clap_LAPACKE_sgetrf  clap::dyn_lapack::p_LAPACKE_sgetrf
 #define clap_LAPACKE_dgetrf  clap::dyn_lapack::p_LAPACKE_dgetrf
+#define clap_LAPACKE_cgetrf  clap::dyn_lapack::p_LAPACKE_cgetrf
+#define clap_LAPACKE_zgetrf  clap::dyn_lapack::p_LAPACKE_zgetrf
+
 #define clap_LAPACKE_sgetrs  clap::dyn_lapack::p_LAPACKE_sgetrs
 #define clap_LAPACKE_dgetrs  clap::dyn_lapack::p_LAPACKE_dgetrs
+#define clap_LAPACKE_cgetrs  clap::dyn_lapack::p_LAPACKE_cgetrs
+#define clap_LAPACKE_zgetrs  clap::dyn_lapack::p_LAPACKE_zgetrs
+
 #define clap_LAPACKE_sgesv   clap::dyn_lapack::p_LAPACKE_sgesv
 #define clap_LAPACKE_dgesv   clap::dyn_lapack::p_LAPACKE_dgesv
+#define clap_LAPACKE_cgesv   clap::dyn_lapack::p_LAPACKE_cgesv
+#define clap_LAPACKE_zgesv   clap::dyn_lapack::p_LAPACKE_zgesv
+
 #define clap_LAPACKE_sgetri  clap::dyn_lapack::p_LAPACKE_sgetri
 #define clap_LAPACKE_dgetri  clap::dyn_lapack::p_LAPACKE_dgetri
+#define clap_LAPACKE_cgetri  clap::dyn_lapack::p_LAPACKE_cgetri
+#define clap_LAPACKE_zgetri  clap::dyn_lapack::p_LAPACKE_zgetri
 
 #define clap_LAPACKE_spotrf  clap::dyn_lapack::p_LAPACKE_spotrf
 #define clap_LAPACKE_dpotrf  clap::dyn_lapack::p_LAPACKE_dpotrf
+#define clap_LAPACKE_cpotrf  clap::dyn_lapack::p_LAPACKE_cpotrf
+#define clap_LAPACKE_zpotrf  clap::dyn_lapack::p_LAPACKE_zpotrf
+
 #define clap_LAPACKE_spotri  clap::dyn_lapack::p_LAPACKE_spotri
 #define clap_LAPACKE_dpotri  clap::dyn_lapack::p_LAPACKE_dpotri
 #define clap_LAPACKE_spotrs  clap::dyn_lapack::p_LAPACKE_spotrs
@@ -61,15 +75,25 @@
 
 #define clap_cusolverDnSgetrf_bufferSize    clap::dyn_lapack::p_cusolverDnSgetrf_bufferSize
 #define clap_cusolverDnDgetrf_bufferSize    clap::dyn_lapack::p_cusolverDnDgetrf_bufferSize
+#define clap_cusolverDnCgetrf_bufferSize    clap::dyn_lapack::p_cusolverDnCgetrf_bufferSize
+#define clap_cusolverDnZgetrf_bufferSize    clap::dyn_lapack::p_cusolverDnZgetrf_bufferSize
 #define clap_cusolverDnSgetrf               clap::dyn_lapack::p_cusolverDnSgetrf
 #define clap_cusolverDnDgetrf               clap::dyn_lapack::p_cusolverDnDgetrf
+#define clap_cusolverDnCgetrf               clap::dyn_lapack::p_cusolverDnCgetrf
+#define clap_cusolverDnZgetrf               clap::dyn_lapack::p_cusolverDnZgetrf
 #define clap_cusolverDnSgetrs               clap::dyn_lapack::p_cusolverDnSgetrs
 #define clap_cusolverDnDgetrs               clap::dyn_lapack::p_cusolverDnDgetrs
+#define clap_cusolverDnCgetrs               clap::dyn_lapack::p_cusolverDnCgetrs
+#define clap_cusolverDnZgetrs               clap::dyn_lapack::p_cusolverDnZgetrs
 
 #define clap_cusolverDnSpotrf_bufferSize    clap::dyn_lapack::p_cusolverDnSpotrf_bufferSize
 #define clap_cusolverDnDpotrf_bufferSize    clap::dyn_lapack::p_cusolverDnDpotrf_bufferSize
+#define clap_cusolverDnCpotrf_bufferSize    clap::dyn_lapack::p_cusolverDnCpotrf_bufferSize
+#define clap_cusolverDnZpotrf_bufferSize    clap::dyn_lapack::p_cusolverDnZpotrf_bufferSize
 #define clap_cusolverDnSpotrf               clap::dyn_lapack::p_cusolverDnSpotrf
 #define clap_cusolverDnDpotrf               clap::dyn_lapack::p_cusolverDnDpotrf
+#define clap_cusolverDnCpotrf               clap::dyn_lapack::p_cusolverDnCpotrf
+#define clap_cusolverDnZpotrf               clap::dyn_lapack::p_cusolverDnZpotrf
 
 #define clap_cusolverDnSpotri_bufferSize    clap::dyn_lapack::p_cusolverDnSpotri_bufferSize
 #define clap_cusolverDnDpotri_bufferSize    clap::dyn_lapack::p_cusolverDnDpotri_bufferSize
@@ -91,8 +115,22 @@
 
 #define clap_rocsolver_sgetrf   clap::dyn_lapack::p_rocsolver_sgetrf
 #define clap_rocsolver_dgetrf   clap::dyn_lapack::p_rocsolver_dgetrf
+#define clap_rocsolver_cgetrf   clap::dyn_lapack::p_rocsolver_cgetrf
+#define clap_rocsolver_zgetrf   clap::dyn_lapack::p_rocsolver_zgetrf
 #define clap_rocsolver_sgetrs   clap::dyn_lapack::p_rocsolver_sgetrs
 #define clap_rocsolver_dgetrs   clap::dyn_lapack::p_rocsolver_dgetrs
+#define clap_rocsolver_cgetrs   clap::dyn_lapack::p_rocsolver_cgetrs
+#define clap_rocsolver_zgetrs   clap::dyn_lapack::p_rocsolver_zgetrs
+#define clap_rocsolver_sgesv    clap::dyn_lapack::p_rocsolver_sgesv
+#define clap_rocsolver_dgesv    clap::dyn_lapack::p_rocsolver_dgesv
+#define clap_rocsolver_cgesv    clap::dyn_lapack::p_rocsolver_cgesv
+#define clap_rocsolver_zgesv    clap::dyn_lapack::p_rocsolver_zgesv
+#define clap_rocsolver_sgetri    clap::dyn_lapack::p_rocsolver_sgetri
+#define clap_rocsolver_dgetri    clap::dyn_lapack::p_rocsolver_dgetri
+#define clap_rocsolver_cgetri    clap::dyn_lapack::p_rocsolver_cgetri
+#define clap_rocsolver_zgetri    clap::dyn_lapack::p_rocsolver_zgetri
+#define clap_rocsolver_cpotrf    clap::dyn_lapack::p_rocsolver_cpotrf
+#define clap_rocsolver_zpotrf    clap::dyn_lapack::p_rocsolver_zpotrf 
 #define clap_rocsolver_spotrf   clap::dyn_lapack::p_rocsolver_spotrf
 #define clap_rocsolver_spotri   clap::dyn_lapack::p_rocsolver_spotri
 #define clap_rocsolver_dpotri   clap::dyn_lapack::p_rocsolver_dpotri

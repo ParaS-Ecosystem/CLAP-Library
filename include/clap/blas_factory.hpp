@@ -303,8 +303,8 @@ public:
                     int incx, const std::complex<float> *beta,
                     std::complex<float> *Y, int incy) = 0;
   virtual void hpmv(Layout layout, Uplo uplo, int n, const std::complex<double> *alpha,
-       const std::complex<double> *Ap, const std::complex<double> *X, int incx,
-       const std::complex<double> *beta, std::complex<double> *Y, int incy) = 0;
+                    const std::complex<double> *Ap, const std::complex<double> *X, int incx,
+                    const std::complex<double> *beta, std::complex<double> *Y, int incy) = 0;
  
   virtual void spmv(Layout layout, Uplo uplo, int n, const float alpha,
                     const float *Ap, const float *x, int incX, const float beta,
@@ -343,6 +343,7 @@ public:
                     const double *X, int incx, const double *Y, int incy,
                     double *Ap) = 0;
 
+  //GEMM -Device resident
 
   virtual void gemm_device(Layout layout, Transpose transA, Transpose transB,
                            int m, int n, int k, float alpha,
@@ -359,6 +360,7 @@ public:
                            void *stream = nullptr) {
     throw std::runtime_error("device GEMM unsupported by this backend");
   }
+
   virtual void gemm_device(Layout layout, Transpose transA, Transpose transB,
                            int m, int n, int k, const std::complex<float> *alpha,
                            const std::complex<float> *dA, int lda, const std::complex<float> *dB, int ldb,
@@ -366,6 +368,7 @@ public:
                            void *stream = nullptr) {
     throw std::runtime_error("device GEMM unsupported by this backend");
   }
+
   virtual void gemm_device(Layout layout, Transpose transA, Transpose transB,
                            int m, int n, int k, const std::complex<double> *alpha,
                            const std::complex<double> *dA, int lda, const std::complex<double> *dB, int ldb,
@@ -375,21 +378,20 @@ public:
   }
   
   virtual void gemm_bf16_device(Layout layout, Transpose transA,
-      Transpose transB, int m, int n, int k, float alpha,
-      const void *dA, int lda, const void *dB, int ldb,
-      float beta, void *dC, int ldc, void *stream = nullptr) {
+                                Transpose transB, int m, int n, int k, float alpha,
+                                const void *dA, int lda, const void *dB, int ldb,
+                                float beta, void *dC, int ldc, void *stream = nullptr) {
     throw std::runtime_error("BF16 device GEMM unsupported by this backend");
   }
  
   virtual void gemm_strided_batched_device(Layout layout, Transpose transA,
-      Transpose transB, int m, int n, int k, float alpha,
-      const void *dA, int lda, long long strideA,
-      const void *dB, int ldb, long long strideB,
-      float beta, void *dC, int ldc, long long strideC,
-      int batch_count, void *stream = nullptr) {
+                                           Transpose transB, int m, int n, int k, float alpha,
+                                           const void *dA, int lda, long long strideA,
+                                           const void *dB, int ldb, long long strideB,
+                                           float beta, void *dC, int ldc, long long strideC,
+                                           int batch_count, void *stream = nullptr) {
     throw std::runtime_error("strided-batched device GEMM unsupported by this backend");
   }
-
 
 // Level 3
 

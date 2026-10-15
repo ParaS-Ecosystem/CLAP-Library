@@ -1,3 +1,20 @@
+// Copyright (c) 2026 Centre for Development of Advanced Computing (C-DAC)
+//
+// This file is part of the CLAP library, a component of the ParaS Ecosystem.
+//
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License (LGPL) version 3
+// as published by the Free Software Foundation.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library. If not, see <https://www.gnu.org/licenses/>.
+// -----------------------------------------------------------------------------
+
 #include "clap/blas/rocblas/rocblas_backend.hpp"
 #include "clap/blas/rocblas/rocblas_utils.hpp"
 #include <dlfcn.h>
@@ -18,6 +35,7 @@ template <typename T> T vendor_symbol(const char* symbol) {
   if (!fn) throw std::runtime_error(std::string("Missing BLAS symbol: ") + symbol);
   return fn;
 }
+
 void validate(Layout layout, Transpose a, Transpose b, int m,int n,int k,
               int lda,int ldb,int ldc, const void* A,const void* B,void* C) {
   if (m<0 || n<0 || k<0) throw std::invalid_argument("Negative GEMM dimension");
@@ -28,6 +46,7 @@ void validate(Layout layout, Transpose a, Transpose b, int m,int n,int k,
     throw std::invalid_argument("Invalid GEMM leading dimension");
   if(m && n && (!A || !B || !C)) throw std::invalid_argument("Null GEMM device pointer");
 }
+
 struct Params {int m,n,k,lda,ldb,ldc; rocblas_operation a,b;};
 Params params(Layout layout, Transpose transA, Transpose transB,
               int m,int n,int k,int lda,int ldb,int ldc) {
@@ -37,16 +56,17 @@ Params params(Layout layout, Transpose transA, Transpose transB,
   }
   return p;
 }
+
 void set_stream(rocblas_handle handle,void *stream) {
-  // No stream mutation for nullptr: let the backend's existing handle policy apply.
   if(!stream) return;
   using Fn = rocblas_status (*)(rocblas_handle,void*);
   auto fn = vendor_symbol<Fn>("rocblas_set_stream");
   if(fn(handle,stream) != rocblas_status_success)
     throw std::runtime_error("Failed to set device GEMM stream");
 }
+
 void check(int status) {if(status != 0) throw std::runtime_error("device BLAS GEMM status="+std::to_string(status));}
-} // namespace
+}
 
 void RocBlasBackend::gemm_device(Layout layout,Transpose transA,Transpose transB,
     int m,int n,int k,float alpha,const float* A,int lda,
@@ -115,7 +135,6 @@ void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   if(!m || !n) return;
   set_stream(handle,stream);
   auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
-  // rocblas_gemm_ex; rocblas_datatype_bf16_r=14, f32_r=151, default algo=0.
   using Fn=rocblas_status (*)(rocblas_handle,rocblas_operation,rocblas_operation,
     int,int,int,const void*,const void*,int,int,const void*,int,int,
     const void*,const void*,int,int,void*,int,int,int,int,int,unsigned);
@@ -147,4 +166,4 @@ void RocBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Tran
   check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,p.lda,sa,
                 b,p.ldb,sb,&beta,static_cast<float*>(C),p.ldc,strideC,batches));
 }
-} // namespace clap
+}

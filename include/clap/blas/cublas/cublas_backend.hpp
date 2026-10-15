@@ -31,20 +31,6 @@ public:
 
   ~CuBlasBackend();
 
-    // Device-resident GEMM additions (no host staging).
-  void gemm_device(Layout, Transpose, Transpose, int, int, int, float , const float*, int, const float*, int, float , float*, int, void* = nullptr) override;
-  void gemm_device(Layout, Transpose, Transpose, int, int, int, double , const double*, int, const double*, int, double , double*, int, void* = nullptr) override;
-  void gemm_device(Layout, Transpose, Transpose, int, int, int, const std::complex<float> *, const std::complex<float>*, int, const std::complex<float>*, int, const std::complex<float> *, std::complex<float>*, int, void* = nullptr) override;
-  void gemm_device(Layout, Transpose, Transpose, int, int, int, const std::complex<double> *, const std::complex<double>*, int, const std::complex<double>*, int, const std::complex<double> *, std::complex<double>*, int, void* = nullptr) override;
-  void gemm_bf16_device(Layout, Transpose, Transpose, int, int, int,
-      float, const void*, int, const void*, int, float, void*, int,
-      void* = nullptr) override;
-  void gemm_strided_batched_device(Layout, Transpose, Transpose,
-      int, int, int, float, const void*, int, long long,
-      const void*, int, long long, float, void*, int, long long,
-      int, void* = nullptr) override;
-
-
   //Level 1
 
   void copy(int n, const float *x, int incx, float *y, int incy) override;
@@ -327,6 +313,26 @@ public:
   void spr2(Layout layout, Uplo uplo, int n, const double alpha,
             const double *X, int incx, const double *Y, int incy,
             double *Ap) override;
+
+ // Device-resident GEMM 
+  void gemm_device(Layout, Transpose, Transpose, int, int, int, float , const float*, 
+                   int, const float*, int, float , float*, int, void* = nullptr) override;
+  void gemm_device(Layout, Transpose, Transpose, int, int, int, double , const double*,
+                   int, const double*, int, double , double*, int, void* = nullptr) override;
+  void gemm_device(Layout, Transpose, Transpose, int, int, int, const std::complex<float> *,
+                   const std::complex<float>*, int, const std::complex<float>*, int,
+                   const std::complex<float> *, std::complex<float>*, int, void* = nullptr) override;
+  void gemm_device(Layout, Transpose, Transpose, int, int, int, const std::complex<double> *,
+                   const std::complex<double>*, int, const std::complex<double>*, int,
+                   const std::complex<double> *, std::complex<double>*, int, void* = nullptr) override;
+                   
+  void gemm_bf16_device(Layout, Transpose, Transpose, int, int, int,
+                        float, const void*, int, const void*, int, float, void*, int,
+                        void* = nullptr) override;
+  void gemm_strided_batched_device(Layout, Transpose, Transpose,
+                                   int, int, int, float, const void*, int, long long,
+                                   const void*, int, long long, float, void*, int, long long,
+                                   int, void* = nullptr) override;
 
   //Level 3
 

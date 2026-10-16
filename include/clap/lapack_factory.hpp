@@ -38,6 +38,18 @@ public:
                         lapack_int *ipiv,
                         lapack_int *info) = 0;
 
+    virtual void cgetrf(Layout layout,
+                        lapack_int m, lapack_int n,
+                        lapack_complex_float *A, lapack_int lda,
+                        lapack_int *ipiv,
+                        lapack_int *info) = 0;
+
+    virtual void zgetrf(Layout layout,
+                        lapack_int m, lapack_int n,
+                        lapack_complex_double *A, lapack_int lda,
+                        lapack_int *ipiv,
+                        lapack_int *info) = 0;
+
     virtual void sgetrs(Layout layout, Transpose trans,
                         lapack_int n, lapack_int nrhs,
                         const float  *A, lapack_int lda,
@@ -52,6 +64,20 @@ public:
                         double *B, lapack_int ldb,
                         lapack_int *info) = 0;
 
+    virtual void cgetrs(Layout layout, Transpose trans,
+                        lapack_int n, lapack_int nrhs,
+                        const lapack_complex_float *A, lapack_int lda,
+                        const lapack_int *ipiv,
+                        lapack_complex_float *B, lapack_int ldb,
+                        lapack_int *info) = 0;
+    
+    virtual void zgetrs(Layout layout, Transpose trans,
+                        lapack_int n, lapack_int nrhs,
+                        const lapack_complex_double *A, lapack_int lda,
+                        const lapack_int *ipiv,
+                        lapack_complex_double *B, lapack_int ldb,
+                        lapack_int *info) = 0;
+
     virtual void sgesv(lapack_int n, lapack_int nrhs,
                        float  *A, lapack_int lda,
                        lapack_int *ipiv,
@@ -64,6 +90,18 @@ public:
                        double *B, lapack_int ldb,
                        lapack_int *info) = 0;
 
+    virtual void cgesv(lapack_int n, lapack_int nrhs,
+                       lapack_complex_float *A, lapack_int lda,
+                       lapack_int *ipiv,
+                       lapack_complex_float *B, lapack_int ldb,
+                       lapack_int *info) = 0;
+
+    virtual void zgesv(lapack_int n, lapack_int nrhs,
+                       lapack_complex_double *A, lapack_int lda,
+                       lapack_int *ipiv,
+                       lapack_complex_double *B, lapack_int ldb,
+                       lapack_int *info) = 0;
+
     virtual void sgetri(lapack_int n,
                         float  *A, lapack_int lda,
                         const lapack_int *ipiv,
@@ -71,6 +109,16 @@ public:
 
     virtual void dgetri(lapack_int n,
                         double *A, lapack_int lda,
+                        const lapack_int *ipiv,
+                        lapack_int *info) = 0;
+
+    virtual void cgetri(lapack_int n,
+                        lapack_complex_float *A, lapack_int lda,
+                        const lapack_int *ipiv,
+                        lapack_int *info) = 0;
+
+    virtual void zgetri(lapack_int n,
+                        lapack_complex_double *A, lapack_int lda,
                         const lapack_int *ipiv,
                         lapack_int *info) = 0;
 
@@ -83,7 +131,17 @@ public:
                         lapack_int n,
                         double *A, lapack_int lda,
                         lapack_int *info) = 0;
+
+    virtual void cpotrf(Layout layout, Uplo uplo,
+                        lapack_int n,
+                        lapack_complex_float *A, lapack_int lda,
+                        lapack_int *info) = 0;
                         
+    virtual void zpotrf(Layout layout, Uplo uplo,
+                        lapack_int n,
+                        lapack_complex_double *A, lapack_int lda,
+                        lapack_int *info) = 0;
+
     virtual void spotri(Layout layout, Uplo uplo,
                         lapack_int n,
                         float *A, lapack_int lda,

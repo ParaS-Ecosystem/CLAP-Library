@@ -21,6 +21,9 @@
 
 typedef int lapack_int;
 
+typedef std::complex<float> lapack_complex_float;
+typedef std::complex<double> lapack_complex_double;
+
 typedef enum {
     CUSOLVER_STATUS_SUCCESS                 = 0,
     CUSOLVER_STATUS_NOT_INITIALIZED         = 1,

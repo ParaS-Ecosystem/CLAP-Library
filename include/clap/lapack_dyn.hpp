@@ -17,6 +17,7 @@
 
 #pragma once
 #include "clap/lapack/lapack_types.hpp"
+#include "clap/blas/types.hpp"
 #include <cstdint>
 #include <dlfcn.h>
 #include <iostream>
@@ -32,6 +33,14 @@ extern lapack_int (*p_LAPACKE_dgetrf)(int matrix_layout,
                                       lapack_int m, lapack_int n,
                                       double *a, lapack_int lda,
                                       lapack_int *ipiv);
+extern lapack_int (*p_LAPACKE_cgetrf)(int matrix_layout,
+                                      lapack_int m, lapack_int n,
+                                      lapack_complex_float *a, lapack_int lda,
+                                      lapack_int *ipiv);
+extern lapack_int (*p_LAPACKE_zgetrf)(int matrix_layout,
+                                      lapack_int m, lapack_int n,
+                                      lapack_complex_double *a, lapack_int lda,
+                                      lapack_int *ipiv);
 
 extern lapack_int (*p_LAPACKE_sgetrs)(int matrix_layout, char trans,
                                       lapack_int n, lapack_int nrhs,
@@ -43,6 +52,16 @@ extern lapack_int (*p_LAPACKE_dgetrs)(int matrix_layout, char trans,
                                       const double *a, lapack_int lda,
                                       const lapack_int *ipiv,
                                       double *b, lapack_int ldb);
+extern lapack_int (*p_LAPACKE_cgetrs)(int matrix_layout, char trans,
+                                      lapack_int n, lapack_int nrhs,
+                                      const lapack_complex_float *a, lapack_int lda,
+                                      const lapack_int *ipiv,
+                                      lapack_complex_float *b, lapack_int ldb);
+extern lapack_int (*p_LAPACKE_zgetrs)(int matrix_layout, char trans,
+                                      lapack_int n, lapack_int nrhs,
+                                      const lapack_complex_double *a, lapack_int lda,
+                                      const lapack_int *ipiv,
+                                      lapack_complex_double *b, lapack_int ldb);
 
 extern lapack_int (*p_LAPACKE_sgesv)(int matrix_layout,
                                      lapack_int n, lapack_int nrhs,
@@ -55,6 +74,18 @@ extern lapack_int (*p_LAPACKE_dgesv)(int matrix_layout,
                                      lapack_int *ipiv,
                                      double *b, lapack_int ldb);
 
+extern lapack_int (*p_LAPACKE_cgesv)(int matrix_layout,
+                                     lapack_int n, lapack_int nrhs,
+                                     lapack_complex_float *a, lapack_int lda,
+                                     lapack_int *ipiv,
+                                     lapack_complex_float *b, lapack_int ldb);
+
+extern lapack_int (*p_LAPACKE_zgesv)(int matrix_layout,
+                                     lapack_int n, lapack_int nrhs,
+                                     lapack_complex_double *a, lapack_int lda,
+                                     lapack_int *ipiv,
+                                     lapack_complex_double *b, lapack_int ldb);
+
 extern lapack_int (*p_LAPACKE_sgetri)(int matrix_layout,
                                       lapack_int n,
                                       float  *a, lapack_int lda,
@@ -64,12 +95,28 @@ extern lapack_int (*p_LAPACKE_dgetri)(int matrix_layout,
                                       double *a, lapack_int lda,
                                       const lapack_int *ipiv);
 
+extern lapack_int (*p_LAPACKE_cgetri)(int matrix_layout,
+                                      lapack_int n,
+                                      lapack_complex_float *a, lapack_int lda,
+                                      const lapack_int *ipiv);
+
+extern lapack_int (*p_LAPACKE_zgetri)(int matrix_layout,
+                                      lapack_int n,
+                                      lapack_complex_double *a, lapack_int lda,
+                                      const lapack_int *ipiv);
+
 extern lapack_int (*p_LAPACKE_spotrf)(int matrix_layout, char uplo,
                                       lapack_int n,
                                       float  *a, lapack_int lda);
 extern lapack_int (*p_LAPACKE_dpotrf)(int matrix_layout, char uplo,
                                       lapack_int n,
                                       double *a, lapack_int lda);
+extern lapack_int (*p_LAPACKE_cpotrf)(int matrix_layout, char uplo,
+                                      lapack_int n,
+                                      lapack_complex_float *a, lapack_int lda);
+extern lapack_int (*p_LAPACKE_zpotrf)(int matrix_layout, char uplo,
+                                      lapack_int n,
+                                      lapack_complex_double *a, lapack_int lda);
 
 extern lapack_int (*p_LAPACKE_spotri)(int matrix_layout, char uplo,
                                       lapack_int n, float *A, lapack_int lda);
@@ -187,6 +234,16 @@ extern cusolverStatus_t (*p_cusolverDnDgetrf_bufferSize)(
     int m, int n,
     double *A, int lda,
     int *Lwork);
+extern cusolverStatus_t (*p_cusolverDnCgetrf_bufferSize)(
+    cusolverDnHandle_t handle,
+    int m, int n,
+    cuComplex *A, int lda,
+    int *Lwork);
+extern cusolverStatus_t (*p_cusolverDnZgetrf_bufferSize)(
+    cusolverDnHandle_t handle,
+    int m, int n,
+    cuDoubleComplex *A, int lda,
+    int *Lwork);
 
 extern cusolverStatus_t (*p_cusolverDnSgetrf)(
     cusolverDnHandle_t handle,
@@ -199,6 +256,18 @@ extern cusolverStatus_t (*p_cusolverDnDgetrf)(
     int m, int n,
     double *A, int lda,
     double *Workspace,
+    int *devIpiv, int *devInfo);
+extern cusolverStatus_t (*p_cusolverDnCgetrf)(
+    cusolverDnHandle_t handle,
+    int m, int n,
+    cuComplex *A, int lda,
+    cuComplex *Workspace,
+    int *devIpiv, int *devInfo);
+extern cusolverStatus_t (*p_cusolverDnZgetrf)(
+    cusolverDnHandle_t handle,
+    int m, int n,
+    cuDoubleComplex *A, int lda,
+    cuDoubleComplex *Workspace,
     int *devIpiv, int *devInfo);
 
 extern cusolverStatus_t (*p_cusolverDnSgetrs)(
@@ -217,6 +286,22 @@ extern cusolverStatus_t (*p_cusolverDnDgetrs)(
     const int *devIpiv,
     double *B, int ldb,
     int *devInfo);
+extern cusolverStatus_t (*p_cusolverDnCgetrs)(
+    cusolverDnHandle_t handle,
+    int trans,
+    int n, int nrhs,
+    const cuComplex *A, int lda,
+    const int *devIpiv,
+    cuComplex *B, int ldb,
+    int *devInfo);
+extern cusolverStatus_t (*p_cusolverDnZgetrs)(
+    cusolverDnHandle_t handle,
+    int trans,
+    int n, int nrhs,
+    const cuDoubleComplex *A, int lda,
+    const int *devIpiv,
+    cuDoubleComplex *B, int ldb,
+    int *devInfo);
 
 extern cusolverStatus_t (*p_cusolverDnSpotrf_bufferSize)(
     cusolverDnHandle_t handle,
@@ -227,6 +312,16 @@ extern cusolverStatus_t (*p_cusolverDnDpotrf_bufferSize)(
     cusolverDnHandle_t handle,
     int uplo, int n,
     double *A, int lda,
+    int *Lwork);
+extern cusolverStatus_t (*p_cusolverDnCpotrf_bufferSize)(
+    cusolverDnHandle_t handle,
+    int uplo, int n,
+    cuComplex *A, int lda,
+    int *Lwork);
+extern cusolverStatus_t (*p_cusolverDnZpotrf_bufferSize)(
+    cusolverDnHandle_t handle,
+    int uplo, int n,
+    cuDoubleComplex *A, int lda,
     int *Lwork);
 extern cusolverStatus_t (*p_cusolverDnSpotrf)(
     cusolverDnHandle_t handle,
@@ -240,7 +335,19 @@ extern cusolverStatus_t (*p_cusolverDnDpotrf)(
     double *A, int lda,
     double *Workspace, int Lwork,
     int *devInfo);
-
+extern cusolverStatus_t (*p_cusolverDnCpotrf)(
+    cusolverDnHandle_t handle,
+    int uplo, int n,
+    cuComplex *A, int lda,
+    cuComplex *Workspace, int Lwork,
+    int *devInfo);
+extern cusolverStatus_t (*p_cusolverDnZpotrf)(
+    cusolverDnHandle_t handle,
+    int uplo, int n,
+    cuDoubleComplex *A, int lda,
+    cuDoubleComplex *Workspace, int Lwork,
+    int *devInfo);
+    
 extern cusolverStatus_t (*p_cusolverDnSpotri_bufferSize)(
     cusolverDnHandle_t handle,
     int uplo, int n,
@@ -344,101 +451,175 @@ extern cusolverStatus_t (*p_cusolverDnDsyevd)(
     int *devInfo);
 
 extern int (*p_rocsolver_sgetrf)(rocsolver_handle handle,
-                                  rocblas_int_solver m, rocblas_int_solver n,
-                                  float  *A, rocblas_int_solver lda,
-                                  rocblas_int_solver *ipiv,
-                                  rocblas_int_solver *info);
+                                  rocblas_int m, rocblas_int n,
+                                  float  *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  rocblas_int *info);
 extern int (*p_rocsolver_dgetrf)(rocsolver_handle handle,
-                                  rocblas_int_solver m, rocblas_int_solver n,
-                                  double *A, rocblas_int_solver lda,
-                                  rocblas_int_solver *ipiv,
-                                  rocblas_int_solver *info);
+                                  rocblas_int m, rocblas_int n,
+                                  double *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_cgetrf)(rocsolver_handle handle,
+                                  rocblas_int m, rocblas_int n,
+                                  rocblas_float_complex *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_zgetrf)(rocsolver_handle handle,
+                                  rocblas_int m, rocblas_int n,
+                                  rocblas_double_complex *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  rocblas_int *info);
 
 extern int (*p_rocsolver_sgetrs)(rocsolver_handle handle,
                                   int trans,
-                                  rocblas_int_solver n, rocblas_int_solver nrhs,
-                                  const float  *A, rocblas_int_solver lda,
-                                  const rocblas_int_solver *ipiv,
-                                  float  *B, rocblas_int_solver ldb);
+                                  rocblas_int n, rocblas_int nrhs,
+                                  const float  *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  float  *B, rocblas_int ldb);
 extern int (*p_rocsolver_dgetrs)(rocsolver_handle handle,
                                   int trans,
-                                  rocblas_int_solver n, rocblas_int_solver nrhs,
-                                  const double *A, rocblas_int_solver lda,
-                                  const rocblas_int_solver *ipiv,
-                                  double *B, rocblas_int_solver ldb);
+                                  rocblas_int n, rocblas_int nrhs,
+                                  const double *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  double *B, rocblas_int ldb);
+extern int (*p_rocsolver_cgetrs)(rocsolver_handle handle,
+                                  int trans,
+                                  rocblas_int n, rocblas_int nrhs,
+                                  const rocblas_float_complex *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  rocblas_float_complex *B, rocblas_int ldb);
+extern int (*p_rocsolver_zgetrs)(rocsolver_handle handle,
+                                  int trans,
+                                  rocblas_int n, rocblas_int nrhs,
+                                  const rocblas_double_complex *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  rocblas_double_complex *B, rocblas_int ldb);
+
+extern int (*p_rocsolver_sgesv)(rocsolver_handle handle,
+                                  rocblas_int n, rocblas_int nrhs,
+                                  float  *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  float  *B, rocblas_int ldb, rocblas_int *info);
+extern int (*p_rocsolver_dgesv)(rocsolver_handle handle,
+                                  rocblas_int n, rocblas_int nrhs,
+                                  double *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  double *B, rocblas_int ldb, rocblas_int *info);
+extern int (*p_rocsolver_cgesv)(rocsolver_handle handle,
+                                  rocblas_int n, rocblas_int nrhs,
+                                  rocblas_float_complex *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  rocblas_float_complex *B, rocblas_int ldb, rocblas_int *info);
+extern int (*p_rocsolver_zgesv)(rocsolver_handle handle,
+                                  rocblas_int n, rocblas_int nrhs,
+                                  rocblas_double_complex *A, rocblas_int lda,
+                                  rocblas_int *ipiv,
+                                  rocblas_double_complex *B, rocblas_int ldb, rocblas_int *info);
+
+extern int (*p_rocsolver_sgetri)(rocsolver_handle handle,
+                                  rocblas_int n,
+                                  float  *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_dgetri)(rocsolver_handle handle,
+                                  rocblas_int n,
+                                  double *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_cgetri)(rocsolver_handle handle,
+                                  rocblas_int n,
+                                  rocblas_float_complex *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_zgetri)(rocsolver_handle handle,
+                                  rocblas_int n,
+                                  rocblas_double_complex *A, rocblas_int lda,
+                                  const rocblas_int *ipiv,
+                                  rocblas_int *info);
 
 extern int (*p_rocsolver_spotrf)(rocsolver_handle handle,
                                   int uplo,
-                                  rocblas_int_solver n,
-                                  float  *A, rocblas_int_solver lda,
-                                  rocblas_int_solver *info);
+                                  rocblas_int n,
+                                  float  *A, rocblas_int lda,
+                                  rocblas_int *info);
 extern int (*p_rocsolver_dpotrf)(rocsolver_handle handle,
                                   int uplo,
-                                  rocblas_int_solver n,
-                                  double *A, rocblas_int_solver lda,
-                                  rocblas_int_solver *info);
+                                  rocblas_int n,
+                                  double *A, rocblas_int lda,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_cpotrf)(rocsolver_handle handle,
+                                  int uplo,
+                                  rocblas_int n,
+                                  rocblas_float_complex *A, rocblas_int lda,
+                                  rocblas_int *info);
+extern int (*p_rocsolver_zpotrf)(rocsolver_handle handle,
+                                  int uplo,
+                                  rocblas_int n,
+                                  rocblas_double_complex *A, rocblas_int lda,
+                                  rocblas_int *info);
 
 extern int (*p_rocsolver_spotri)(rocsolver_handle handle, 
-                                int uplo, rocblas_int_solver n, 
-                                float *A, rocblas_int_solver lda, 
-                                rocblas_int_solver *info);
+                                int uplo, rocblas_int n, 
+                                float *A, rocblas_int lda, 
+                                rocblas_int *info);
 
 extern int (*p_rocsolver_dpotri)(rocsolver_handle handle, 
-                                int uplo, rocblas_int_solver n, 
-                                double *A, rocblas_int_solver lda, 
-                                rocblas_int_solver *info);
+                                int uplo, rocblas_int n, 
+                                double *A, rocblas_int lda, 
+                                rocblas_int *info);
 
 extern int (*p_rocsolver_spotrs)(rocsolver_handle handle,
     							int uplo,
-    							rocblas_int_solver n,
-    							rocblas_int_solver nrhs,
+    							rocblas_int n,
+    							rocblas_int nrhs,
     							const float *A,
-   								rocblas_int_solver lda,
+   								rocblas_int lda,
     							float *B,
-    							rocblas_int_solver ldb);
+    							rocblas_int ldb);
 
 extern int (*p_rocsolver_dpotrs)(rocsolver_handle handle,
     							int uplo,
-    							rocblas_int_solver n,
-    							rocblas_int_solver nrhs,
+    							rocblas_int n,
+    							rocblas_int nrhs,
     							const double *A,
-    							rocblas_int_solver lda,
+    							rocblas_int lda,
     							double *B,
-    							rocblas_int_solver ldb);
+    							rocblas_int ldb);
 
 extern int (*p_rocsolver_sgesvd)(rocsolver_handle handle,
                                   int jobu, int jobv,
-                                  rocblas_int_solver m, rocblas_int_solver n,
-                                  float  *A, rocblas_int_solver lda,
+                                  rocblas_int m, rocblas_int n,
+                                  float  *A, rocblas_int lda,
                                   float  *S,
-                                  float  *U,  rocblas_int_solver ldu,
-                                  float  *V,  rocblas_int_solver ldv,
+                                  float  *U,  rocblas_int ldu,
+                                  float  *V,  rocblas_int ldv,
                                   float  *E,
                                   int fast_alg,
-                                  rocblas_int_solver *info);
+                                  rocblas_int *info);
 extern int (*p_rocsolver_dgesvd)(rocsolver_handle handle,
                                   int jobu, int jobv,
-                                  rocblas_int_solver m, rocblas_int_solver n,
-                                  double *A, rocblas_int_solver lda,
+                                  rocblas_int m, rocblas_int n,
+                                  double *A, rocblas_int lda,
                                   double *S,
-                                  double *U,  rocblas_int_solver ldu,
-                                  double *V,  rocblas_int_solver ldv,
+                                  double *U,  rocblas_int ldu,
+                                  double *V,  rocblas_int ldv,
                                   double *E,
                                   int fast_alg,
-                                  rocblas_int_solver *info);
+                                  rocblas_int *info);
 
 extern int (*p_rocsolver_ssyev)(rocsolver_handle handle,
                                  int evect, int uplo,
-                                 rocblas_int_solver n,
-                                 float  *A, rocblas_int_solver lda,
+                                 rocblas_int n,
+                                 float  *A, rocblas_int lda,
                                  float  *D, float  *E,
-                                 rocblas_int_solver *info);
+                                 rocblas_int *info);
 extern int (*p_rocsolver_dsyev)(rocsolver_handle handle,
                                  int evect, int uplo,
-                                 rocblas_int_solver n,
-                                 double *A, rocblas_int_solver lda,
+                                 rocblas_int n,
+                                 double *A, rocblas_int lda,
                                  double *D, double *E,
-                                 rocblas_int_solver *info);
+                                 rocblas_int *info);
 
 bool loadOpenBLASLapack();
 bool loadCuSolver();

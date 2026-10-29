@@ -89,7 +89,8 @@ std::mutex one_mutex, cuda_mutex, hip_mutex;
 void* one_lib = nullptr; void* cuda_lib = nullptr; void* cudnn_lib = nullptr; void* hip_lib = nullptr; void* miopen_lib = nullptr;
 void* cuda_driver_lib = nullptr; void* nvrtc_lib = nullptr;
 bool one_done=false, cuda_done=false, hip_done=false, cuda_jit_done=false;
-bool one_graph=false, miopen_t5=false, miopen_mha=false;
+bool one_ok=false, cuda_ok=false, hip_ok=false, cuda_jit_ok=false;
+bool one_graph=false, miopen_t5=false, miopen_mha=false, miopen_ln_bwd=false;
 std::mutex jit_mutex;
 std::string error_text;
 
@@ -116,10 +117,18 @@ bool symOptional(void* h, const char* n, T& out) {
 
 const char* lastError() { return error_text.c_str(); }
 
+static bool loadOneDnnImpl();
+
 bool loadOneDnn() {
     std::lock_guard<std::mutex> lock(one_mutex);
-    if (one_done) return one_lib != nullptr;
-    one_done=true;
+    if (!one_done) {
+        one_done = true;
+        one_ok = loadOneDnnImpl();
+    }
+    return one_ok;
+}
+
+static bool loadOneDnnImpl() {
     one_lib=open_any({"libdnnl.so", "libdnnl.so.3", "libdnnl.so.2"});
     if (!one_lib) { error_text="cannot dlopen libdnnl.so; set LD_LIBRARY_PATH to oneDNN lib directory"; return false; }
 
@@ -155,10 +164,18 @@ bool loadOneDnn() {
     return true;
 }
 
+static bool loadCudaAndCudnnImpl();
+
 bool loadCudaAndCudnn() {
     std::lock_guard<std::mutex> lock(cuda_mutex);
-    if (cuda_done) return cuda_lib && cudnn_lib;
-    cuda_done=true;
+    if (!cuda_done) {
+        cuda_done = true;
+        cuda_ok = loadCudaAndCudnnImpl();
+    }
+    return cuda_ok;
+}
+
+static bool loadCudaAndCudnnImpl() {
     cuda_lib=open_any({"libcudart.so", "libcudart.so.12", "libcudart.so.13"});
     if (!cuda_lib) { error_text="cannot dlopen libcudart.so"; return false; }
 #define S0(x) if(!sym(cuda_lib,#x,p_##x)) return false
@@ -166,7 +183,7 @@ bool loadCudaAndCudnn() {
     S0(cudaGetDevice); S0(cudaStreamCreate); S0(cudaStreamDestroy); S0(cudaStreamSynchronize); S0(cudaMemcpyAsync); S0(cudaMemsetAsync); S0(cudaMallocAsync); S0(cudaFreeAsync);
 #undef S0
     int count=0; if(p_cudaGetDeviceCount(&count)!=0 || count<=0) { error_text="CUDA runtime loaded but no NVIDIA GPU is available"; return false; }
-    cudnn_lib=open_any({"libcudnn.so", "libcudnn.so.9"});
+    cudnn_lib=open_any({"libcudnn.so", "libcudnn.so.9", "libcudnn.so.8"});
     if (!cudnn_lib) { error_text="cannot dlopen libcudnn.so; set LD_LIBRARY_PATH to cuDNN lib directory"; return false; }
 #define S(x) if(!sym(cudnn_lib,#x,p_##x)) return false
     S(cudnnCreate); S(cudnnDestroy); S(cudnnCreateTensorDescriptor); S(cudnnSetTensor4dDescriptor); S(cudnnDestroyTensorDescriptor);
@@ -185,10 +202,18 @@ bool loadCudaAndCudnn() {
     return true;
 }
 
+static bool loadCudaJitImpl();
+
 bool loadCudaJit() {
     std::lock_guard<std::mutex> lock(jit_mutex);
-    if (cuda_jit_done) return cuda_driver_lib && nvrtc_lib;
-    cuda_jit_done = true;
+    if (!cuda_jit_done) {
+        cuda_jit_done = true;
+        cuda_jit_ok = loadCudaJitImpl();
+    }
+    return cuda_jit_ok;
+}
+
+static bool loadCudaJitImpl() {
 
     if (!loadCudaAndCudnn()) return false;
 
@@ -220,11 +245,19 @@ bool loadCudaJit() {
     return true;
 }
 
+static bool loadHipAndMiopenImpl();
+
 bool loadHipAndMiopen() {
     std::lock_guard<std::mutex> lock(hip_mutex);
-    if (hip_done) return hip_lib && miopen_lib;
-    hip_done=true;
-    hip_lib=open_any({"libamdhip64.so", "libamdhip64.so.6"});
+    if (!hip_done) {
+        hip_done = true;
+        hip_ok = loadHipAndMiopenImpl();
+    }
+    return hip_ok;
+}
+
+static bool loadHipAndMiopenImpl() {
+    hip_lib=open_any({"libamdhip64.so", "libamdhip64.so.7", "libamdhip64.so.6"});
     if (!hip_lib) { error_text="cannot dlopen libamdhip64.so"; return false; }
 #define S0(x) if(!sym(hip_lib,#x,p_##x)) return false
     S0(hipGetDeviceCount); S0(hipMalloc); S0(hipFree); S0(hipMemcpy); S0(hipDeviceSynchronize);
@@ -242,7 +275,7 @@ bool loadHipAndMiopen() {
     S(miopenSoftmaxForward_V2); S(miopenSoftmaxBackward_V2); S(miopenCreateLRNDescriptor); S(miopenSetLRNDescriptor); S(miopenDestroyLRNDescriptor); S(miopenLRNForward); S(miopenLRNBackward); S(miopenLRNGetWorkSpaceSize); S(miopenOpTensor); S(miopenCreateReduceTensorDescriptor); S(miopenDestroyReduceTensorDescriptor); S(miopenSetReduceTensorDescriptor); S(miopenGetReductionWorkspaceSize); S(miopenReduceTensor);
     S(miopenBatchNormalizationForwardTraining); S(miopenBatchNormalizationForwardInference); S(miopenBatchNormalizationBackward);
     S(miopenConvolutionBackwardBias); S(miopenConvolutionForwardBias);
-    S(miopenLayerNormForward); S(miopenGetLayerNormBackwardWorkspaceSize); S(miopenLayerNormBackward);
+    S(miopenLayerNormForward);
     S(miopenCreateDropoutDescriptor); S(miopenDestroyDropoutDescriptor); S(miopenDropoutGetStatesSize); S(miopenSetDropoutDescriptor); S(miopenDropoutGetReserveSpaceSize); S(miopenDropoutForward); S(miopenDropoutBackward);
     S(miopenSetStream); S(miopenSetTensorDescriptor);
 #undef S
@@ -251,6 +284,10 @@ bool loadHipAndMiopen() {
     bool ok = true;
     SO(miopenT5LayerNormForward); SO(miopenGetT5LayerNormBackwardWorkspaceSize); SO(miopenT5LayerNormBackward);
     miopen_t5 = ok;
+
+    ok = true;
+    SO(miopenGetLayerNormBackwardWorkspaceSize); SO(miopenLayerNormBackward);
+    miopen_ln_bwd = ok;
 
     ok = true;
     SO(miopenCreateMhaDescriptor); SO(miopenSetMhaDescriptor); SO(miopenCreateMhaProblem); SO(miopenSetProblemTensorDescriptor);
@@ -266,5 +303,6 @@ bool hasAmdGpu() { return loadHipAndMiopen(); }
 bool hasOneDnnGraph() { return loadOneDnn() && one_graph; }
 bool hasMiopenT5LayerNorm() { return loadHipAndMiopen() && miopen_t5; }
 bool hasMiopenMha() { return loadHipAndMiopen() && miopen_mha; }
+bool hasMiopenLayerNormBackward() { return loadHipAndMiopen() && miopen_ln_bwd; }
 
 }

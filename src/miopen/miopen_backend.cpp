@@ -988,6 +988,8 @@ void MiOpenBackend::layerNormForward(const LayerNormDesc& ln, const TensorDesc& 
 void MiOpenBackend::layerNormBackward(const LayerNormDesc& , const TensorDesc& xd, const void* x, const TensorDesc& dyd, const void* dy, const TensorDesc& sd, const void* scale, const void* mean, const void* rstd, const TensorDesc& dxd, void* dx, void* dscale, void* dbias, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "layerNormBackward");
+    if (!dnn_dyn::hasMiopenLayerNormBackward())
+        dnn_contract::unsupported("MIOpen", "the installed MIOpen does not export miopenLayerNormBackward");
     dnn_contract::requireSameShape(xd, dyd, "layerNormBackward");
     dnn_contract::requireSameShape(xd, dxd, "layerNormBackward");
     requirePackedNorm(xd, "layerNormBackward");

@@ -98,6 +98,8 @@ if(BUILD_BLAS_EXAMPLES)
         level3/syrk_d level3/syrk_f
         level3/trmm_d level3/trmm_f
         level3/trsm_d level3/trsm_f
+        device/gemm_bf16_device
+        device/gemm_ex_device
     )
 
     foreach(rel IN LISTS CLAP_BLAS_EXAMPLES)

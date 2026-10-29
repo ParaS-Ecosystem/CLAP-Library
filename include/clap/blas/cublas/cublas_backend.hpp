@@ -333,6 +333,14 @@ public:
                                    int, int, int, float, const void*, int, long long,
                                    const void*, int, long long, float, void*, int, long long,
                                    int, void* = nullptr) override;
+  void gemm_strided_batched_bf16_device(Layout, Transpose, Transpose,
+                                        int, int, int, float, const void*, int, long long,
+                                        const void*, int, long long, float, void*, int, long long,
+                                        int, void* = nullptr) override;
+  void gemm_ex_strided_batched_device(Layout, Transpose, Transpose,
+                                      int, int, int, float, const void*, int, long long,
+                                      const void*, int, long long, float, void*, int, long long,
+                                      int, GemmElem, GemmElem, void* = nullptr) override;
 
   //Level 3
 

@@ -25,6 +25,10 @@
 
 namespace clap {
 namespace {
+
+constexpr int kRocblasBF16 = 168;
+constexpr int kRocblasF32  = 151;
+
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("librocblas.so", RTLD_LAZY | RTLD_LOCAL);
@@ -141,8 +145,10 @@ void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   auto fn=vendor_symbol<Fn>("rocblas_gemm_ex");
   const void* a=(layout==Layout::RowMajor ? B:A);
   const void* b=(layout==Layout::RowMajor ? A:B);
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,14,p.lda,b,14,p.ldb,
-    &beta,C,14,p.ldc,C,14,p.ldc,151,0,0,0));
+  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k, &alpha,
+    a,kRocblasBF16,p.lda, b,kRocblasBF16,p.ldb, &beta,
+    C,kRocblasBF16,p.ldc, C,kRocblasBF16,p.ldc,
+    kRocblasF32,0,0,0));
 }
 
 void RocBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Transpose tb,

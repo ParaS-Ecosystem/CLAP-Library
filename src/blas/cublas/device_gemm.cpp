@@ -25,6 +25,11 @@
 
 namespace clap {
 namespace {
+
+constexpr int kCudaR16BF = 14;
+constexpr int kCublasCompute32F = 68;
+constexpr int kCublasGemmDefault = -1;
+
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("libcublas.so", RTLD_LAZY | RTLD_LOCAL);
@@ -151,6 +156,37 @@ void CuBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   const void* b=(layout==Layout::RowMajor ? A:B);
   check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,14,p.lda,b,14,p.ldb,
     &beta,C,14,p.ldc,68,-1));
+}
+
+void CuBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta, Transpose tb,
+     int m, int n, int k, float alpha, const void* A, int lda, long long strideA, const void* B,
+     int ldb, long long strideB,float beta, void* C, int ldc, long long strideC,
+     int batches, void* stream) {
+
+    if (batches < 0 || strideA < 0 ||
+        strideB < 0 || strideC < 0)
+        throw std::invalid_argument("Invalid BF16 batched GEMM count/stride");
+    validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+    if (batches == 0 || m == 0 || n == 0)
+        return;
+
+    set_stream(handle, stream);
+    auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+    using Fn = cublasStatus_t (*)(cublasHandle_t, cublasOperation_t, cublasOperation_t,
+                   int, int, int, const void*, const void*, int, int, long long,
+                   const void*, int, int, long long, const void*, void*, int, int, long long,
+                   int, int, int );
+
+    auto fn = vendor_symbol<Fn>("cublasGemmStridedBatchedEx");
+    const void* a = (layout == Layout::RowMajor ? B : A);
+    const void* b = (layout == Layout::RowMajor ? A : B);
+
+    auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+    auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+    check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, &alpha, a, kCudaR16BF, p.lda, sa,
+                  b, kCudaR16BF, p.ldb, sb, &beta, C, kCudaR16BF, p.ldc, strideC,
+                  batches, kCublasCompute32F, kCublasGemmDefault ));
 }
 
 void CuBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Transpose tb,

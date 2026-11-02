@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_normalization_layernorm.dir/examples/dnn/normalization/layernorm.cpp.o -o examples/dnn/normalization/layernorm  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

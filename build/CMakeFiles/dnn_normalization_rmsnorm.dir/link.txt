@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_normalization_rmsnorm.dir/examples/dnn/normalization/rmsnorm.cpp.o -o examples/dnn/normalization/rmsnorm  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

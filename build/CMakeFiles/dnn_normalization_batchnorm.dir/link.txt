@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_normalization_batchnorm.dir/examples/dnn/normalization/batchnorm.cpp.o -o examples/dnn/normalization/batchnorm  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_elementwise_add.dir/examples/dnn/elementwise/add.cpp.o -o examples/dnn/elementwise/add  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

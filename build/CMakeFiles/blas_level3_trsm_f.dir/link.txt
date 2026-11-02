@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/blas_level3_trsm_f.dir/examples/level3/trsm_f.cpp.o -o examples/level3/trsm_f  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

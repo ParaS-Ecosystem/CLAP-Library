@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_pooling_maxpool.dir/examples/dnn/pooling/maxpool.cpp.o -o examples/dnn/pooling/maxpool  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

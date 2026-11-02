@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_activation_relu.dir/examples/dnn/activation/relu.cpp.o -o examples/dnn/activation/relu  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_attention_sdpa.dir/examples/dnn/attention/sdpa.cpp.o -o examples/dnn/attention/sdpa  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_elementwise_max.dir/examples/dnn/elementwise/max.cpp.o -o examples/dnn/elementwise/max  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

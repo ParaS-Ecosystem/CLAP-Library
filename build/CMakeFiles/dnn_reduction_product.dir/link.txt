@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_reduction_product.dir/examples/dnn/reduction/product.cpp.o -o examples/dnn/reduction/product  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

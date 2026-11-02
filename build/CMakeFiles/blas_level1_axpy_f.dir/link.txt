@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/blas_level1_axpy_f.dir/examples/level1/axpy_f.cpp.o -o examples/level1/axpy_f  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

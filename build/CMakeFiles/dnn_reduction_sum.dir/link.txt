@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_reduction_sum.dir/examples/dnn/reduction/sum.cpp.o -o examples/dnn/reduction/sum  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

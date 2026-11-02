@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/lapack_getrf_getrs_f.dir/examples/lapack/getrf_getrs_f.cpp.o -o examples/lapack/getrf_getrs_f  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

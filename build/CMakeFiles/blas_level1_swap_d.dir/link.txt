@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/blas_level1_swap_d.dir/examples/level1/swap_d.cpp.o -o examples/level1/swap_d  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

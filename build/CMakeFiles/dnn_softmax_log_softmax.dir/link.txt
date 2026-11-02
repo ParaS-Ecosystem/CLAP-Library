@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_softmax_log_softmax.dir/examples/dnn/softmax/log_softmax.cpp.o -o examples/dnn/softmax/log_softmax  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

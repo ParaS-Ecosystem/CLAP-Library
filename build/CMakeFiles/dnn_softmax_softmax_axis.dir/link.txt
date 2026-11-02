@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_softmax_softmax_axis.dir/examples/dnn/softmax/softmax_axis.cpp.o -o examples/dnn/softmax/softmax_axis  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

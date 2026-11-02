@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dnn_dropout_dropout.dir/examples/dnn/dropout/dropout.cpp.o -o examples/dnn/dropout/dropout  -Wl,-rpath,/workspaces/CLAP-Library/build libclap.so -ldl -lpthread -lm 

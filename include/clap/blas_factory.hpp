@@ -522,6 +522,14 @@ public:
                      const std::complex<double> *A, int lda,
                      const std::complex<double> *B, int ldb, double beta,
                      std::complex<double> *C, int ldc) = 0;
+
+  virtual void gemm_strided_batched_bf16_device(Layout layout, Transpose transA, Transpose transB,
+                                                int m, int n, int k, float alpha, const void *dA,
+                                                int lda, long long strideA, const void *dB, int ldb,
+                                                long long strideB, float beta, void *dC, int ldc,
+                                                long long strideC, int batch_count, void *stream = nullptr){
+    throw std::runtime_error("BF16 strided-batched device GEMM unsupported by this backend");
+  }
 };
 
 class BlasFactory {

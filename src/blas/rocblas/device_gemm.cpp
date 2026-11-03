@@ -32,6 +32,8 @@ constexpr int kRocblasF32  = 151;
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("librocblas.so", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("librocblas.so.5", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("librocblas.so.4", RTLD_LAZY | RTLD_LOCAL);
     if (!h) throw std::runtime_error("Unable to load rocBLAS for device GEMM");
     return h;
   }();

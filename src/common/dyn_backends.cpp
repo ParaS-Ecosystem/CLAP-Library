@@ -2291,6 +2291,8 @@ bool loadCudaAndCublas() {
 
   cuda_lib = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
   if (!cuda_lib)
+    cuda_lib = dlopen("libcudart.so.13", RTLD_LAZY | RTLD_LOCAL);
+  if (!cuda_lib)
     cuda_lib = dlopen("libcudart.so.12", RTLD_LAZY | RTLD_LOCAL);
   if (!cuda_lib)
     cuda_lib = dlopen("libcudart.so.11.0", RTLD_LAZY | RTLD_LOCAL);
@@ -2302,6 +2304,8 @@ bool loadCudaAndCublas() {
   }
 
   cublas_lib = dlopen("libcublas.so", RTLD_LAZY | RTLD_LOCAL);
+  if (!cublas_lib)
+    cublas_lib = dlopen("libcublas.so.13", RTLD_LAZY | RTLD_LOCAL);
   if (!cublas_lib)
     cublas_lib = dlopen("libcublas.so.12", RTLD_LAZY | RTLD_LOCAL);
   if (!cublas_lib)
@@ -2897,6 +2901,8 @@ bool loadHipAndRocblas() {
 
   hip_lib = dlopen("libamdhip64.so", RTLD_LAZY | RTLD_LOCAL);
   if (!hip_lib)
+    hip_lib = dlopen("libamdhip64.so.7", RTLD_LAZY | RTLD_LOCAL);
+  if (!hip_lib)
     hip_lib = dlopen("libamdhip64.so.6", RTLD_LAZY | RTLD_LOCAL);
 
   if (!hip_lib) {
@@ -2910,6 +2916,8 @@ bool loadHipAndRocblas() {
 
   rocblas_lib = dlopen("librocblas.so", RTLD_LAZY | RTLD_LOCAL);
 
+  if (!rocblas_lib)
+    rocblas_lib = dlopen("librocblas.so.5", RTLD_LAZY | RTLD_LOCAL);
   if (!rocblas_lib)
     rocblas_lib = dlopen("librocblas.so.4", RTLD_LAZY | RTLD_LOCAL);
 

@@ -33,6 +33,9 @@ constexpr int kCublasGemmDefault = -1;
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("libcublas.so", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("libcublas.so.13", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("libcublas.so.12", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("libcublas.so.11", RTLD_LAZY | RTLD_LOCAL);
     if (!h) throw std::runtime_error("Unable to load cuBLAS for device GEMM");
     return h;
   }();

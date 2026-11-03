@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <initializer_list>
 #include <mutex>
 #include <unordered_map>
 
@@ -217,14 +218,14 @@ struct DynamicApi {
         return true;
     }
 
-    void* open_library(const char* primary, const char* fallback) {
-        void* handle = dlopen(primary, RTLD_NOW | RTLD_LOCAL);
-
-        if (!handle && fallback) {
-            handle = dlopen(fallback, RTLD_NOW | RTLD_LOCAL);
+    void* open_library(std::initializer_list<const char*> names) {
+        for (const char* name : names) {
+            if (void* handle = dlopen(name, RTLD_NOW | RTLD_LOCAL)) {
+                return handle;
+            }
         }
 
-        return handle;
+        return nullptr;
     }
 
     bool load() {
@@ -237,18 +238,21 @@ struct DynamicApi {
 
         attempted = true;
 
-        hip_library = open_library(
+        hip_library = open_library({
             "libamdhip64.so",
-            "libamdhip64.so.7");
+            "libamdhip64.so.7",
+            "libamdhip64.so.6"
+        });
 
         if (!hip_library) {
             error = "Unable to load libamdhip64.so";
             return false;
         }
 
-        lt_library = open_library(
+        lt_library = open_library({
             "libhipblaslt.so",
-            "libhipblaslt.so.1");
+            "libhipblaslt.so.1"
+        });
 
         if (!lt_library) {
             error = "Unable to load libhipblaslt.so";
@@ -997,6 +1001,10 @@ RocblasGemmExFn get_rocblas_gemm_ex() {
         }
 
         if (!handle) {
+            handle = dlopen("librocblas.so.4", RTLD_NOW | RTLD_LOCAL);
+        }
+
+        if (!handle) {
             const char* error = dlerror();
 
             throw std::runtime_error(
@@ -1041,6 +1049,10 @@ RocblasSgemmStridedBatchedFn get_rocblas_sgemm_strided_batched() {
 
         if (!handle) {
             handle = dlopen("librocblas.so.5", RTLD_NOW | RTLD_LOCAL);
+        }
+
+        if (!handle) {
+            handle = dlopen("librocblas.so.4", RTLD_NOW | RTLD_LOCAL);
         }
 
         if (!handle) {

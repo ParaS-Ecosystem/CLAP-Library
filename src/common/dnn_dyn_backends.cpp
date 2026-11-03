@@ -159,7 +159,7 @@ bool loadCudaAndCudnn() {
     std::lock_guard<std::mutex> lock(cuda_mutex);
     if (cuda_done) return cuda_lib && cudnn_lib;
     cuda_done=true;
-    cuda_lib=open_any({"libcudart.so", "libcudart.so.12", "libcudart.so.13"});
+    cuda_lib=open_any({"libcudart.so", "libcudart.so.13", "libcudart.so.12"});
     if (!cuda_lib) { error_text="cannot dlopen libcudart.so"; return false; }
 #define S0(x) if(!sym(cuda_lib,#x,p_##x)) return false
     S0(cudaGetDeviceCount); S0(cudaMalloc); S0(cudaFree); S0(cudaMemcpy); S0(cudaDeviceSynchronize); S0(cudaMemset);
@@ -198,7 +198,7 @@ bool loadCudaJit() {
         return false;
     }
 
-    nvrtc_lib = open_any({"libnvrtc.so", "libnvrtc.so.12", "libnvrtc.so.13"});
+    nvrtc_lib = open_any({"libnvrtc.so", "libnvrtc.so.13", "libnvrtc.so.12"});
     if (!nvrtc_lib) {
         error_text = "cannot dlopen libnvrtc.so required for CUDA JIT LayerNorm";
         return false;
@@ -224,7 +224,7 @@ bool loadHipAndMiopen() {
     std::lock_guard<std::mutex> lock(hip_mutex);
     if (hip_done) return hip_lib && miopen_lib;
     hip_done=true;
-    hip_lib=open_any({"libamdhip64.so", "libamdhip64.so.6"});
+    hip_lib=open_any({"libamdhip64.so", "libamdhip64.so.7", "libamdhip64.so.6"});
     if (!hip_lib) { error_text="cannot dlopen libamdhip64.so"; return false; }
 #define S0(x) if(!sym(hip_lib,#x,p_##x)) return false
     S0(hipGetDeviceCount); S0(hipMalloc); S0(hipFree); S0(hipMemcpy); S0(hipDeviceSynchronize);

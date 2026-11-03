@@ -18,6 +18,20 @@ void gemm_fp32(
     float* C, int ldc,
     void* stream);
 
+void gemm_fp32_strided_batched(
+    rocblas_handle handle,
+    Layout layout,
+    Transpose transA,
+    Transpose transB,
+    int m, int n, int k,
+    float alpha,
+    const float* A, int lda, long long strideA,
+    const float* B, int ldb, long long strideB,
+    float beta,
+    float* C, int ldc, long long strideC,
+    int batch_count,
+    void* stream);
+
 void gemm_bf16(
     rocblas_handle handle,
     Layout layout,

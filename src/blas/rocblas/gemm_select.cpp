@@ -69,6 +69,10 @@ constexpr int kLtDescPointerMode = 13;
 constexpr int kLtPointerModeHost = 0;
 constexpr int kLtPreferenceMaxWorkspace = 1;
 
+// hipblasLtMatrixLayoutAttribute_t (ROCm 7.2.2).
+constexpr int kLtMatrixLayoutBatchCount = 0;
+constexpr int kLtMatrixLayoutStridedBatchOffset = 1;
+
 constexpr int kHipMemcpyDeviceToDevice = 3;
 
 // -----------------------------------------------------------------------------
@@ -150,8 +154,11 @@ struct DynamicApi {
     using LtMatrixLayoutCreateFn =
         int (*)(LtMatrixLayout*, int, uint64_t, uint64_t, int64_t);
 
+    using LtMatrixLayoutSetAttributeFn =
+        int (*)(LtMatrixLayout, int, const void*, size_t);
+
     using LtMatrixLayoutDestroyFn =
-        int (*)(LtMatrixLayout);
+            int (*)(LtMatrixLayout);
 
     using LtPreferenceCreateFn =
         int (*)(LtPreference*);
@@ -188,6 +195,7 @@ struct DynamicApi {
     LtMatmulDescSetAttributeFn lt_desc_set_attribute = nullptr;
 
     LtMatrixLayoutCreateFn lt_layout_create = nullptr;
+    LtMatrixLayoutSetAttributeFn lt_layout_set_attribute = nullptr;
     LtMatrixLayoutDestroyFn lt_layout_destroy = nullptr;
 
     LtPreferenceCreateFn lt_preference_create = nullptr;
@@ -275,6 +283,8 @@ struct DynamicApi {
         LOAD_LT(lt_desc_set_attribute, "hipblasLtMatmulDescSetAttribute");
 
         LOAD_LT(lt_layout_create, "hipblasLtMatrixLayoutCreate");
+        LOAD_LT(lt_layout_set_attribute,
+                "hipblasLtMatrixLayoutSetAttribute");
         LOAD_LT(lt_layout_destroy, "hipblasLtMatrixLayoutDestroy");
 
         LOAD_LT(lt_preference_create, "hipblasLtMatmulPreferenceCreate");
@@ -391,6 +401,11 @@ struct ShapeKey {
     int k;
     int trans_a;
     int trans_b;
+    int batch_count;
+    int64_t stride_a;
+    int64_t stride_b;
+    int64_t stride_c;
+    bool strided_batched;
 
     bool operator==(const ShapeKey& other) const {
         return precision == other.precision &&
@@ -398,7 +413,12 @@ struct ShapeKey {
                n_bucket == other.n_bucket &&
                k == other.k &&
                trans_a == other.trans_a &&
-               trans_b == other.trans_b;
+               trans_b == other.trans_b &&
+               batch_count == other.batch_count &&
+               stride_a == other.stride_a &&
+               stride_b == other.stride_b &&
+               stride_c == other.stride_c &&
+               strided_batched == other.strided_batched;
     }
 };
 
@@ -416,6 +436,11 @@ struct ShapeKeyHash {
         combine(std::hash<int>{}(key.k));
         combine(std::hash<int>{}(key.trans_a));
         combine(std::hash<int>{}(key.trans_b));
+        combine(std::hash<int>{}(key.batch_count));
+        combine(std::hash<int64_t>{}(key.stride_a));
+        combine(std::hash<int64_t>{}(key.stride_b));
+        combine(std::hash<int64_t>{}(key.stride_c));
+        combine(std::hash<bool>{}(key.strided_batched));
 
         return seed;
     }
@@ -427,7 +452,12 @@ ShapeKey make_shape_key(
     int n,
     int k,
     int trans_a,
-    int trans_b) {
+    int trans_b,
+    int batch_count,
+    int64_t stride_a,
+    int64_t stride_b,
+    int64_t stride_c,
+    bool strided_batched) {
 
     return ShapeKey{
         precision,
@@ -435,7 +465,12 @@ ShapeKey make_shape_key(
         shape_bucket(n),
         k,
         trans_a,
-        trans_b
+        trans_b,
+        batch_count,
+        stride_a,
+        stride_b,
+        stride_c,
+        strided_batched
     };
 }
 
@@ -478,6 +513,12 @@ struct NormalizedGemm {
     rocblas_operation trans_a, trans_b;
     const void* A;
     const void* B;
+
+    int batch_count = 1;
+    int64_t stride_a = 0;
+    int64_t stride_b = 0;
+    int64_t stride_c = 0;
+    bool strided_batched = false;
 };
 
 NormalizedGemm normalize_gemm(
@@ -501,6 +542,35 @@ NormalizedGemm normalize_gemm(
         std::swap(p.trans_a, p.trans_b);
         std::swap(p.lda, p.ldb);
         std::swap(p.A, p.B);
+    }
+
+    return p;
+}
+
+NormalizedGemm normalize_strided_batched_gemm(
+    Layout layout,
+    Transpose transA,
+    Transpose transB,
+    int m, int n, int k,
+    const void* A, int lda, int64_t strideA,
+    const void* B, int ldb, int64_t strideB,
+    int ldc, int64_t strideC,
+    int batch_count) {
+
+    NormalizedGemm p = normalize_gemm(
+        layout, transA, transB,
+        m, n, k, A, lda, B, ldb, ldc);
+
+    p.batch_count = batch_count;
+    p.stride_c = strideC;
+    p.strided_batched = true;
+
+    if (layout == Layout::RowMajor) {
+        p.stride_a = strideB;
+        p.stride_b = strideA;
+    } else {
+        p.stride_a = strideA;
+        p.stride_b = strideB;
     }
 
     return p;
@@ -695,6 +765,61 @@ bool create_lt_resources(
         return false;
     }
 
+    // Configure strided-batched execution on all four matrix layouts.
+    // hipBLASLt expects batch count as int32_t and strides in elements
+    // as int64_t, matching the ROCm 7.2.2 public header.
+    if (p.strided_batched) {
+        const int32_t batch_count =
+            static_cast<int32_t>(p.batch_count);
+
+        const auto set_batch_attributes =
+            [&](LtMatrixLayout layout,
+                int64_t stride,
+                const char* matrix_name) -> bool {
+
+            int attr_status = api.lt_layout_set_attribute(
+                layout,
+                kLtMatrixLayoutBatchCount,
+                &batch_count,
+                sizeof(batch_count));
+
+            if (attr_status != kHipblasLtSuccess) {
+                error = std::string("Setting hipBLASLt ") +
+                        matrix_name +
+                        " batch count failed, status=" +
+                        std::to_string(attr_status);
+                return false;
+            }
+
+            attr_status = api.lt_layout_set_attribute(
+                layout,
+                kLtMatrixLayoutStridedBatchOffset,
+                &stride,
+                sizeof(stride));
+
+            if (attr_status != kHipblasLtSuccess) {
+                error = std::string("Setting hipBLASLt ") +
+                        matrix_name +
+                        " batch stride failed, status=" +
+                        std::to_string(attr_status);
+                return false;
+            }
+
+            return true;
+        };
+
+        if (!set_batch_attributes(
+                resources.layout_a, p.stride_a, "A") ||
+            !set_batch_attributes(
+                resources.layout_b, p.stride_b, "B") ||
+            !set_batch_attributes(
+                resources.layout_c, p.stride_c, "C") ||
+            !set_batch_attributes(
+                resources.layout_d, p.stride_c, "D")) {
+            return false;
+        }
+    }
+
     status = api.lt_preference_create(&resources.preference);
 
     if (status != kHipblasLtSuccess) {
@@ -739,7 +864,9 @@ bool query_lt_algorithm(
         return false;
     }
 
-    LtHeuristicResult result{};
+    constexpr int kRequestedAlgorithms = 8;
+
+    LtHeuristicResult results[kRequestedAlgorithms]{};
     int returned_algorithms = 0;
 
     const int status = api.lt_algo_get_heuristic(
@@ -750,8 +877,8 @@ bool query_lt_algorithm(
         resources.layout_c,
         resources.layout_d,
         resources.preference,
-        1,
-        &result,
+        kRequestedAlgorithms,
+        results,
         &returned_algorithms);
 
     if (status != kHipblasLtSuccess) {
@@ -760,21 +887,50 @@ bool query_lt_algorithm(
         return false;
     }
 
-    if (returned_algorithms < 1 ||
-        result.state != kHipblasLtSuccess) {
-        error = "hipBLASLt returned no usable GEMM algorithm";
+    if (returned_algorithms < 0 ||
+        returned_algorithms > kRequestedAlgorithms) {
+        error = "hipBLASLt returned an invalid algorithm count";
         return false;
     }
 
-    if (result.workspaceSize != 0) {
-        error = "hipBLASLt selected an algorithm requiring workspace";
+    if (returned_algorithms == 0) {
+        error = "hipBLASLt returned no GEMM algorithms";
+        return false;
+    }
+
+    int selected = -1;
+
+    for (int i = 0; i < returned_algorithms; ++i) {
+        const auto& candidate = results[i];
+
+        if (debug_enabled()) {
+            std::fprintf(
+                stderr,
+                "[CLAP ROCm GEMM] Lt candidate %d/%d "
+                "state=%d workspace=%zu waves=%.3f\n",
+                i,
+                returned_algorithms,
+                candidate.state,
+                candidate.workspaceSize,
+                candidate.wavesCount);
+        }
+
+        if (candidate.state == kHipblasLtSuccess &&
+            candidate.workspaceSize == 0) {
+            selected = i;
+            break;
+        }
+    }
+
+    if (selected < 0) {
+        error = "hipBLASLt returned no usable zero-workspace algorithm";
         return false;
     }
 
     decision.ready = true;
     decision.use_hipblaslt = true;
-    decision.algo = result.algo;
-    decision.workspace_size = result.workspaceSize;
+    decision.algo = results[selected].algo;
+    decision.workspace_size = results[selected].workspaceSize;
 
     return true;
 }
@@ -863,6 +1019,80 @@ RocblasGemmExFn get_rocblas_gemm_ex() {
     return function;
 }
 
+// -----------------------------------------------------------------------------
+// rocBLAS FP32 strided-batched GEMM execution.
+// -----------------------------------------------------------------------------
+
+using RocblasSgemmStridedBatchedFn = rocblas_status (*)(
+    rocblas_handle,
+    rocblas_operation, rocblas_operation,
+    int, int, int,
+    const float*,
+    const float*, int, int64_t,
+    const float*, int, int64_t,
+    const float*,
+    float*, int, int64_t,
+    int);
+
+RocblasSgemmStridedBatchedFn get_rocblas_sgemm_strided_batched() {
+
+    static void* library = []() -> void* {
+        void* handle = dlopen("librocblas.so", RTLD_NOW | RTLD_LOCAL);
+
+        if (!handle) {
+            handle = dlopen("librocblas.so.5", RTLD_NOW | RTLD_LOCAL);
+        }
+
+        if (!handle) {
+            const char* error = dlerror();
+            throw std::runtime_error(
+                std::string("Unable to load rocBLAS for strided-batched "
+                            "FP32 GEMM: ") +
+                (error ? error : "unknown dlopen error"));
+        }
+
+        return handle;
+    }();
+
+    static RocblasSgemmStridedBatchedFn function =
+        reinterpret_cast<RocblasSgemmStridedBatchedFn>(
+            dlsym(library, "rocblas_sgemm_strided_batched"));
+
+    if (!function) {
+        throw std::runtime_error(
+            "rocblas_sgemm_strided_batched symbol is unavailable");
+    }
+
+    return function;
+}
+
+void run_rocblas_fp32_strided_batched(
+    rocblas_handle handle,
+    const NormalizedGemm& p,
+    float alpha,
+    float beta,
+    float* output) {
+
+    auto fn = get_rocblas_sgemm_strided_batched();
+
+    const rocblas_status status = fn(
+        handle,
+        p.trans_a, p.trans_b,
+        p.m, p.n, p.k,
+        &alpha,
+        static_cast<const float*>(p.A), p.lda, p.stride_a,
+        static_cast<const float*>(p.B), p.ldb, p.stride_b,
+        &beta,
+        output, p.ldc, p.stride_c,
+        p.batch_count);
+
+    if (status != rocblas_status_success) {
+        throw std::runtime_error(
+            "rocBLAS FP32 strided-batched GEMM failed, status=" +
+            std::to_string(static_cast<int>(status)));
+    }
+}
+
 void run_rocblas_bf16(
     rocblas_handle handle,
     const NormalizedGemm& p,
@@ -949,33 +1179,51 @@ size_t gemm_output_bytes(const NormalizedGemm& p, bool bf16) {
 
     const size_t element_size = bf16 ? 2u : 4u;
 
-    if (p.ldc < p.m || p.n < 0) {
+    if (p.ldc < p.m || p.n < 0 ||
+        p.batch_count < 1 || p.stride_c < 0) {
         throw std::invalid_argument(
-            "Invalid normalized GEMM output dimensions");
+            "Invalid normalized GEMM output dimensions or batch metadata");
     }
 
-    const size_t leading_dimension =
-        static_cast<size_t>(p.ldc);
-
-    const size_t columns =
-        static_cast<size_t>(p.n);
+    const size_t leading_dimension = static_cast<size_t>(p.ldc);
+    const size_t columns = static_cast<size_t>(p.n);
+    const size_t max_size = std::numeric_limits<size_t>::max();
 
     if (leading_dimension != 0 &&
-        columns > std::numeric_limits<size_t>::max() /
-                  leading_dimension) {
-        throw std::overflow_error(
-            "GEMM scratch matrix size overflow");
+        columns > max_size / leading_dimension) {
+        throw std::overflow_error("GEMM scratch matrix size overflow");
     }
 
-    const size_t elements = leading_dimension * columns;
+    const size_t matrix_elements = leading_dimension * columns;
+    const size_t preceding_batches =
+        static_cast<size_t>(p.batch_count - 1);
+    const size_t stride =
+        static_cast<size_t>(p.stride_c);
 
-    if (elements >
-        std::numeric_limits<size_t>::max() / element_size) {
-        throw std::overflow_error(
-            "GEMM scratch byte size overflow");
+    size_t batch_offset = 0;
+
+    if (stride != 0 && preceding_batches != 0) {
+        if (preceding_batches > max_size / stride) {
+            throw std::overflow_error(
+                "GEMM batched scratch offset overflow");
+        }
+
+        batch_offset = preceding_batches * stride;
     }
 
-    return elements * element_size;
+    if (matrix_elements > max_size - batch_offset) {
+        throw std::overflow_error(
+            "GEMM batched scratch element count overflow");
+    }
+
+    const size_t total_elements = batch_offset + matrix_elements;
+
+    if (total_elements > max_size / element_size) {
+        throw std::overflow_error(
+            "GEMM batched scratch byte size overflow");
+    }
+
+    return total_elements * element_size;
 }
 
 void prepare_scratch_output(
@@ -1413,7 +1661,12 @@ void dispatch_gemm(
         p.n,
         p.k,
         static_cast<int>(p.trans_a),
-        static_cast<int>(p.trans_b));
+        static_cast<int>(p.trans_b),
+        p.batch_count,
+        p.stride_a,
+        p.stride_b,
+        p.stride_c,
+        p.strided_batched);
 
     // Forced hipBLASLt mode uses the heuristic without performance timing.
     if (mode == GemmMode::ForceHipblaslt) {
@@ -1627,6 +1880,60 @@ void gemm_fp32(
 }
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Public FP32 strided-batched device GEMM selector.
+// -----------------------------------------------------------------------------
+
+void gemm_fp32_strided_batched(
+    rocblas_handle handle,
+    Layout layout,
+    Transpose transA,
+    Transpose transB,
+    int m, int n, int k,
+    float alpha,
+    const float* A, int lda, long long strideA,
+    const float* B, int ldb, long long strideB,
+    float beta,
+    float* C, int ldc, long long strideC,
+    int batch_count,
+    void* stream) {
+
+    if (batch_count < 0 || strideA < 0 ||
+        strideB < 0 || strideC < 0) {
+        throw std::invalid_argument(
+            "Invalid FP32 strided-batched GEMM count or stride");
+    }
+
+    if (batch_count == 0 || m == 0 || n == 0) {
+        return;
+    }
+
+    const NormalizedGemm p = normalize_strided_batched_gemm(
+        layout, transA, transB,
+        m, n, k,
+        A, lda, static_cast<int64_t>(strideA),
+        B, ldb, static_cast<int64_t>(strideB),
+        ldc, static_cast<int64_t>(strideC),
+        batch_count);
+
+    const auto run_rocblas = [&](void* output) {
+        run_rocblas_fp32_strided_batched(
+            handle, p, alpha, beta,
+            static_cast<float*>(output));
+    };
+
+    dispatch_gemm(
+        GemmPrecision::FP32,
+        false,
+        p,
+        alpha,
+        beta,
+        C,
+        C,
+        stream,
+        run_rocblas);
+}
+
 // Public BF16 device GEMM selector.
 // -----------------------------------------------------------------------------
 

@@ -150,16 +150,14 @@ void RocBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Tran
   validate(layout,ta,tb,m,n,k,lda,ldb,ldc,A,B,C);
   if (batches==0 || m==0 || n==0) return;
   set_stream(handle,stream);
-  auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
-  using Fn=rocblas_status (*)(rocblas_handle,rocblas_operation,rocblas_operation,
-    int,int,int,const float*,const float*,int,long long,
-    const float*,int,long long,const float*,float*,int,long long,int);
-  auto fn=vendor_symbol<Fn>("rocblas_sgemm_strided_batched");
-  const float* a=static_cast<const float*>(layout==Layout::RowMajor ? B:A);
-  const float* b=static_cast<const float*>(layout==Layout::RowMajor ? A:B);
-  auto sa=layout==Layout::RowMajor ? strideB:strideA;
-  auto sb=layout==Layout::RowMajor ? strideA:strideB;
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,p.lda,sa,
-                b,p.ldb,sb,&beta,static_cast<float*>(C),p.ldc,strideC,batches));
+
+  clap::rocblas_gemm_select::gemm_fp32_strided_batched(
+      handle, layout, ta, tb,
+      m, n, k, alpha,
+      static_cast<const float*>(A), lda, strideA,
+      static_cast<const float*>(B), ldb, strideB,
+      beta,
+      static_cast<float*>(C), ldc, strideC,
+      batches, stream);
 }
 }

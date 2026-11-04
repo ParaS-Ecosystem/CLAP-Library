@@ -24,6 +24,12 @@ namespace clap {
 
 enum class BackendType { CPU, CUDA, AMD };
 
+enum class BlasDataType {
+    Float16,
+    BFloat16,
+    Float32
+};
+
 enum class Layout { RowMajor, ColMajor };
 enum class Transpose { NoTrans, Trans, ConjTrans };
 enum class Uplo { Upper, Lower };
@@ -529,6 +535,19 @@ public:
                                                 long long strideB, float beta, void *dC, int ldc,
                                                 long long strideC, int batch_count, void *stream = nullptr){
     throw std::runtime_error("BF16 strided-batched device GEMM unsupported by this backend");
+  }
+
+  // Mixed-precision strided-batched device GEMM with FP32 accumulation.
+  virtual void gemm_ex_strided_batched_device(
+      Layout layout, Transpose transA, Transpose transB,
+      int m, int n, int k, float alpha,
+      const void *A, BlasDataType typeA, int lda, long long strideA,
+      const void *B, BlasDataType typeB, int ldb, long long strideB,
+      float beta,
+      void *C, BlasDataType typeC, int ldc, long long strideC,
+      int batch_count, void *stream = nullptr) {
+    throw std::runtime_error(
+        "Mixed-precision strided-batched device GEMM unsupported by this backend");
   }
 };
 

@@ -459,11 +459,18 @@ void run_int8_case(
     const int b_rows = transB == Transpose::NoTrans ? K : N;
     const int b_cols = transB == Transpose::NoTrans ? N : K;
 
-    // Four-element padding keeps leading dimensions and batch strides
-    // compatible with the NVIDIA INT8 alignment requirements as well.
-    const int lda = (layout == Layout::ColMajor ? a_rows : a_cols) + 4;
-    const int ldb = (layout == Layout::ColMajor ? b_rows : b_cols) + 4;
-    const int ldc = (layout == Layout::ColMajor ? M : N) + 4;
+    // Round physical leading dimensions up to multiples of four for
+    // NVIDIA INT8 GEMM. Keep the logical matrix dimensions unchanged.
+    const auto round_up_4 = [](int value) {
+        return (value + 3) & ~3;
+    };
+
+    const int lda =
+        round_up_4(layout == Layout::ColMajor ? a_rows : a_cols);
+    const int ldb =
+        round_up_4(layout == Layout::ColMajor ? b_rows : b_cols);
+    const int ldc =
+        round_up_4(layout == Layout::ColMajor ? M : N);
 
     const std::size_t stride_a =
         layout == Layout::ColMajor

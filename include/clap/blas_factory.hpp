@@ -27,8 +27,23 @@ enum class BackendType { CPU, CUDA, AMD };
 enum class BlasDataType {
     Float16,
     BFloat16,
-    Float32
+    Float32,
+
+    // Integer GEMM types.
+    I8,
+    I32,
+
+    // OCP FP8 formats.
+    Float8E4M3,
+    Float8E5M2,
+
+    // AMD CDNA 3 FNUZ FP8 formats.
+    Float8E4M3Fnuz,
+    Float8E5M2Fnuz
 };
+
+// Compatibility name used by the GEMM element-type interface.
+using GemmElem = BlasDataType;
 
 enum class Layout { RowMajor, ColMajor };
 enum class Transpose { NoTrans, Trans, ConjTrans };
@@ -548,6 +563,22 @@ public:
       int batch_count, void *stream = nullptr) {
     throw std::runtime_error(
         "Mixed-precision strided-batched device GEMM unsupported by this backend");
+  }
+
+  // Scaled FP8 device GEMM. Scale pointers reference device-resident FP32
+  // per-tensor scaling factors. Return false when the backend cannot execute
+  // the requested datatype/shape combination.
+  virtual bool gemm_scaled_device(
+      Layout layout, Transpose transA, Transpose transB,
+      int m, int n, int k, float alpha,
+      const void* A, BlasDataType typeA, int lda,
+      const float* scaleA,
+      const void* B, BlasDataType typeB, int ldb,
+      const float* scaleB,
+      float beta,
+      void* C, BlasDataType typeC, int ldc,
+      void* stream = nullptr) {
+    return false;
   }
 };
 

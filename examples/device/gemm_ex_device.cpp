@@ -1,12 +1,14 @@
 #include <blas.hh>
 #include <clap/dyn_backends.hpp>
 
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -128,16 +130,36 @@ float bf16_to_float(std::uint16_t value) {
 }
 
 std::size_t type_size(BlasDataType type) {
-    return type == BlasDataType::Float32
-               ? sizeof(float)
-               : sizeof(std::uint16_t);
+    switch (type) {
+        case BlasDataType::Float16:
+        case BlasDataType::BFloat16:
+            return sizeof(std::uint16_t);
+
+        case BlasDataType::Float32:
+        case BlasDataType::I32:
+            return sizeof(std::uint32_t);
+
+        case BlasDataType::I8:
+        case BlasDataType::Float8E4M3:
+        case BlasDataType::Float8E5M2:
+        case BlasDataType::Float8E4M3Fnuz:
+        case BlasDataType::Float8E5M2Fnuz:
+            return sizeof(std::uint8_t);
+    }
+    return 0;
 }
 
 const char* type_name(BlasDataType type) {
     switch (type) {
-        case BlasDataType::Float16:  return "FP16";
-        case BlasDataType::BFloat16: return "BF16";
-        case BlasDataType::Float32:  return "FP32";
+        case BlasDataType::Float16:       return "FP16";
+        case BlasDataType::BFloat16:      return "BF16";
+        case BlasDataType::Float32:       return "FP32";
+        case BlasDataType::I8:            return "INT8";
+        case BlasDataType::I32:           return "INT32";
+        case BlasDataType::Float8E4M3:    return "FP8-E4M3";
+        case BlasDataType::Float8E5M2:    return "FP8-E5M2";
+        case BlasDataType::Float8E4M3Fnuz:return "FP8-E4M3-FNUZ";
+        case BlasDataType::Float8E5M2Fnuz:return "FP8-E5M2-FNUZ";
     }
     return "Unknown";
 }
@@ -161,6 +183,62 @@ void encode_values(const std::vector<float>& input,
 
         std::memcpy(output.data() + i * sizeof(value),
                     &value, sizeof(value));
+    }
+}
+
+// Software E4M3 FNUZ conversion for the exactly representable
+// test values used below. This avoids a compile-time HIP dependency.
+std::uint8_t float_to_fp8_e4m3_fnuz(float value) {
+    static constexpr std::uint8_t encodings[] = {
+        0x00, 0x28, 0x30, 0x34, 0x38, 0x3A, 0x3C
+    };
+
+    if (!std::isfinite(value))
+        throw std::invalid_argument("Non-finite FP8 test input");
+
+    const float scaled = std::fabs(value) * 8.0f;
+    const int magnitude = static_cast<int>(std::lround(scaled));
+
+    if (magnitude < 0 || magnitude > 6 ||
+        std::fabs(scaled - static_cast<float>(magnitude)) > 1.0e-5f) {
+        throw std::invalid_argument(
+            "FP8 test value is outside the supported exact-value set");
+    }
+
+    std::uint8_t encoded = encodings[magnitude];
+    if (std::signbit(value) && magnitude != 0)
+        encoded |= 0x80;
+
+    return encoded;
+}
+
+float fp8_e4m3_fnuz_to_float(std::uint8_t value) {
+    // FNUZ reserves 0x80 as its only NaN representation.
+    if (value == 0x80)
+        return std::numeric_limits<float>::quiet_NaN();
+
+    const int exponent = (value >> 3) & 0x0F;
+    const int mantissa = value & 0x07;
+
+    const float decoded = exponent == 0
+        ? std::ldexp(static_cast<float>(mantissa), -10)
+        : std::ldexp(1.0f + static_cast<float>(mantissa) / 8.0f,
+                     exponent - 8);
+
+    return (value & 0x80) ? -decoded : decoded;
+}
+
+float quantize_output(float value, BlasDataType type) {
+    switch (type) {
+        case BlasDataType::Float32:
+            return value;
+        case BlasDataType::Float16:
+            return fp16_to_float(float_to_fp16(value));
+        case BlasDataType::BFloat16:
+            return bf16_to_float(float_to_bf16(value));
+        default:
+            throw std::invalid_argument(
+                "Unsupported FP8 GEMM output datatype");
     }
 }
 
@@ -358,6 +436,360 @@ void run_case(IBlasBackend& backend, BackendType selected_backend,
         throw std::runtime_error("Numerical validation failed");
 }
 
+
+std::size_t matrix_offset(
+    Layout layout, int row, int column, int ld) {
+    return layout == Layout::ColMajor
+        ? static_cast<std::size_t>(row) +
+              static_cast<std::size_t>(column) * ld
+        : static_cast<std::size_t>(row) * ld + column;
+}
+
+void run_int8_case(
+    IBlasBackend& backend,
+    BackendType selected_backend,
+    Layout layout,
+    Transpose transA,
+    Transpose transB,
+    int alpha,
+    int beta) {
+
+    const int a_rows = transA == Transpose::NoTrans ? M : K;
+    const int a_cols = transA == Transpose::NoTrans ? K : M;
+    const int b_rows = transB == Transpose::NoTrans ? K : N;
+    const int b_cols = transB == Transpose::NoTrans ? N : K;
+
+    // Four-element padding keeps leading dimensions and batch strides
+    // compatible with the NVIDIA INT8 alignment requirements as well.
+    const int lda = (layout == Layout::ColMajor ? a_rows : a_cols) + 4;
+    const int ldb = (layout == Layout::ColMajor ? b_rows : b_cols) + 4;
+    const int ldc = (layout == Layout::ColMajor ? M : N) + 4;
+
+    const std::size_t stride_a =
+        layout == Layout::ColMajor
+            ? static_cast<std::size_t>(lda) * a_cols
+            : static_cast<std::size_t>(a_rows) * lda;
+
+    const std::size_t stride_b =
+        layout == Layout::ColMajor
+            ? static_cast<std::size_t>(ldb) * b_cols
+            : static_cast<std::size_t>(b_rows) * ldb;
+
+    const std::size_t stride_c =
+        layout == Layout::ColMajor
+            ? static_cast<std::size_t>(ldc) * N
+            : static_cast<std::size_t>(M) * ldc;
+
+    std::vector<std::int8_t> host_a(stride_a * BATCHES, 0);
+    std::vector<std::int8_t> host_b(stride_b * BATCHES, 0);
+    std::vector<std::int32_t> host_c(stride_c * BATCHES, 0);
+
+    // Initialize the physically stored matrices.
+    for (int batch = 0; batch < BATCHES; ++batch) {
+        for (int row = 0; row < a_rows; ++row) {
+            for (int column = 0; column < a_cols; ++column) {
+                const int value =
+                    ((batch * 7 + row * 3 + column * 5) % 11) - 5;
+
+                host_a[batch * stride_a +
+                       matrix_offset(layout, row, column, lda)] =
+                    static_cast<std::int8_t>(value);
+            }
+        }
+
+        for (int row = 0; row < b_rows; ++row) {
+            for (int column = 0; column < b_cols; ++column) {
+                const int value =
+                    ((batch * 3 + row * 2 + column * 7) % 9) - 4;
+
+                host_b[batch * stride_b +
+                       matrix_offset(layout, row, column, ldb)] =
+                    static_cast<std::int8_t>(value);
+            }
+        }
+
+        for (int row = 0; row < M; ++row) {
+            for (int column = 0; column < N; ++column) {
+                const int value =
+                    ((batch + row * 2 + column * 3) % 7) - 3;
+
+                host_c[batch * stride_c +
+                       matrix_offset(layout, row, column, ldc)] =
+                    static_cast<std::int32_t>(value);
+            }
+        }
+    }
+
+    const std::vector<std::int32_t> initial_c = host_c;
+
+    DeviceBuffer device_a(
+        selected_backend, host_a.size() * sizeof(std::int8_t));
+    DeviceBuffer device_b(
+        selected_backend, host_b.size() * sizeof(std::int8_t));
+    DeviceBuffer device_c(
+        selected_backend, host_c.size() * sizeof(std::int32_t));
+
+    copy_to_device(
+        selected_backend, device_a.get(),
+        host_a.data(), host_a.size() * sizeof(std::int8_t));
+
+    copy_to_device(
+        selected_backend, device_b.get(),
+        host_b.data(), host_b.size() * sizeof(std::int8_t));
+
+    copy_to_device(
+        selected_backend, device_c.get(),
+        host_c.data(), host_c.size() * sizeof(std::int32_t));
+
+    backend.gemm_ex_strided_batched_device(
+        layout, transA, transB,
+        M, N, K, static_cast<float>(alpha),
+        device_a.get(), BlasDataType::I8,
+        lda, static_cast<long long>(stride_a),
+        device_b.get(), BlasDataType::I8,
+        ldb, static_cast<long long>(stride_b),
+        static_cast<float>(beta),
+        device_c.get(), BlasDataType::I32,
+        ldc, static_cast<long long>(stride_c),
+        BATCHES, nullptr);
+
+    copy_from_device(
+        selected_backend, host_c.data(),
+        device_c.get(), host_c.size() * sizeof(std::int32_t));
+
+    std::int64_t max_error = 0;
+
+    for (int batch = 0; batch < BATCHES; ++batch) {
+        for (int column = 0; column < N; ++column) {
+            for (int row = 0; row < M; ++row) {
+                std::int64_t sum = 0;
+
+                for (int p = 0; p < K; ++p) {
+                    const int a_row =
+                        transA == Transpose::NoTrans ? row : p;
+                    const int a_column =
+                        transA == Transpose::NoTrans ? p : row;
+
+                    const int b_row =
+                        transB == Transpose::NoTrans ? p : column;
+                    const int b_column =
+                        transB == Transpose::NoTrans ? column : p;
+
+                    const std::size_t index_a =
+                        batch * stride_a +
+                        matrix_offset(layout, a_row, a_column, lda);
+
+                    const std::size_t index_b =
+                        batch * stride_b +
+                        matrix_offset(layout, b_row, b_column, ldb);
+
+                    sum += static_cast<std::int32_t>(host_a[index_a]) *
+                           static_cast<std::int32_t>(host_b[index_b]);
+                }
+
+                const std::size_t index_c =
+                    batch * stride_c +
+                    matrix_offset(layout, row, column, ldc);
+
+                const std::int64_t expected =
+                    static_cast<std::int64_t>(alpha) * sum +
+                    static_cast<std::int64_t>(beta) *
+                        initial_c[index_c];
+
+                const std::int64_t actual = host_c[index_c];
+                const std::int64_t error =
+                    std::llabs(actual - expected);
+
+                max_error = std::max(max_error, error);
+            }
+        }
+    }
+
+    const char* layout_name =
+        layout == Layout::ColMajor ? "ColMajor" : "RowMajor";
+
+    const char ta =
+        transA == Transpose::NoTrans ? 'N' : 'T';
+    const char tb =
+        transB == Transpose::NoTrans ? 'N' : 'T';
+
+    std::printf(
+        "INT8->I32 %-8s %c%c alpha=%d beta=%d "
+        "max error=%lld %s\n",
+        layout_name, ta, tb, alpha, beta,
+        static_cast<long long>(max_error),
+        max_error == 0 ? "PASS" : "FAIL");
+
+    if (max_error != 0)
+        throw std::runtime_error("INT8 GEMM numerical validation failed");
+}
+
+
+bool run_fp8_case(
+    IBlasBackend& backend,
+    BackendType selected_backend,
+    Transpose transA,
+    Transpose transB,
+    BlasDataType output_type) {
+
+    constexpr float alpha = 1.25f;
+    constexpr float beta = 0.5f;
+    constexpr float scale_a = 0.5f;
+    constexpr float scale_b = 0.25f;
+
+    const int a_rows = transA == Transpose::NoTrans ? M : K;
+    const int a_cols = transA == Transpose::NoTrans ? K : M;
+    const int b_rows = transB == Transpose::NoTrans ? K : N;
+    const int b_cols = transB == Transpose::NoTrans ? N : K;
+
+    const int lda = a_rows + 4;
+    const int ldb = b_rows + 4;
+    const int ldc = M + 4;
+
+    const std::size_t size_a = static_cast<std::size_t>(lda) * a_cols;
+    const std::size_t size_b = static_cast<std::size_t>(ldb) * b_cols;
+    const std::size_t size_c = static_cast<std::size_t>(ldc) * N;
+
+    std::vector<std::uint8_t> host_a(size_a, 0);
+    std::vector<std::uint8_t> host_b(size_b, 0);
+    std::vector<float> initial_c(size_c, 0.0f);
+
+    for (int row = 0; row < a_rows; ++row) {
+        for (int column = 0; column < a_cols; ++column) {
+            const float value =
+                static_cast<float>((row * 3 + column * 5) % 13 - 6)
+                * 0.125f;
+
+            host_a[matrix_offset(
+                Layout::ColMajor, row, column, lda)] =
+                float_to_fp8_e4m3_fnuz(value);
+        }
+    }
+
+    for (int row = 0; row < b_rows; ++row) {
+        for (int column = 0; column < b_cols; ++column) {
+            const float value =
+                static_cast<float>((row * 7 + column * 2) % 11 - 5)
+                * 0.125f;
+
+            host_b[matrix_offset(
+                Layout::ColMajor, row, column, ldb)] =
+                float_to_fp8_e4m3_fnuz(value);
+        }
+    }
+
+    for (int row = 0; row < M; ++row) {
+        for (int column = 0; column < N; ++column) {
+            initial_c[matrix_offset(
+                Layout::ColMajor, row, column, ldc)] =
+                static_cast<float>((row + column * 3) % 9 - 4) * 0.0625f;
+        }
+    }
+
+    std::vector<unsigned char> host_c;
+    encode_values(initial_c, output_type, host_c);
+
+    // The reference must use the actual initial C values stored in
+    // the selected output format, because beta multiplies that buffer.
+    for (std::size_t i = 0; i < size_c; ++i)
+        initial_c[i] = decode_value(host_c.data(), output_type, i);
+
+    DeviceBuffer device_a(selected_backend, size_a);
+    DeviceBuffer device_b(selected_backend, size_b);
+    DeviceBuffer device_c(
+        selected_backend, size_c * type_size(output_type));
+    DeviceBuffer device_scale_a(selected_backend, sizeof(float));
+    DeviceBuffer device_scale_b(selected_backend, sizeof(float));
+
+    copy_to_device(selected_backend, device_a.get(),
+                   host_a.data(), host_a.size());
+    copy_to_device(selected_backend, device_b.get(),
+                   host_b.data(), host_b.size());
+    copy_to_device(selected_backend, device_c.get(),
+                   host_c.data(), host_c.size());
+    copy_to_device(selected_backend, device_scale_a.get(),
+                   &scale_a, sizeof(scale_a));
+    copy_to_device(selected_backend, device_scale_b.get(),
+                   &scale_b, sizeof(scale_b));
+
+    const bool supported = backend.gemm_scaled_device(
+        Layout::ColMajor, transA, transB,
+        M, N, K, alpha,
+        device_a.get(), BlasDataType::Float8E4M3Fnuz, lda,
+        static_cast<const float*>(device_scale_a.get()),
+        device_b.get(), BlasDataType::Float8E4M3Fnuz, ldb,
+        static_cast<const float*>(device_scale_b.get()),
+        beta,
+        device_c.get(), output_type, ldc,
+        nullptr);
+
+    const char ta = transA == Transpose::NoTrans ? 'N' : 'T';
+    const char tb = transB == Transpose::NoTrans ? 'N' : 'T';
+
+    if (!supported) {
+        std::printf(
+            "FP8-E4M3-FNUZ->%-4s ColMajor %c%c SKIP (no algorithm)\\n",
+            type_name(output_type), ta, tb);
+        return false;
+    }
+
+    copy_from_device(selected_backend, host_c.data(),
+                     device_c.get(), host_c.size());
+
+    float max_error = 0.0f;
+
+    for (int column = 0; column < N; ++column) {
+        for (int row = 0; row < M; ++row) {
+            float sum = 0.0f;
+
+            for (int q = 0; q < K; ++q) {
+                const int ar = transA == Transpose::NoTrans ? row : q;
+                const int ac = transA == Transpose::NoTrans ? q : row;
+                const int br = transB == Transpose::NoTrans ? q : column;
+                const int bc = transB == Transpose::NoTrans ? column : q;
+
+                const std::size_t ia =
+                    matrix_offset(Layout::ColMajor, ar, ac, lda);
+                const std::size_t ib =
+                    matrix_offset(Layout::ColMajor, br, bc, ldb);
+
+                sum += fp8_e4m3_fnuz_to_float(host_a[ia]) *
+                       fp8_e4m3_fnuz_to_float(host_b[ib]);
+            }
+
+            const std::size_t ic =
+                matrix_offset(Layout::ColMajor, row, column, ldc);
+
+            const float accumulated =
+                alpha * scale_a * scale_b * sum +
+                beta * initial_c[ic];
+
+            const float expected =
+                quantize_output(accumulated, output_type);
+            const float actual =
+                decode_value(host_c.data(), output_type, ic);
+
+            max_error = std::max(
+                max_error, std::fabs(actual - expected));
+        }
+    }
+
+    const float tolerance =
+        output_type == BlasDataType::Float32 ? 2.0e-3f :
+        output_type == BlasDataType::Float16 ? 2.0e-3f : 1.0e-2f;
+
+    std::printf(
+        "FP8-E4M3-FNUZ->%-4s ColMajor %c%c "
+        "scaleA=%.3g scaleB=%.3g max error=%.7g %s\n",
+        type_name(output_type), ta, tb, scale_a, scale_b, max_error,
+        std::isfinite(max_error) && max_error <= tolerance ? "PASS" : "FAIL");
+
+    if (!std::isfinite(max_error) || max_error > tolerance)
+        throw std::runtime_error("FP8 scaled GEMM numerical validation failed");
+
+    return true;
+}
+
 BackendType select_backend(int argc, char** argv) {
     BackendType selected = BackendType::CPU;
 
@@ -423,6 +855,80 @@ int main(int argc, char** argv) {
                  BlasDataType::BFloat16, BlasDataType::Float32);
         run_case(*backend, selected_backend,
                  BlasDataType::Float32, BlasDataType::Float32);
+
+        const Layout layouts[] = {
+            Layout::ColMajor,
+            Layout::RowMajor
+        };
+
+        const Transpose transposes[] = {
+            Transpose::NoTrans,
+            Transpose::Trans
+        };
+
+        const int scalar_cases[][2] = {
+            {1, 0},
+            {2, 1}
+        };
+
+        int int8_cases = 0;
+
+        for (Layout layout : layouts) {
+            for (Transpose ta : transposes) {
+                for (Transpose tb : transposes) {
+                    for (const auto& scalars : scalar_cases) {
+                        run_int8_case(
+                            *backend, selected_backend,
+                            layout, ta, tb,
+                            scalars[0], scalars[1]);
+
+                        ++int8_cases;
+                    }
+                }
+            }
+        }
+
+        std::printf("INT8/INT32 cases passed: %d/16\n", int8_cases);
+
+        int fp8_cases = 0;
+        int fp8_unsupported = 0;
+
+        if (selected_backend == BackendType::AMD) {
+            const BlasDataType fp8_outputs[] = {
+                BlasDataType::Float32,
+                BlasDataType::Float16,
+                BlasDataType::BFloat16
+            };
+
+            for (BlasDataType output_type : fp8_outputs) {
+                for (Transpose ta : transposes) {
+                    for (Transpose tb : transposes) {
+                        const bool supported = run_fp8_case(
+                            *backend, selected_backend, ta, tb, output_type);
+
+                        if (supported)
+                            ++fp8_cases;
+                        else
+                            ++fp8_unsupported;
+
+                        // FP32 support is already established by the
+                        // baseline tests and is mandatory on this device.
+                        if (!supported &&
+                            output_type == BlasDataType::Float32) {
+                            throw std::runtime_error(
+                                "Previously working FP8 FP32 algorithm disappeared");
+                        }
+                    }
+                }
+            }
+
+            std::printf(
+                "FP8 E4M3 FNUZ: %d passed, %d unsupported, 12 attempted\n",
+                fp8_cases, fp8_unsupported);
+        } else {
+            std::printf(
+                "FP8 FNUZ scaled GEMM tests skipped: ROCm hipBLASLt only.\\n");
+        }
 
         std::printf("All mixed-precision GEMM cases passed.\n");
         return 0;

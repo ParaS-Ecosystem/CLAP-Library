@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <functional>
 #include <initializer_list>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
@@ -57,6 +58,17 @@ constexpr int kHipblasLtSuccess = 0;
 
 constexpr int kHipDataTypeF32  = 0;
 constexpr int kHipDataTypeBF16 = 14;
+constexpr int kHipDataTypeF16 = 2;
+constexpr int kHipDataTypeE4M3 = 28;
+constexpr int kHipDataTypeE5M2 = 29;
+constexpr int kHipDataTypeE4M3Fnuz = 1000;
+constexpr int kHipDataTypeE5M2Fnuz = 1001;
+
+constexpr int kLtDescAScalePointer = 5;
+constexpr int kLtDescBScalePointer = 6;
+constexpr int kLtDescAScaleMode = 31;
+constexpr int kLtDescBScaleMode = 32;
+constexpr int kLtMatrixScaleScalar32F = 0;
 
 constexpr int kHipComputeF32 = 2;
 
@@ -106,6 +118,9 @@ struct DynamicApi {
     using HipStreamIsCapturingFn =
         int (*)(void*, int*);
 
+    using HipGetDeviceFn =
+        int (*)(int*);
+
     using HipStreamSynchronizeFn =
         int (*)(void*);
 
@@ -129,6 +144,7 @@ struct DynamicApi {
     HipMemcpyAsyncFn hip_memcpy_async = nullptr;
     HipMemsetAsyncFn hip_memset_async = nullptr;
     HipStreamIsCapturingFn hip_stream_is_capturing = nullptr;
+    HipGetDeviceFn hip_get_device = nullptr;
     HipStreamSynchronizeFn hip_stream_synchronize = nullptr;
     HipEventCreateFn hip_event_create = nullptr;
     HipEventRecordFn hip_event_record = nullptr;
@@ -272,6 +288,11 @@ struct DynamicApi {
         LOAD_HIP(hip_memset_async, "hipMemsetAsync");
         LOAD_HIP(hip_stream_is_capturing, "hipStreamIsCapturing");
         LOAD_HIP(hip_stream_synchronize, "hipStreamSynchronize");
+
+        // Optional: used only by the per-device FP8 handle cache.
+        hip_get_device = reinterpret_cast<HipGetDeviceFn>(
+            dlsym(hip_library, "hipGetDevice"));
+
         LOAD_HIP(hip_event_create, "hipEventCreate");
         LOAD_HIP(hip_event_record, "hipEventRecord");
         LOAD_HIP(hip_event_synchronize, "hipEventSynchronize");
@@ -372,6 +393,10 @@ void debug_log(const char* message) {
     if (debug_enabled()) {
         std::fprintf(stderr, "[CLAP ROCm GEMM] %s\n", message);
     }
+}
+
+void debug_log(const std::string& message) {
+    debug_log(message.c_str());
 }
 
 // -----------------------------------------------------------------------------
@@ -611,6 +636,40 @@ LtHandle get_lt_handle(DynamicApi& api) {
     return handle;
 }
 
+// FP8 handles are cached separately, one per HIP device.
+bool get_current_hip_device(DynamicApi& api, int& device) {
+    if (!api.hip_get_device) {
+        return false;
+    }
+
+    device = -1;
+    return api.hip_get_device(&device) == 0 && device >= 0;
+}
+
+LtHandle get_fp8_lt_handle(DynamicApi& api, int device) {
+    static std::mutex mutex;
+    static std::unordered_map<int, LtHandle> handles;
+
+    std::lock_guard<std::mutex> lock(mutex);
+
+    const auto found = handles.find(device);
+    if (found != handles.end()) {
+        return found->second;
+    }
+
+    LtHandle handle = nullptr;
+    const int status = api.lt_create(&handle);
+
+    if (status != kHipblasLtSuccess || !handle) {
+        debug_log("hipblasLtCreate failed for FP8 device handle");
+        return nullptr;
+    }
+
+    handles.emplace(device, handle);
+    return handle;
+}
+
+
 // -----------------------------------------------------------------------------
 // RAII management of hipBLASLt descriptors.
 // -----------------------------------------------------------------------------
@@ -661,6 +720,70 @@ struct LtResources {
         }
     }
 };
+
+// FP8 plans use exact dimensions and datatype combinations. Unlike the
+// existing FP32/BF16 cache, these plans retain their descriptors and layouts.
+struct Fp8PlanKey {
+    int device;
+    int m, n, k;
+    int lda, ldb, ldc;
+    int trans_a, trans_b;
+    int type_a, type_b, type_c;
+
+    bool operator==(const Fp8PlanKey& other) const {
+        return device == other.device &&
+               m == other.m && n == other.n && k == other.k &&
+               lda == other.lda && ldb == other.ldb && ldc == other.ldc &&
+               trans_a == other.trans_a && trans_b == other.trans_b &&
+               type_a == other.type_a && type_b == other.type_b &&
+               type_c == other.type_c;
+    }
+};
+
+struct Fp8PlanKeyHash {
+    size_t operator()(const Fp8PlanKey& key) const {
+        size_t seed = 0;
+        const auto combine = [&seed](size_t value) {
+            seed ^= value + 0x9e3779b9U + (seed << 6) + (seed >> 2);
+        };
+
+        combine(std::hash<int>{}(key.device));
+        combine(std::hash<int>{}(key.m));
+        combine(std::hash<int>{}(key.n));
+        combine(std::hash<int>{}(key.k));
+        combine(std::hash<int>{}(key.lda));
+        combine(std::hash<int>{}(key.ldb));
+        combine(std::hash<int>{}(key.ldc));
+        combine(std::hash<int>{}(key.trans_a));
+        combine(std::hash<int>{}(key.trans_b));
+        combine(std::hash<int>{}(key.type_a));
+        combine(std::hash<int>{}(key.type_b));
+        combine(std::hash<int>{}(key.type_c));
+        return seed;
+    }
+};
+
+struct Fp8Plan {
+    std::unique_ptr<LtResources> resources;
+    LtMatmulAlgo algo{};
+    std::mutex mutex;
+};
+
+std::mutex& fp8_plan_cache_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+std::unordered_map<
+    Fp8PlanKey,
+    std::shared_ptr<Fp8Plan>,
+    Fp8PlanKeyHash>& fp8_plan_cache() {
+    static std::unordered_map<
+        Fp8PlanKey,
+        std::shared_ptr<Fp8Plan>,
+        Fp8PlanKeyHash> cache;
+    return cache;
+}
 
 bool create_lt_resources(
     DynamicApi& api,
@@ -848,6 +971,220 @@ bool create_lt_resources(
         return false;
     }
 
+    return true;
+}
+
+// Map CLAP FP8 input formats to ROCm HIP datatypes.
+bool fp8_hip_data_type(BlasDataType type, int& result) {
+    switch (type) {
+        case BlasDataType::Float8E4M3:
+            result = kHipDataTypeE4M3;
+            return true;
+        case BlasDataType::Float8E5M2:
+            result = kHipDataTypeE5M2;
+            return true;
+        case BlasDataType::Float8E4M3Fnuz:
+            result = kHipDataTypeE4M3Fnuz;
+            return true;
+        case BlasDataType::Float8E5M2Fnuz:
+            result = kHipDataTypeE5M2Fnuz;
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool fp8_output_hip_data_type(BlasDataType type, int& result) {
+    switch (type) {
+        case BlasDataType::Float16:
+            result = kHipDataTypeF16;
+            return true;
+        case BlasDataType::BFloat16:
+            result = kHipDataTypeBF16;
+            return true;
+        case BlasDataType::Float32:
+            result = kHipDataTypeF32;
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Build and retain the descriptor/layouts and selected algorithm for one
+// exact FP8 GEMM shape. Unsupported combinations return false.
+bool create_fp8_plan(
+    DynamicApi& api,
+    LtHandle handle,
+    const NormalizedGemm& p,
+    BlasDataType type_a,
+    BlasDataType type_b,
+    BlasDataType type_c,
+    std::shared_ptr<Fp8Plan>& result,
+    std::string& error) {
+
+    int input_type_a = 0;
+    int input_type_b = 0;
+    int output_type = 0;
+
+    if (!fp8_hip_data_type(type_a, input_type_a) ||
+        !fp8_hip_data_type(type_b, input_type_b) ||
+        !fp8_output_hip_data_type(type_c, output_type)) {
+        error = "Unsupported FP8 input or output datatype";
+        return false;
+    }
+
+    auto plan = std::make_shared<Fp8Plan>();
+    plan->resources = std::make_unique<LtResources>(api);
+    LtResources& resources = *plan->resources;
+
+    int status = api.lt_desc_create(
+        &resources.desc, kHipComputeF32, kHipDataTypeF32);
+
+    if (status != kHipblasLtSuccess) {
+        error = "FP8 hipBLASLt descriptor creation failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    const int trans_a = to_lt_operation(p.trans_a);
+    const int trans_b = to_lt_operation(p.trans_b);
+    const int pointer_mode = kLtPointerModeHost;
+
+    const auto set_desc_attribute =
+        [&](int attribute, const void* value, size_t size,
+            const char* name) -> bool {
+            const int attr_status = api.lt_desc_set_attribute(
+                resources.desc, attribute, value, size);
+            if (attr_status != kHipblasLtSuccess) {
+                error = std::string("Setting FP8 ") + name +
+                        " failed, status=" + std::to_string(attr_status);
+                return false;
+            }
+            return true;
+        };
+
+    if (!set_desc_attribute(
+            kLtDescTransA, &trans_a, sizeof(trans_a), "TRANSA") ||
+        !set_desc_attribute(
+            kLtDescTransB, &trans_b, sizeof(trans_b), "TRANSB") ||
+        !set_desc_attribute(
+            kLtDescPointerMode, &pointer_mode,
+            sizeof(pointer_mode), "pointer mode")) {
+        return false;
+    }
+
+    const int scale_mode = kLtMatrixScaleScalar32F;
+
+    if (!set_desc_attribute(
+            kLtDescAScaleMode, &scale_mode,
+            sizeof(scale_mode), "A scale mode") ||
+        !set_desc_attribute(
+            kLtDescBScaleMode, &scale_mode,
+            sizeof(scale_mode), "B scale mode")) {
+        return false;
+    }
+
+    const uint64_t a_rows =
+        p.trans_a == rocblas_operation_none ? p.m : p.k;
+    const uint64_t a_cols =
+        p.trans_a == rocblas_operation_none ? p.k : p.m;
+    const uint64_t b_rows =
+        p.trans_b == rocblas_operation_none ? p.k : p.n;
+    const uint64_t b_cols =
+        p.trans_b == rocblas_operation_none ? p.n : p.k;
+
+    status = api.lt_layout_create(
+        &resources.layout_a, input_type_a,
+        a_rows, a_cols, p.lda);
+    if (status != kHipblasLtSuccess) {
+        error = "Creating FP8 A layout failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    status = api.lt_layout_create(
+        &resources.layout_b, input_type_b,
+        b_rows, b_cols, p.ldb);
+    if (status != kHipblasLtSuccess) {
+        error = "Creating FP8 B layout failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    status = api.lt_layout_create(
+        &resources.layout_c, output_type, p.m, p.n, p.ldc);
+    if (status != kHipblasLtSuccess) {
+        error = "Creating FP8 C layout failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    status = api.lt_layout_create(
+        &resources.layout_d, output_type, p.m, p.n, p.ldc);
+    if (status != kHipblasLtSuccess) {
+        error = "Creating FP8 D layout failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    status = api.lt_preference_create(&resources.preference);
+    if (status != kHipblasLtSuccess) {
+        error = "Creating FP8 heuristic preference failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    const size_t max_workspace_bytes = 0;
+    status = api.lt_preference_set_attribute(
+        resources.preference,
+        kLtPreferenceMaxWorkspace,
+        &max_workspace_bytes,
+        sizeof(max_workspace_bytes));
+
+    if (status != kHipblasLtSuccess) {
+        error = "Setting FP8 workspace preference failed, status=" +
+                std::to_string(status);
+        return false;
+    }
+
+    constexpr int kRequestedAlgorithms = 8;
+    LtHeuristicResult candidates[kRequestedAlgorithms]{};
+    int returned = 0;
+
+    status = api.lt_algo_get_heuristic(
+        handle,
+        resources.desc,
+        resources.layout_a,
+        resources.layout_b,
+        resources.layout_c,
+        resources.layout_d,
+        resources.preference,
+        kRequestedAlgorithms,
+        candidates,
+        &returned);
+
+    if (status != kHipblasLtSuccess || returned <= 0 ||
+        returned > kRequestedAlgorithms) {
+        error = "No FP8 hipBLASLt heuristic result is available";
+        return false;
+    }
+
+    int selected = -1;
+    for (int i = 0; i < returned; ++i) {
+        if (candidates[i].state == kHipblasLtSuccess &&
+            candidates[i].workspaceSize == 0) {
+            selected = i;
+            break;
+        }
+    }
+
+    if (selected < 0) {
+        error = "No usable zero-workspace FP8 algorithm";
+        return false;
+    }
+
+    plan->algo = candidates[selected].algo;
+    result = std::move(plan);
     return true;
 }
 
@@ -1982,6 +2319,185 @@ void gemm_bf16(
         C,
         stream,
         run_rocblas);
+}
+
+
+// -----------------------------------------------------------------------------
+// Public scaled FP8 device GEMM selector.
+// -----------------------------------------------------------------------------
+
+bool gemm_scaled_fp8(
+    Layout layout,
+    Transpose transA,
+    Transpose transB,
+    int m, int n, int k,
+    float alpha,
+    const void* A, BlasDataType typeA, int lda,
+    const float* scaleA,
+    const void* B, BlasDataType typeB, int ldb,
+    const float* scaleB,
+    float beta,
+    void* C, BlasDataType typeC, int ldc,
+    void* stream) {
+
+    try {
+        if (m < 0 || n < 0 || k < 0) {
+            return false;
+        }
+
+        if (m == 0 || n == 0) {
+            return true;
+        }
+
+        if (k == 0 || !A || !B || !C || !scaleA || !scaleB) {
+            return false;
+        }
+
+        int ignored_type = 0;
+        if (!fp8_hip_data_type(typeA, ignored_type) ||
+            !fp8_hip_data_type(typeB, ignored_type) ||
+            !fp8_output_hip_data_type(typeC, ignored_type)) {
+            return false;
+        }
+
+        DynamicApi& api = dynamic_api();
+        if (!api.load()) {
+            debug_log(api.error);
+            return false;
+        }
+
+        int device = -1;
+        if (!get_current_hip_device(api, device)) {
+            debug_log("Unable to determine current HIP device for FP8 GEMM");
+            return false;
+        }
+
+        LtHandle handle = get_fp8_lt_handle(api, device);
+        if (!handle) {
+            return false;
+        }
+
+        const NormalizedGemm p = normalize_gemm(
+            layout, transA, transB,
+            m, n, k, A, lda, B, ldb, ldc);
+
+        // Row-major normalization swaps the two input operands.
+        BlasDataType normalized_type_a = typeA;
+        BlasDataType normalized_type_b = typeB;
+        const float* normalized_scale_a = scaleA;
+        const float* normalized_scale_b = scaleB;
+
+        if (layout == Layout::RowMajor) {
+            std::swap(normalized_type_a, normalized_type_b);
+            std::swap(normalized_scale_a, normalized_scale_b);
+        }
+
+        const Fp8PlanKey key{
+            device,
+            p.m, p.n, p.k,
+            p.lda, p.ldb, p.ldc,
+            static_cast<int>(p.trans_a),
+            static_cast<int>(p.trans_b),
+            static_cast<int>(normalized_type_a),
+            static_cast<int>(normalized_type_b),
+            static_cast<int>(typeC)
+        };
+
+        std::shared_ptr<Fp8Plan> plan;
+
+        {
+            std::lock_guard<std::mutex> lock(fp8_plan_cache_mutex());
+            auto& cache = fp8_plan_cache();
+            const auto found = cache.find(key);
+
+            if (found != cache.end()) {
+                plan = found->second;
+            }
+        }
+
+        if (!plan) {
+            std::shared_ptr<Fp8Plan> candidate;
+            std::string error;
+
+            if (!create_fp8_plan(
+                    api, handle, p,
+                    normalized_type_a,
+                    normalized_type_b,
+                    typeC,
+                    candidate, error)) {
+                debug_log(error);
+                return false;
+            }
+
+            std::lock_guard<std::mutex> lock(fp8_plan_cache_mutex());
+            auto& cache = fp8_plan_cache();
+            const auto inserted = cache.emplace(key, candidate);
+            plan = inserted.first->second;
+        }
+
+        // Scale attributes belong to the retained descriptor. Protect their
+        // update and the corresponding matmul as one operation.
+        std::lock_guard<std::mutex> plan_lock(plan->mutex);
+
+        const void* scale_a_pointer = normalized_scale_a;
+        const void* scale_b_pointer = normalized_scale_b;
+
+        int status = api.lt_desc_set_attribute(
+            plan->resources->desc,
+            kLtDescAScalePointer,
+            &scale_a_pointer,
+            sizeof(scale_a_pointer));
+
+        if (status != kHipblasLtSuccess) {
+            debug_log(
+                "Setting FP8 A scale pointer failed, status=" +
+                std::to_string(status));
+            return false;
+        }
+
+        status = api.lt_desc_set_attribute(
+            plan->resources->desc,
+            kLtDescBScalePointer,
+            &scale_b_pointer,
+            sizeof(scale_b_pointer));
+
+        if (status != kHipblasLtSuccess) {
+            debug_log(
+                "Setting FP8 B scale pointer failed, status=" +
+                std::to_string(status));
+            return false;
+        }
+
+        status = api.lt_matmul(
+            handle,
+            plan->resources->desc,
+            &alpha,
+            p.A, plan->resources->layout_a,
+            p.B, plan->resources->layout_b,
+            &beta,
+            C, plan->resources->layout_c,
+            C, plan->resources->layout_d,
+            &plan->algo,
+            nullptr, 0,
+            stream);
+
+        if (status != kHipblasLtSuccess) {
+            debug_log(
+                "FP8 hipblasLtMatmul failed, status=" +
+                std::to_string(status));
+            return false;
+        }
+
+        return true;
+
+    } catch (const std::exception& error) {
+        debug_log(
+            std::string("Scaled FP8 GEMM failed: ") + error.what());
+        return false;
+    } catch (...) {
+        debug_log("Scaled FP8 GEMM failed with an unknown error");
+        return false;
+    }
 }
 
 } // namespace rocblas_gemm_select

@@ -22,21 +22,48 @@
 #include <algorithm>
 #include <string>
 #include <cstdint>
+#include <cmath>
+#include <limits>
 
 namespace clap {
 namespace {
 
 constexpr int kRocblasF16  = 150;
-constexpr int kRocblasBF16 = 168;
 constexpr int kRocblasF32  = 151;
+constexpr int kRocblasI8   = 160;
+constexpr int kRocblasI32  = 162;
+constexpr int kRocblasBF16 = 168;
 
 int rocblas_data_type(BlasDataType type) {
   switch (type) {
     case BlasDataType::Float16:  return kRocblasF16;
     case BlasDataType::BFloat16: return kRocblasBF16;
     case BlasDataType::Float32:  return kRocblasF32;
+    case BlasDataType::I8:       return kRocblasI8;
+    case BlasDataType::I32:      return kRocblasI32;
+    case BlasDataType::Float8E4M3:
+    case BlasDataType::Float8E5M2:
+    case BlasDataType::Float8E4M3Fnuz:
+    case BlasDataType::Float8E5M2Fnuz:
+      throw std::invalid_argument(
+          "FP8 requires gemm_scaled_device");
   }
   throw std::invalid_argument("Unsupported BLAS datatype");
+}
+
+int32_t checked_int32_scalar(float value, const char* name) {
+  const double converted = static_cast<double>(value);
+
+  if (!std::isfinite(value) ||
+      std::trunc(converted) != converted ||
+      converted < std::numeric_limits<int32_t>::min() ||
+      converted > std::numeric_limits<int32_t>::max()) {
+    throw std::invalid_argument(
+        std::string("INT8 GEMM ") + name +
+        " must be an exactly representable int32 value");
+  }
+
+  return static_cast<int32_t>(value);
 }
 
 template <typename T> T vendor_symbol(const char* symbol) {
@@ -204,15 +231,40 @@ void RocBlasBackend::gemm_ex_strided_batched_device(
   if (batches < 0 || strideA < 0 || strideB < 0 || strideC < 0)
     throw std::invalid_argument("Invalid mixed-precision batched GEMM count/stride");
 
+  const bool int8_gemm =
+      typeA == BlasDataType::I8 &&
+      typeB == BlasDataType::I8 &&
+      typeC == BlasDataType::I32;
+
+  const bool floating_gemm =
+      typeA == typeB &&
+      (typeA == BlasDataType::Float32
+           ? typeC == BlasDataType::Float32
+           : ((typeA == BlasDataType::Float16 ||
+               typeA == BlasDataType::BFloat16) &&
+              (typeC == typeA ||
+               typeC == BlasDataType::Float32)));
+
+  if (!int8_gemm && !floating_gemm)
+    throw std::invalid_argument(
+        "Unsupported mixed-precision GEMM datatype combination");
+
   const int aType = rocblas_data_type(typeA);
   const int bType = rocblas_data_type(typeB);
   const int cType = rocblas_data_type(typeC);
 
-  if (typeA != typeB ||
-      (typeA == BlasDataType::Float32
-           ? typeC != BlasDataType::Float32
-           : (typeC != typeA && typeC != BlasDataType::Float32))) {
-    throw std::invalid_argument("Unsupported mixed-precision GEMM datatype combination");
+  int32_t alpha_i32 = 0;
+  int32_t beta_i32 = 0;
+
+  const void* alpha_ptr = &alpha;
+  const void* beta_ptr = &beta;
+  const int compute_type = int8_gemm ? kRocblasI32 : kRocblasF32;
+
+  if (int8_gemm) {
+    alpha_i32 = checked_int32_scalar(alpha, "alpha");
+    beta_i32 = checked_int32_scalar(beta, "beta");
+    alpha_ptr = &alpha_i32;
+    beta_ptr = &beta_i32;
   }
 
   validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
@@ -244,13 +296,64 @@ void RocBlasBackend::gemm_ex_strided_batched_device(
   const auto sb = (layout == Layout::RowMajor ? strideA : strideB);
 
   check((int)fn(handle, p.a, p.b, p.m, p.n, p.k,
-                &alpha,
+                alpha_ptr,
                 a, aDataType, p.lda, sa,
                 b, bDataType, p.ldb, sb,
-                &beta,
+                beta_ptr,
                 C, cType, p.ldc, strideC,
                 C, cType, p.ldc, strideC,
-                batches, kRocblasF32, 0, 0, 0));
+                batches, compute_type, 0, 0, 0));
+}
+
+bool RocBlasBackend::gemm_scaled_device(
+    Layout layout, Transpose ta, Transpose tb,
+    int m, int n, int k, float alpha,
+    const void* A, BlasDataType typeA, int lda,
+    const float* scaleA,
+    const void* B, BlasDataType typeB, int ldb,
+    const float* scaleB,
+    float beta,
+    void* C, BlasDataType typeC, int ldc,
+    void* stream) {
+
+  const auto is_fp8 = [](BlasDataType type) {
+    return type == BlasDataType::Float8E4M3 ||
+           type == BlasDataType::Float8E5M2 ||
+           type == BlasDataType::Float8E4M3Fnuz ||
+           type == BlasDataType::Float8E5M2Fnuz;
+  };
+
+  const bool supported_output =
+      typeC == BlasDataType::Float32 ||
+      typeC == BlasDataType::Float16 ||
+      typeC == BlasDataType::BFloat16;
+
+  if (!is_fp8(typeA) || !is_fp8(typeB) || !supported_output) {
+    return false;
+  }
+
+  validate(
+      layout, ta, tb, m, n, k,
+      lda, ldb, ldc, A, B, C);
+
+  if (m == 0 || n == 0) {
+    return true;
+  }
+
+  // A zero-K operation needs only beta*C. Leave it to the caller's
+  // fallback path rather than requiring an FP8 hipBLASLt algorithm.
+  if (k == 0 || !scaleA || !scaleB) {
+    return false;
+  }
+
+  return clap::rocblas_gemm_select::gemm_scaled_fp8(
+      layout, ta, tb,
+      m, n, k, alpha,
+      A, typeA, lda, scaleA,
+      B, typeB, ldb, scaleB,
+      beta,
+      C, typeC, ldc,
+      stream);
 }
 
 void RocBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Transpose tb,

@@ -343,6 +343,13 @@ public:
       float, void*, BlasDataType, int, long long,
       int, void* = nullptr) override;
 
+  bool gemm_scaled_device(
+      Layout, Transpose, Transpose, int, int, int, float,
+      const void*, BlasDataType, int, const float*,
+      const void*, BlasDataType, int, const float*,
+      float, void*, BlasDataType, int,
+      void* = nullptr) override;
+
   void gemm_strided_batched_device(Layout, Transpose, Transpose,
                                    int, int, int, float, const void*, int, long long,
                                    const void*, int, long long, float, void*, int, long long,

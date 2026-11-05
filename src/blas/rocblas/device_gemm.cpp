@@ -25,6 +25,10 @@
 
 namespace clap {
 namespace {
+
+constexpr int kRocblasBF16 = 168;
+constexpr int kRocblasF32  = 151;
+
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("librocblas.so", RTLD_LAZY | RTLD_LOCAL);
@@ -131,6 +135,7 @@ void RocBlasBackend::gemm_device(Layout layout,Transpose transA,Transpose transB
 void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   int m,int n,int k,float alpha,const void* A,int lda,const void* B,int ldb,
   float beta,void* C,int ldc,void* stream) {
+
   validate(layout,ta,tb,m,n,k,lda,ldb,ldc,A,B,C);
   if(!m || !n) return;
   set_stream(handle,stream);
@@ -141,8 +146,44 @@ void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   auto fn=vendor_symbol<Fn>("rocblas_gemm_ex");
   const void* a=(layout==Layout::RowMajor ? B:A);
   const void* b=(layout==Layout::RowMajor ? A:B);
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,14,p.lda,b,14,p.ldb,
-    &beta,C,14,p.ldc,C,14,p.ldc,151,0,0,0));
+  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k, &alpha,
+    a,kRocblasBF16,p.lda, b,kRocblasBF16,p.ldb, &beta,
+    C,kRocblasBF16,p.ldc, C,kRocblasBF16,p.ldc,
+    kRocblasF32,0,0,0));
+}
+
+void RocBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta, Transpose tb,
+     int m, int n, int k, float alpha, const void* A, int lda, long long strideA, const void* B,
+     int ldb, long long strideB, float beta, void* C, int ldc, long long strideC,
+     int batches, void* stream) {
+
+    if (batches < 0 || strideA < 0 ||
+        strideB < 0 || strideC < 0)
+        throw std::invalid_argument("Invalid BF16 batched GEMM count/stride");
+
+    validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+    if (batches == 0 || m == 0 || n == 0)
+        return;
+
+    set_stream(handle, stream);
+    auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+    using Fn = rocblas_status (*)(rocblas_handle, rocblas_operation, rocblas_operation,
+                                  int, int, int, const void*, const void*, int, int,
+                                  std::int64_t, const void*, int, int, std::int64_t,
+                                  const void*, const void*, int, int, std::int64_t,
+                                  void*, int, int, std::int64_t,
+                                  int, int, int, int32_t, uint32_t );
+
+    auto fn = vendor_symbol<Fn>("rocblas_gemm_strided_batched_ex");
+    const void* a = (layout == Layout::RowMajor ? B : A);
+    const void* b = (layout == Layout::RowMajor ? A : B);
+
+    auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+    auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+    check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, &alpha, a, kRocblasBF16, p.lda, sa,
+                  b, kRocblasBF16, p.ldb, sb, &beta, C, kRocblasBF16, p.ldc, strideC,
+                  C, kRocblasBF16, p.ldc, strideC, batches, kRocblasF32, 0, 0, 0 ));
 }
 
 void RocBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Transpose tb,

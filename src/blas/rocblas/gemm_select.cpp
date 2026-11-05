@@ -1798,6 +1798,16 @@ bool calibrate_shape(
     HipDeviceBuffer scratch_c(api, output_bytes);
     HipDeviceBuffer scratch_d(api, output_bytes);
 
+    check_hip(
+        api.hip_memset_async(
+            scratch_c.pointer, 0, output_bytes, stream),
+        "hipMemsetAsync for GEMM scratch C");
+
+    check_hip(
+        api.hip_memset_async(
+            scratch_d.pointer, 0, output_bytes, stream),
+        "hipMemsetAsync for GEMM scratch D");
+
     HipEventPair events(api);
 
     // Warm up rocBLAS.

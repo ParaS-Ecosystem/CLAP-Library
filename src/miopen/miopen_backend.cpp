@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdint>
+#include <initializer_list>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -223,6 +224,47 @@ namespace clap {
                 check(dnn_dyn::p_miopenSetStream(v, ctx.stream), "miopenSetStream");
             }
         };
+        using ConvAlgoCache = std::map<std::string, miopenConvAlgoPerf_t>;
+        std::string convKey(const char* direction, miopenHandle_t h, miopenConvolutionMode_t mode, const ConvolutionDesc& c, std::initializer_list<const TensorDesc*> tensors) {
+            std::ostringstream k;
+            k << direction << '|' << h << '|' << mode << '|' << c.pad_h << ',' << c.pad_w << ',' << c.stride_h << ',' << c.stride_w << ',' << c.dilation_h << ',' << c.dilation_w;
+            for (const TensorDesc* t : tensors) {
+                k << '|' << static_cast<int>(t->type);
+                for (auto d : t->dims) k << ',' << d;
+                k << ':';
+                for (auto st : t->effectiveStrides()) k << ',' << st;
+            }
+            return k.str();
+        }
+        template <class Size, class Find, class Run>
+        void runConvolution(ConvAlgoCache& cache, const ExecutionContext& ctx, const std::string& key, const char* what, Size size, Find find, Run run) {
+            Scratch scratch(ctx);
+            auto it = cache.find(key);
+            if (it == cache.end()) {
+                std::size_t bytes = 0;
+                check(size( &bytes), what);
+                void* ws = scratch.get(bytes);
+                miopenConvAlgoPerf_t perf[4] = {};
+                int count = 0;
+                check(find(4, &count, perf, ws, bytes), what);
+                if (count < 1) throw std::runtime_error(std::string("CLAP_DNN MIOpen: ") + what + " Find returned no algorithm");
+                it = cache.emplace(key, perf[0]).first;
+            }
+            check(run(it->second.algo, scratch.get(it->second.memory), it->second.memory), what);
+        }
+        void forwardConvolution(ConvAlgoCache& cache, const ExecutionContext& ctx, miopenHandle_t h, miopenConvolutionMode_t mode, const ConvolutionDesc& c, const TensorDesc& xd, const Tensor& Xd, const void* x, const TensorDesc& wd, const Tensor& Wd, const void* w, const Conv& cd, const TensorDesc& yd, const Tensor& Yd, void* y, const char* what) {
+            const float a = 1, b = 0;
+            runConvolution(cache, ctx, convKey("fwd", h, mode, c, { &xd, &wd, &yd }), what,
+                [&](std::size_t* bytes) {
+                    return dnn_dyn::p_miopenConvolutionForwardGetWorkSpaceSize(h, Wd.v, Xd.v, cd.v, Yd.v, bytes);
+                },
+                [&](int n, int* count, miopenConvAlgoPerf_t* perf, void* ws, std::size_t bytes) {
+                    return dnn_dyn::p_miopenFindConvolutionForwardAlgorithm(h, Xd.v, x, Wd.v, w, cd.v, Yd.v, y, n, count, perf, ws, bytes, false);
+                },
+                [&](int algo, void* ws, std::size_t bytes) {
+                    return dnn_dyn::p_miopenConvolutionForward(h, &a, Xd.v, x, Wd.v, w, cd.v, algo, &b, Yd.v, y, ws, bytes);
+                });
+        }
     }
 
     namespace miopen_detail {
@@ -240,6 +282,7 @@ namespace clap {
         std::map<int, miopenHandle_t> handles;
         std::map<std::string, std::unique_ptr<miopen_detail::MhaSolution>> mha;
         std::map<int, void*> mha_constants;
+        ConvAlgoCache conv_algos;
 
         ~NativeState() {
             mha.clear();
@@ -612,13 +655,8 @@ void MiOpenBackend::convolutionForward(const TensorDesc& xd, const void* x, cons
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor Xd(xd), Wd(wd), Yd(yd);
     Conv cd(c);
-    float a = 1, b = 0;
-    dnn_contract::trace("ROCM", "convolutionForward", "miopenConvolutionForward");
-    check(
-        dnn_dyn::p_miopenConvolutionForward(
-            h.v, &a, Xd.v, x, Wd.v, w, cd.v, miopenConvolutionFwdAlgoGEMM,
-            &b, Yd.v, y, nullptr, 0),
-        "miopenConvolutionForward");
+    dnn_contract::trace("ROCM", "convolutionForward", "miopenFindConvolutionForwardAlgorithm + miopenConvolutionForward");
+    forwardConvolution(native_->conv_algos, ctx, h.v, miopenConvolution, c, xd, Xd, x, wd, Wd, w, cd, yd, Yd, y, "miopenConvolutionForward");
 }
 
 void MiOpenBackend::convolutionBackwardData(const TensorDesc& dyd, const void* dy, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& dxd, void* dx, const ExecutionContext& ctx)
@@ -628,13 +666,18 @@ void MiOpenBackend::convolutionBackwardData(const TensorDesc& dyd, const void* d
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor DYd(dyd), Wd(wd), DXd(dxd);
     Conv cd(c);
-    float a = 1, b = 0;
-    dnn_contract::trace("ROCM", "convolutionBackwardData", "miopenConvolutionBackwardData");
-    check(
-        dnn_dyn::p_miopenConvolutionBackwardData(
-            h.v, &a, DYd.v, dy, Wd.v, w, cd.v, miopenConvolutionBwdDataAlgoGEMM,
-            &b, DXd.v, dx, nullptr, 0),
-        "miopenConvolutionBackwardData");
+    const float a = 1, b = 0;
+    dnn_contract::trace("ROCM", "convolutionBackwardData", "miopenFindConvolutionBackwardDataAlgorithm + miopenConvolutionBackwardData");
+    runConvolution(native_->conv_algos, ctx, convKey("bwd_data", h.v, miopenConvolution, c, { &dyd, &wd, &dxd }), "miopenConvolutionBackwardData",
+        [&](std::size_t* bytes) {
+            return dnn_dyn::p_miopenConvolutionBackwardDataGetWorkSpaceSize(h.v, DYd.v, Wd.v, cd.v, DXd.v, bytes);
+        },
+        [&](int n, int* count, miopenConvAlgoPerf_t* perf, void* ws, std::size_t bytes) {
+            return dnn_dyn::p_miopenFindConvolutionBackwardDataAlgorithm(h.v, DYd.v, dy, Wd.v, w, cd.v, DXd.v, dx, n, count, perf, ws, bytes, false);
+        },
+        [&](int algo, void* ws, std::size_t bytes) {
+            return dnn_dyn::p_miopenConvolutionBackwardData(h.v, &a, DYd.v, dy, Wd.v, w, cd.v, algo, &b, DXd.v, dx, ws, bytes);
+        });
 }
 
 void MiOpenBackend::convolutionBackwardWeights(const TensorDesc& xd, const void* x, const TensorDesc& dyd, const void* dy, const ConvolutionDesc& c, const TensorDesc& dwd, void* dw, const ExecutionContext& ctx)
@@ -644,13 +687,18 @@ void MiOpenBackend::convolutionBackwardWeights(const TensorDesc& xd, const void*
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor Xd(xd), DYd(dyd), DWd(dwd);
     Conv cd(c);
-    float a = 1, b = 0;
-    dnn_contract::trace("ROCM", "convolutionBackwardWeights", "miopenConvolutionBackwardWeights");
-    check(
-        dnn_dyn::p_miopenConvolutionBackwardWeights(
-            h.v, &a, DYd.v, dy, Xd.v, x, cd.v, miopenConvolutionBwdWeightsAlgoGEMM,
-            &b, DWd.v, dw, nullptr, 0),
-        "miopenConvolutionBackwardWeights");
+    const float a = 1, b = 0;
+    dnn_contract::trace("ROCM", "convolutionBackwardWeights", "miopenFindConvolutionBackwardWeightsAlgorithm + miopenConvolutionBackwardWeights");
+    runConvolution(native_->conv_algos, ctx, convKey("bwd_weights", h.v, miopenConvolution, c, { &xd, &dyd, &dwd }), "miopenConvolutionBackwardWeights",
+        [&](std::size_t* bytes) {
+            return dnn_dyn::p_miopenConvolutionBackwardWeightsGetWorkSpaceSize(h.v, DYd.v, Xd.v, cd.v, DWd.v, bytes);
+        },
+        [&](int n, int* count, miopenConvAlgoPerf_t* perf, void* ws, std::size_t bytes) {
+            return dnn_dyn::p_miopenFindConvolutionBackwardWeightsAlgorithm(h.v, DYd.v, dy, Xd.v, x, cd.v, DWd.v, dw, n, count, perf, ws, bytes, false);
+        },
+        [&](int algo, void* ws, std::size_t bytes) {
+            return dnn_dyn::p_miopenConvolutionBackwardWeights(h.v, &a, DYd.v, dy, Xd.v, x, cd.v, algo, &b, DWd.v, dw, ws, bytes);
+        });
 }
 
 void MiOpenBackend::convolutionBackwardBias(const TensorDesc& dyd, const void* dy, const TensorDesc& dbd, void* db, const ExecutionContext& ctx)
@@ -677,13 +725,8 @@ void MiOpenBackend::convolutionTransposeForward(const TensorDesc& xd, const void
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor Xd(xd), Wd(wd), Yd(yd);
     Conv cd(c, miopenTranspose);
-    float a = 1, b = 0;
-    dnn_contract::trace("ROCM", "convolutionTransposeForward", "miopenConvolutionForward(miopenTranspose)");
-    check(
-        dnn_dyn::p_miopenConvolutionForward(
-            h.v, &a, Xd.v, x, Wd.v, w, cd.v, miopenConvolutionFwdAlgoGEMM,
-            &b, Yd.v, y, nullptr, 0),
-        "miopenConvolutionForward(transpose)");
+    dnn_contract::trace("ROCM", "convolutionTransposeForward", "miopenFindConvolutionForwardAlgorithm + miopenConvolutionForward(miopenTranspose)");
+    forwardConvolution(native_->conv_algos, ctx, h.v, miopenTranspose, c, xd, Xd, x, wd, Wd, w, cd, yd, Yd, y, "miopenConvolutionForward(transpose)");
 }
 
 void MiOpenBackend::fusedConvolutionBiasActivation(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const void* bias, const ConvolutionDesc& c, const ActivationDesc& a, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
@@ -699,11 +742,7 @@ void MiOpenBackend::fusedConvolutionBiasActivation(const TensorDesc& xd, const v
     Act ad(a);
     float one = 1, zero = 0;
     dnn_contract::trace("ROCM", "fusedConvolutionBiasActivation", "miopenConvolutionForward + miopenConvolutionForwardBias + miopenActivationForward");
-    check(
-        dnn_dyn::p_miopenConvolutionForward(
-            h.v, &one, Xd.v, x, Wd.v, w, cd.v, miopenConvolutionFwdAlgoGEMM,
-            &zero, Yd.v, y, nullptr, 0),
-        "miopenConvolutionForward(fused)");
+    forwardConvolution(native_->conv_algos, ctx, h.v, miopenConvolution, c, xd, Xd, x, wd, Wd, w, cd, yd, Yd, y, "miopenConvolutionForward(fused)");
     check(
         dnn_dyn::p_miopenConvolutionForwardBias(
             h.v, &one, Bd.v, bias, &one, Yd.v, y),

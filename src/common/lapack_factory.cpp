@@ -16,8 +16,8 @@
 // -----------------------------------------------------------------------------
 
 #include "clap/lapack_factory.hpp"
-#include "clap/lapack/lapack/openblas_lapack_backend.hpp"
 #include "clap/lapack/cusolver/cusolver_backend.hpp"
+#include "clap/lapack/lapack/openblas_lapack_backend.hpp"
 #include "clap/lapack/rocsolver/rocsolver_backend.hpp"
 #include <cstdlib>
 #include <fstream>
@@ -29,37 +29,45 @@ namespace clap {
 std::unique_ptr<ILapackBackend>
 LapackFactory::create(BackendType default_backend) {
 
-    BackendType selected = default_backend;
+  BackendType selected = default_backend;
 
-    const char *env_backend = std::getenv("CLAP_BACKEND");
-    if (env_backend) {
-        std::string be(env_backend);
-        if      (be == "CUDA") selected = BackendType::CUDA;
-        else if (be == "AMD") selected = BackendType::AMD;
-        else if (be == "CPU")  selected = BackendType::CPU;
-    } else {
-        std::ifstream cmdline("/proc/self/cmdline");
-        if (cmdline.is_open()) {
-            std::string arg;
-            while (std::getline(cmdline, arg, '\0')) {
-                if      (arg == "-cuda") { selected = BackendType::CUDA; break; }
-                else if (arg == "-rocm") { selected = BackendType::AMD; break; }
-                else if (arg == "-cpu")  { selected = BackendType::CPU;  break; }
-            }
+  const char *env_backend = std::getenv("CLAP_BACKEND");
+  if (env_backend) {
+    std::string be(env_backend);
+    if (be == "CUDA")
+      selected = BackendType::CUDA;
+    else if (be == "AMD")
+      selected = BackendType::AMD;
+    else if (be == "CPU")
+      selected = BackendType::CPU;
+  } else {
+    std::ifstream cmdline("/proc/self/cmdline");
+    if (cmdline.is_open()) {
+      std::string arg;
+      while (std::getline(cmdline, arg, '\0')) {
+        if (arg == "-cuda") {
+          selected = BackendType::CUDA;
+          break;
+        } else if (arg == "-rocm") {
+          selected = BackendType::AMD;
+          break;
+        } else if (arg == "-cpu") {
+          selected = BackendType::CPU;
+          break;
         }
+      }
     }
+  }
 
-    if (selected == BackendType::CPU) {
-        return std::make_unique<OpenBlasLapackBackend>();
-    }
-    else if (selected == BackendType::CUDA) {
-        return std::make_unique<CuSolverBackend>();
-    }
-    else if (selected == BackendType::AMD) {
-        return std::make_unique<RocSolverBackend>();
-    }
+  if (selected == BackendType::CPU) {
+    return std::make_unique<OpenBlasLapackBackend>();
+  } else if (selected == BackendType::CUDA) {
+    return std::make_unique<CuSolverBackend>();
+  } else if (selected == BackendType::AMD) {
+    return std::make_unique<RocSolverBackend>();
+  }
 
-    throw std::invalid_argument("Unsupported LAPACK backend requested.");
+  throw std::invalid_argument("Unsupported LAPACK backend requested.");
 }
 
-}
+} // namespace clap

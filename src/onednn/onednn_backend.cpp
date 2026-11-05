@@ -193,7 +193,9 @@ namespace clap {
             return a.mode == ActivationMode::ClippedReLU ? (float) a.alpha : 0.0f;
         }
         dnnl_alg_kind_t pool_alg(PoolingMode m) {
-            return m == PoolingMode::Max ? dnnl_pooling_max: dnnl_pooling_avg_include_padding;
+            if (m == PoolingMode::Max) return dnnl_pooling_max;
+            if (m == PoolingMode::AverageExcludePadding) return dnnl_pooling_avg_exclude_padding;
+            return dnnl_pooling_avg_include_padding;
         }
         void* mut(const void* p) {
             return const_cast<void*>(p);
@@ -513,6 +515,16 @@ void OneDnnBackend::tensorReduceNorm1(const TensorDesc& xd, const float* x, cons
 void OneDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
 {
     tensorReduceNorm2(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorFill(const TensorDesc& yd, float* y, float value)
+{
+    tensorFill(yd, static_cast<void*>(y), value, ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorScale(const TensorDesc& yd, float* y, float alpha)
+{
+    tensorScale(yd, static_cast<void*>(y), alpha, ExecutionContext::cpu());
 }
 
 void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
@@ -1347,6 +1359,35 @@ void OneDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const void* x, const
     onednnReduce(native_->engine, ctx, dnnl_reduction_norm_lp_sum, xd, x, yd, y, 2.0f);
 }
 
+static void onednnInPlaceEltwise(dnnl_engine_t engine, const ExecutionContext& ctx, dnnl_alg_kind_t alg, float alpha, float beta, const TensorDesc& yd, void* y, const char* operation, const char* vendor_call)
+{
+    Cpu q(engine, ctx);
+    Md ym(yd);
+    Mem Y(ym, q.e, y);
+    Pd pd;
+    checkPd(
+        dnn_dyn::p_dnnl_eltwise_forward_primitive_desc_create(
+            &pd.v, q.e, dnnl_forward_inference, alg,
+            ym.v, ym.v, alpha, beta, nullptr),
+        "dnnl_eltwise_forward_primitive_desc_create");
+    Prim p(pd);
+    dnn_contract::trace("CPU", operation, vendor_call);
+    exec(p, q, {
+        {DNNL_ARG_SRC, Y.v},
+        {DNNL_ARG_DST, Y.v}
+    });
+}
+
+void OneDnnBackend::tensorFill(const TensorDesc& yd, void* y, float value, const ExecutionContext& ctx)
+{
+    onednnInPlaceEltwise(native_->engine, ctx, dnnl_eltwise_pow, value, 0.0f, yd, y, "tensorFill", "dnnl eltwise pow (alpha = value, beta = 0)");
+}
+
+void OneDnnBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, const ExecutionContext& ctx)
+{
+    onednnInPlaceEltwise(native_->engine, ctx, dnnl_eltwise_linear, alpha, 0.0f, yd, y, "tensorScale", "dnnl eltwise linear (alpha, beta = 0)");
+}
+
 namespace {
 
 struct GraphOp {
@@ -1876,6 +1917,22 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
                 return probeResult(
                     dnn_dyn::p_dnnl_binary_primitive_desc_create(&pd.v, engine, alg, am.v, bm.v, ym.v, nullptr),
                     "binary");
+            }
+
+            case DnnOperation::TensorFill:
+            case DnnOperation::TensorScale: {
+                Md ym(x);
+                Pd pd;
+                const bool fill = query.operation == DnnOperation::TensorFill;
+                const DnnSupport probe = probeResult(
+                    dnn_dyn::p_dnnl_eltwise_forward_primitive_desc_create(
+                        &pd.v, engine, dnnl_forward_inference,
+                        fill ? dnnl_eltwise_pow : dnnl_eltwise_linear,
+                        ym.v, ym.v, 1.0f, 0.0f, nullptr),
+                    "eltwise");
+                if (!probe)
+                    return probe;
+                return DnnSupport::yes(fill ? "dnnl eltwise pow (alpha = value, beta = 0)" : "dnnl eltwise linear (alpha, beta = 0)");
             }
 
             case DnnOperation::TensorReduceSum:

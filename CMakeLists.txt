@@ -174,6 +174,11 @@ if(BUILD_DNN_EXAMPLES)
         reduction/norm1
         reduction/norm2
         validation/dnn_reduction_activation_validation
+
+        pooling/avgpool
+        elementwise/fill
+        elementwise/scale
+        validation/dnn_pool_fill_scale_validation
     )
 
     foreach(rel IN LISTS CLAP_DNN_EXAMPLES)

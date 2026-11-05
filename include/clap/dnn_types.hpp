@@ -56,7 +56,8 @@ enum class ActivationMode {
 
 enum class PoolingMode {
     Max,
-    Average
+    Average,
+    AverageExcludePadding
 };
 
 enum class LrnMode {
@@ -308,7 +309,9 @@ enum class DnnOperation {
     TensorReduceMin,
     TensorReduceMean,
     TensorReduceNorm1,
-    TensorReduceNorm2
+    TensorReduceNorm2,
+    TensorFill,
+    TensorScale
 };
 
 struct DnnCapabilityQuery {
@@ -442,6 +445,8 @@ inline const char* dnnOperationName(DnnOperation operation) noexcept
         case DnnOperation::TensorReduceMean:                 return "TensorReduceMean";
         case DnnOperation::TensorReduceNorm1:                return "TensorReduceNorm1";
         case DnnOperation::TensorReduceNorm2:                return "TensorReduceNorm2";
+        case DnnOperation::TensorFill:                       return "TensorFill";
+        case DnnOperation::TensorScale:                      return "TensorScale";
     }
     return "unknown";
 }

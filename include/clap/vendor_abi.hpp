@@ -237,6 +237,11 @@ using miopenBatchNormMode_t = int;
 using miopenConvFwdAlgorithm_t = int;
 using miopenConvBwdDataAlgorithm_t = int;
 using miopenConvBwdWeightsAlgorithm_t = int;
+struct miopenConvAlgoPerf_t {
+    int algo;
+    float time;
+    std::size_t memory;
+};
 using miopenMhaDescriptor_t = void*;
 using miopenProblem_t = void*;
 using miopenFindOptions_t = void*;

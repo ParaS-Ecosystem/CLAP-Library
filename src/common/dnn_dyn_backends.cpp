@@ -71,6 +71,7 @@ DEF(p_miopenSetStream); DEF(p_miopenSetTensorDescriptor);
 DEF(p_miopenCreate); DEF(p_miopenDestroy); DEF(p_miopenCreateTensorDescriptor); DEF(p_miopenSet4dTensorDescriptor); DEF(p_miopenDestroyTensorDescriptor);
 DEF(p_miopenCreateConvolutionDescriptor); DEF(p_miopenInitConvolutionDescriptor); DEF(p_miopenDestroyConvolutionDescriptor);
 DEF(p_miopenConvolutionForward); DEF(p_miopenConvolutionBackwardData); DEF(p_miopenConvolutionBackwardWeights);
+DEF(p_miopenConvolutionForwardGetWorkSpaceSize); DEF(p_miopenFindConvolutionForwardAlgorithm); DEF(p_miopenConvolutionBackwardDataGetWorkSpaceSize); DEF(p_miopenFindConvolutionBackwardDataAlgorithm); DEF(p_miopenConvolutionBackwardWeightsGetWorkSpaceSize); DEF(p_miopenFindConvolutionBackwardWeightsAlgorithm);
 DEF(p_miopenCreateLRNDescriptor); DEF(p_miopenSetLRNDescriptor); DEF(p_miopenDestroyLRNDescriptor); DEF(p_miopenLRNForward); DEF(p_miopenLRNBackward); DEF(p_miopenLRNGetWorkSpaceSize); DEF(p_miopenOpTensor); DEF(p_miopenCreateReduceTensorDescriptor); DEF(p_miopenDestroyReduceTensorDescriptor); DEF(p_miopenSetReduceTensorDescriptor); DEF(p_miopenGetReductionWorkspaceSize); DEF(p_miopenReduceTensor); DEF(p_miopenCreateActivationDescriptor); DEF(p_miopenSetActivationDescriptor); DEF(p_miopenDestroyActivationDescriptor); DEF(p_miopenActivationForward); DEF(p_miopenActivationBackward);
 DEF(p_miopenCreatePoolingDescriptor); DEF(p_miopenSet2dPoolingDescriptor); DEF(p_miopenDestroyPoolingDescriptor); DEF(p_miopenPoolingForward); DEF(p_miopenPoolingBackward);
 DEF(p_miopenSoftmaxForward_V2); DEF(p_miopenSoftmaxBackward_V2);
@@ -237,6 +238,7 @@ bool loadHipAndMiopen() {
     S(miopenCreate); S(miopenDestroy); S(miopenCreateTensorDescriptor); S(miopenSet4dTensorDescriptor); S(miopenDestroyTensorDescriptor);
     S(miopenCreateConvolutionDescriptor); S(miopenInitConvolutionDescriptor); S(miopenDestroyConvolutionDescriptor);
     S(miopenConvolutionForward); S(miopenConvolutionBackwardData); S(miopenConvolutionBackwardWeights);
+    S(miopenConvolutionForwardGetWorkSpaceSize); S(miopenFindConvolutionForwardAlgorithm); S(miopenConvolutionBackwardDataGetWorkSpaceSize); S(miopenFindConvolutionBackwardDataAlgorithm); S(miopenConvolutionBackwardWeightsGetWorkSpaceSize); S(miopenFindConvolutionBackwardWeightsAlgorithm);
     S(miopenCreateActivationDescriptor); S(miopenSetActivationDescriptor); S(miopenDestroyActivationDescriptor); S(miopenActivationForward); S(miopenActivationBackward);
     S(miopenCreatePoolingDescriptor); S(miopenSet2dPoolingDescriptor); S(miopenDestroyPoolingDescriptor); S(miopenPoolingForward); S(miopenPoolingBackward);
     S(miopenSoftmaxForward_V2); S(miopenSoftmaxBackward_V2); S(miopenCreateLRNDescriptor); S(miopenSetLRNDescriptor); S(miopenDestroyLRNDescriptor); S(miopenLRNForward); S(miopenLRNBackward); S(miopenLRNGetWorkSpaceSize); S(miopenOpTensor); S(miopenCreateReduceTensorDescriptor); S(miopenDestroyReduceTensorDescriptor); S(miopenSetReduceTensorDescriptor); S(miopenGetReductionWorkspaceSize); S(miopenReduceTensor);

@@ -26,13 +26,38 @@
 namespace clap {
 namespace {
 
-constexpr int kCudaR16BF = 14;
-constexpr int kCublasCompute32F = 68;
-constexpr int kCublasGemmDefault = -1;
+// Private ABI-compatible cuBLAS enum declarations.
+// Keep cuBLAS dynamically loaded; do not require CUDA headers or direct
+// linkage against the native cuBLAS library.
+enum class ClapCudaDataType : int {
+  R32F  = 0,
+  R16F  = 2,
+  R16BF = 14
+};
+
+enum class ClapCublasComputeType : int {
+  Compute32F = 68
+};
+
+enum class ClapCublasGemmAlgo : int {
+  Default = -1
+};
+
+ClapCudaDataType cublas_data_type(BlasDataType type) {
+  switch (type) {
+    case BlasDataType::Float16:  return ClapCudaDataType::R16F;
+    case BlasDataType::BFloat16: return ClapCudaDataType::R16BF;
+    case BlasDataType::Float32:  return ClapCudaDataType::R32F;
+  }
+  throw std::invalid_argument("Unsupported BLAS datatype");
+}
 
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("libcublas.so", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("libcublas.so.13", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("libcublas.so.12", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("libcublas.so.11", RTLD_LAZY | RTLD_LOCAL);
     if (!h) throw std::runtime_error("Unable to load cuBLAS for device GEMM");
     return h;
   }();
@@ -63,7 +88,8 @@ Params params(Layout layout, Transpose transA, Transpose transB,
 }
 
 void set_stream(cublasHandle_t handle,void *stream) {
-  if(!stream) return;
+  // Always update the handle. A nullptr stream means the default CUDA stream.
+  // Returning early could leave a previously assigned custom stream active.
   using Fn = cublasStatus_t (*)(cublasHandle_t,void*);
   auto fn = vendor_symbol<Fn>("cublasSetStream_v2");
   if(fn(handle,stream) != CUBLAS_STATUS_SUCCESS)
@@ -148,14 +174,23 @@ void CuBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   if(!m || !n) return;
   set_stream(handle,stream);
   auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
-  using Fn=cublasStatus_t (*)(cublasHandle_t,cublasOperation_t,cublasOperation_t,
-    int,int,int,const void*,const void*,int,int,const void*,int,int,
-    const void*,void*,int,int,int,int);
+  using Fn = cublasStatus_t (*)(
+      cublasHandle_t, cublasOperation_t, cublasOperation_t,
+      int, int, int, const void*,
+      const void*, ClapCudaDataType, int,
+      const void*, ClapCudaDataType, int,
+      const void*, void*, ClapCudaDataType, int,
+      ClapCublasComputeType, ClapCublasGemmAlgo);
   auto fn=vendor_symbol<Fn>("cublasGemmEx");
   const void* a=(layout==Layout::RowMajor ? B:A);
   const void* b=(layout==Layout::RowMajor ? A:B);
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,14,p.lda,b,14,p.ldb,
-    &beta,C,14,p.ldc,68,-1));
+  check((int)fn(
+      handle, p.a, p.b, p.m, p.n, p.k, &alpha,
+      a, ClapCudaDataType::R16BF, p.lda,
+      b, ClapCudaDataType::R16BF, p.ldb,
+      &beta, C, ClapCudaDataType::R16BF, p.ldc,
+      ClapCublasComputeType::Compute32F,
+      ClapCublasGemmAlgo::Default));
 }
 
 void CuBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta, Transpose tb,
@@ -174,10 +209,13 @@ void CuBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta
 
     set_stream(handle, stream);
     auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
-    using Fn = cublasStatus_t (*)(cublasHandle_t, cublasOperation_t, cublasOperation_t,
-                   int, int, int, const void*, const void*, int, int, long long,
-                   const void*, int, int, long long, const void*, void*, int, int, long long,
-                   int, int, int );
+    using Fn = cublasStatus_t (*)(
+        cublasHandle_t, cublasOperation_t, cublasOperation_t,
+        int, int, int, const void*,
+        const void*, ClapCudaDataType, int, long long,
+        const void*, ClapCudaDataType, int, long long,
+        const void*, void*, ClapCudaDataType, int, long long,
+        int, ClapCublasComputeType, ClapCublasGemmAlgo);
 
     auto fn = vendor_symbol<Fn>("cublasGemmStridedBatchedEx");
     const void* a = (layout == Layout::RowMajor ? B : A);
@@ -186,9 +224,68 @@ void CuBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta
     auto sa = (layout == Layout::RowMajor ? strideB : strideA);
     auto sb = (layout == Layout::RowMajor ? strideA : strideB);
 
-    check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, &alpha, a, kCudaR16BF, p.lda, sa,
-                  b, kCudaR16BF, p.ldb, sb, &beta, C, kCudaR16BF, p.ldc, strideC,
-                  batches, kCublasCompute32F, kCublasGemmDefault ));
+    check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, &alpha, a, ClapCudaDataType::R16BF, p.lda, sa,
+                  b, ClapCudaDataType::R16BF, p.ldb, sb, &beta, C, ClapCudaDataType::R16BF, p.ldc, strideC,
+                  batches, ClapCublasComputeType::Compute32F, ClapCublasGemmAlgo::Default ));
+}
+
+void CuBlasBackend::gemm_ex_strided_batched_device(
+    Layout layout, Transpose ta, Transpose tb,
+    int m, int n, int k, float alpha,
+    const void* A, BlasDataType typeA, int lda, long long strideA,
+    const void* B, BlasDataType typeB, int ldb, long long strideB,
+    float beta,
+    void* C, BlasDataType typeC, int ldc, long long strideC,
+    int batches, void* stream) {
+
+  if (batches < 0 || strideA < 0 || strideB < 0 || strideC < 0)
+    throw std::invalid_argument("Invalid mixed-precision batched GEMM count/stride");
+
+  const ClapCudaDataType aType = cublas_data_type(typeA);
+  const ClapCudaDataType bType = cublas_data_type(typeB);
+  const ClapCudaDataType cType = cublas_data_type(typeC);
+
+  if (typeA != typeB ||
+      (typeA == BlasDataType::Float32
+           ? typeC != BlasDataType::Float32
+           : (typeC != typeA && typeC != BlasDataType::Float32))) {
+    throw std::invalid_argument("Unsupported mixed-precision GEMM datatype combination");
+  }
+
+  validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+
+  if (batches == 0 || m == 0 || n == 0)
+    return;
+
+  set_stream(handle, stream);
+  auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+
+  using Fn = cublasStatus_t (*)(
+      cublasHandle_t, cublasOperation_t, cublasOperation_t,
+      int, int, int, const void*,
+      const void*, ClapCudaDataType, int, long long,
+      const void*, ClapCudaDataType, int, long long,
+      const void*, void*, ClapCudaDataType, int, long long,
+      int, ClapCublasComputeType, ClapCublasGemmAlgo);
+
+  auto fn = vendor_symbol<Fn>("cublasGemmStridedBatchedEx");
+
+  const void* a = (layout == Layout::RowMajor ? B : A);
+  const void* b = (layout == Layout::RowMajor ? A : B);
+  const ClapCudaDataType aDataType =
+      (layout == Layout::RowMajor ? bType : aType);
+  const ClapCudaDataType bDataType =
+      (layout == Layout::RowMajor ? aType : bType);
+
+  const auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+  const auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+  check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, &alpha,
+                a, aDataType, p.lda, sa,
+                b, bDataType, p.ldb, sb,
+                &beta, C, cType, p.ldc, strideC,
+                batches, ClapCublasComputeType::Compute32F,
+                ClapCublasGemmAlgo::Default));
 }
 
 void CuBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Transpose tb,

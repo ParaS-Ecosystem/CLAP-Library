@@ -16,12 +16,14 @@
 // -----------------------------------------------------------------------------
 
 #include "clap/blas/rocblas/rocblas_backend.hpp"
-#include "clap/blas/rocblas/rocblas_utils.hpp"
+#include "gemm_select.hpp"
 #include <dlfcn.h>
 #include <stdexcept>
 #include <algorithm>
 #include <string>
 #include <cstdint>
+#include <cmath>
+#include <limits>
 
 namespace clap {
 namespace {
@@ -32,6 +34,8 @@ constexpr int kRocblasF32  = 151;
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
     void* h = dlopen("librocblas.so", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("librocblas.so.5", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) h = dlopen("librocblas.so.4", RTLD_LAZY | RTLD_LOCAL);
     if (!h) throw std::runtime_error("Unable to load rocBLAS for device GEMM");
     return h;
   }();
@@ -62,7 +66,8 @@ Params params(Layout layout, Transpose transA, Transpose transB,
 }
 
 void set_stream(rocblas_handle handle,void *stream) {
-  if(!stream) return;
+  // Always update the handle. A nullptr stream means the default HIP stream.
+  // Returning early would leave a previously assigned custom stream active.
   using Fn = rocblas_status (*)(rocblas_handle,void*);
   auto fn = vendor_symbol<Fn>("rocblas_set_stream");
   if(fn(handle,stream) != rocblas_status_success)
@@ -75,16 +80,15 @@ void check(int status) {if(status != 0) throw std::runtime_error("device BLAS GE
 void RocBlasBackend::gemm_device(Layout layout,Transpose transA,Transpose transB,
     int m,int n,int k,float alpha,const float* A,int lda,
     const float* B,int ldb,float beta,float* C,int ldc,void* stream) {
+
   validate(layout,transA,transB,m,n,k,lda,ldb,ldc,A,B,C);
   if(m==0 || n==0) return;
+
   set_stream(handle,stream);
-  auto p=params(layout,transA,transB,m,n,k,lda,ldb,ldc);
-  auto op=clap::dyn::p_rocblas_sgemm;
-  if(!op) throw std::runtime_error("rocBLAS sgemm unavailable");
-  check((int)op(handle,p.a,p.b,p.m,p.n,p.k,&alpha,
-      reinterpret_cast<const float*>(layout==Layout::RowMajor ? B:A),p.lda,
-      reinterpret_cast<const float*>(layout==Layout::RowMajor ? A:B),p.ldb,
-      &beta,reinterpret_cast<float*>(C),p.ldc));
+
+  clap::rocblas_gemm_select::gemm_fp32(
+      handle,layout,transA,transB,
+      m,n,k,alpha,A,lda,B,ldb,beta,C,ldc,stream);
 }
 
 void RocBlasBackend::gemm_device(Layout layout,Transpose transA,Transpose transB,
@@ -138,6 +142,7 @@ void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
 
   validate(layout,ta,tb,m,n,k,lda,ldb,ldc,A,B,C);
   if(!m || !n) return;
+
   set_stream(handle,stream);
   auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
   using Fn=rocblas_status (*)(rocblas_handle,rocblas_operation,rocblas_operation,
@@ -195,16 +200,14 @@ void RocBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Tran
   validate(layout,ta,tb,m,n,k,lda,ldb,ldc,A,B,C);
   if (batches==0 || m==0 || n==0) return;
   set_stream(handle,stream);
-  auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
-  using Fn=rocblas_status (*)(rocblas_handle,rocblas_operation,rocblas_operation,
-    int,int,int,const float*,const float*,int,long long,
-    const float*,int,long long,const float*,float*,int,long long,int);
-  auto fn=vendor_symbol<Fn>("rocblas_sgemm_strided_batched");
-  const float* a=static_cast<const float*>(layout==Layout::RowMajor ? B:A);
-  const float* b=static_cast<const float*>(layout==Layout::RowMajor ? A:B);
-  auto sa=layout==Layout::RowMajor ? strideB:strideA;
-  auto sb=layout==Layout::RowMajor ? strideA:strideB;
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,p.lda,sa,
-                b,p.ldb,sb,&beta,static_cast<float*>(C),p.ldc,strideC,batches));
+
+  clap::rocblas_gemm_select::gemm_fp32_strided_batched(
+      handle, layout, ta, tb,
+      m, n, k, alpha,
+      static_cast<const float*>(A), lda, strideA,
+      static_cast<const float*>(B), ldb, strideB,
+      beta,
+      static_cast<float*>(C), ldc, strideC,
+      batches, stream);
 }
 }

@@ -94,6 +94,7 @@ if(BUILD_BLAS_EXAMPLES)
         level2/trmv_d level2/trmv_f
         level2/trsv_d level2/trsv_f
         level3/gemm_d level3/gemm_f
+        device/gemm_ex_device
         level3/symm_d level3/symm_f
         level3/syrk_d level3/syrk_f
         level3/trmm_d level3/trmm_f

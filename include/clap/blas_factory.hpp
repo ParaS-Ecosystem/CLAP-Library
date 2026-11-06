@@ -24,6 +24,27 @@ namespace clap {
 
 enum class BackendType { CPU, CUDA, AMD };
 
+enum class BlasDataType {
+    Float16,
+    BFloat16,
+    Float32,
+
+    // Integer GEMM types.
+    I8,
+    I32,
+
+    // OCP FP8 formats.
+    Float8E4M3,
+    Float8E5M2,
+
+    // AMD CDNA 3 FNUZ FP8 formats.
+    Float8E4M3Fnuz,
+    Float8E5M2Fnuz
+};
+
+// Compatibility name used by the GEMM element-type interface.
+using GemmElem = BlasDataType;
+
 enum class Layout { RowMajor, ColMajor };
 enum class Transpose { NoTrans, Trans, ConjTrans };
 enum class Uplo { Upper, Lower };
@@ -530,6 +551,36 @@ public:
                      const std::complex<double> *A, int lda,
                      const std::complex<double> *B, int ldb, double beta,
                      std::complex<double> *C, int ldc) = 0;
+
+
+  // Mixed-precision strided-batched device GEMM with FP32 accumulation.
+  virtual void gemm_ex_strided_batched_device(
+      Layout layout, Transpose transA, Transpose transB,
+      int m, int n, int k, float alpha,
+      const void *A, BlasDataType typeA, int lda, long long strideA,
+      const void *B, BlasDataType typeB, int ldb, long long strideB,
+      float beta,
+      void *C, BlasDataType typeC, int ldc, long long strideC,
+      int batch_count, void *stream = nullptr) {
+    throw std::runtime_error(
+        "Mixed-precision strided-batched device GEMM unsupported by this backend");
+  }
+
+  // Scaled FP8 device GEMM. Scale pointers reference device-resident FP32
+  // per-tensor scaling factors. Return false when the backend cannot execute
+  // the requested datatype/shape combination.
+  virtual bool gemm_scaled_device(
+      Layout layout, Transpose transA, Transpose transB,
+      int m, int n, int k, float alpha,
+      const void* A, BlasDataType typeA, int lda,
+      const float* scaleA,
+      const void* B, BlasDataType typeB, int ldb,
+      const float* scaleB,
+      float beta,
+      void* C, BlasDataType typeC, int ldc,
+      void* stream = nullptr) {
+    return false;
+  }
 };
 
 class BlasFactory {

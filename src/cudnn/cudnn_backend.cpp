@@ -420,9 +420,11 @@ private:
 
 abi::cudnnPoolingMode_t toCudnnPooling(PoolingMode mode)
 {
-    return mode == PoolingMode::Max
-        ? abi::CUDNN_POOLING_MAX
-        : abi::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+    if (mode == PoolingMode::Max)
+        return abi::CUDNN_POOLING_MAX;
+    if (mode == PoolingMode::AverageExcludePadding)
+        return abi::CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    return abi::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
 }
 
 class PoolingDescriptor {
@@ -1809,6 +1811,26 @@ void CuDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const float* x, const
     });
 }
 
+void CuDnnBackend::tensorFill(const TensorDesc& yd, float* y, float value)
+{
+    requireCuda();
+    DeviceBuffer Y(legacyBytes(yd));
+    Y.copyFromHost(y, Y.size());
+    tensorFill(yd, Y.get(), value, legacyContext());
+    synchronizeLegacy();
+    Y.copyToHost(y, Y.size());
+}
+
+void CuDnnBackend::tensorScale(const TensorDesc& yd, float* y, float alpha)
+{
+    requireCuda();
+    DeviceBuffer Y(legacyBytes(yd));
+    Y.copyFromHost(y, Y.size());
+    tensorScale(yd, Y.get(), alpha, legacyContext());
+    synchronizeLegacy();
+    Y.copyToHost(y, Y.size());
+}
+
 void CuDnnBackend::convolutionForward(const TensorDesc& xd,
                                       const void* x,
                                       const TensorDesc& wd,
@@ -3034,6 +3056,25 @@ void CuDnnBackend::tensorReduceNorm2(const TensorDesc& xd, const void* x, const 
     cudnnReduce(h, scratch, abi::CUDNN_REDUCE_TENSOR_NORM2, xd, x, yd, y);
 }
 
+void CuDnnBackend::tensorFill(const TensorDesc& yd, void* y, float value, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorFill");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    TensorDescriptor Y(yd);
+    const dnn_contract::ScalarValue v = dnn_contract::scalarValue(value, yd.type);
+    dnn_contract::trace("CUDA", "tensorFill", "cudnnSetTensor");
+    checkCudnn(dnn_dyn::p_cudnnSetTensor(h, Y, y, v.data()), "cudnnSetTensor");
+}
+
+void CuDnnBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorScale");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    TensorDescriptor Y(yd);
+    dnn_contract::trace("CUDA", "tensorScale", "cudnnScaleTensor");
+    checkCudnn(dnn_dyn::p_cudnnScaleTensor(h, Y, y, &alpha), "cudnnScaleTensor");
+}
+
 namespace {
 
 enum SdpaUid : std::int64_t {
@@ -3311,6 +3352,12 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
             case DnnOperation::TensorReduceNorm1:
             case DnnOperation::TensorReduceNorm2:
                 return DnnSupport::yes("cudnnReduceTensor");
+
+            case DnnOperation::TensorFill:
+                return DnnSupport::yes("cudnnSetTensor");
+
+            case DnnOperation::TensorScale:
+                return DnnSupport::yes("cudnnScaleTensor");
 
             default:
                 if (x.rank() != 4)

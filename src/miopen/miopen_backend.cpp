@@ -130,12 +130,17 @@ namespace clap {
                 if (v) dnn_dyn::p_miopenDestroyActivationDescriptor(v);
             }
         };
+        miopenPoolingMode_t poolMode(PoolingMode m) {
+            if (m == PoolingMode::Max) return miopenPoolingMax;
+            if (m == PoolingMode::AverageExcludePadding) return miopenPoolingAverage;
+            return miopenPoolingAverageInclusive;
+        }
         struct Pool {
             miopenPoolingDescriptor_t v {
             };
             explicit Pool(const PoolingDesc& p) {
                 check(dnn_dyn::p_miopenCreatePoolingDescriptor( &v), "miopenCreatePoolingDescriptor");
-                check(dnn_dyn::p_miopenSet2dPoolingDescriptor(v, p.mode == PoolingMode::Max ? miopenPoolingMax:miopenPoolingAverage, (int)p.window_h, (int)p.window_w, (int)p.pad_h, (int)p.pad_w, (int)p.stride_h, (int)p.stride_w), "miopenSet2dPoolingDescriptor");
+                check(dnn_dyn::p_miopenSet2dPoolingDescriptor(v, poolMode(p.mode), (int)p.window_h, (int)p.window_w, (int)p.pad_h, (int)p.pad_w, (int)p.stride_h, (int)p.stride_w), "miopenSet2dPoolingDescriptor");
             }
             ~Pool() {
                 if (v) dnn_dyn::p_miopenDestroyPoolingDescriptor(v);
@@ -644,6 +649,24 @@ void MiOpenBackend::tensorReduceNorm2(const TensorDesc& xd, const float* x, cons
     Buf X0(bytes(xd)), Y0(bytes(yd));
     X0.h2d(x);
     tensorReduceNorm2(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorFill(const TensorDesc& yd, float* y, float value)
+{
+    Buf Y0(bytes(yd));
+    Y0.h2d(y);
+    tensorFill(yd, Y0.p, value, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorScale(const TensorDesc& yd, float* y, float alpha)
+{
+    Buf Y0(bytes(yd));
+    Y0.h2d(y);
+    tensorScale(yd, Y0.p, alpha, legacyContext());
     syncLegacy();
     Y0.d2h(y);
 }
@@ -1418,6 +1441,28 @@ void MiOpenBackend::tensorReduceNorm2(const TensorDesc& xd, const void* x, const
     miopenReduce(h.v, scratch, miopenReduceTensorNorm2, xd, x, yd, y);
 }
 
+void MiOpenBackend::tensorFill(const TensorDesc& yd, void* y, float value, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorFill");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Tensor Y(yd);
+    const dnn_contract::ScalarValue v = dnn_contract::scalarValue(value, yd.type);
+    dnn_contract::trace("ROCM", "tensorFill", "miopenSetTensor");
+    check(dnn_dyn::p_miopenSetTensor(h.v, Y.v, y, v.data()), "miopenSetTensor");
+}
+
+void MiOpenBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorScale");
+    if (yd.type == DataType::BFloat16)
+        dnn_contract::unsupported("MIOpen", "miopenScaleTensor supports Float32/Float16 tensors only");
+    Handle h(native_->mutex, native_->handles, ctx);
+    Tensor Y(yd);
+    const dnn_contract::ScalarValue v = dnn_contract::scalarValue(alpha, yd.type);
+    dnn_contract::trace("ROCM", "tensorScale", "miopenScaleTensor");
+    check(dnn_dyn::p_miopenScaleTensor(h.v, Y.v, y, v.data()), "miopenScaleTensor");
+}
+
 namespace {
 
 struct MhaConstants {
@@ -1700,6 +1745,14 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
             case DnnOperation::TensorReduceNorm1:
             case DnnOperation::TensorReduceNorm2:
                 return DnnSupport::yes("miopenReduceTensor");
+
+            case DnnOperation::TensorFill:
+                return DnnSupport::yes("miopenSetTensor");
+
+            case DnnOperation::TensorScale:
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("miopenScaleTensor supports Float32/Float16 tensors only");
+                return DnnSupport::yes("miopenScaleTensor");
 
             default:
                 if (x.rank() != 4)

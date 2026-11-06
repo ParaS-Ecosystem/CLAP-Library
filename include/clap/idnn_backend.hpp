@@ -163,6 +163,8 @@ public:
     virtual void tensorReduceMean(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
     virtual void tensorReduceNorm1(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
     virtual void tensorReduceNorm2(const TensorDesc&, const float*, const TensorDesc&, float*) = 0;
+    virtual void tensorFill(const TensorDesc& y_desc, float* y, float value) = 0;
+    virtual void tensorScale(const TensorDesc& y_desc, float* y, float alpha) = 0;
 
     virtual ExecutionBackend executionBackend() const noexcept = 0;
 
@@ -404,6 +406,16 @@ public:
     virtual void tensorReduceNorm2(
         const TensorDesc& x_desc, const void* x,
         const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorFill(
+        const TensorDesc& y_desc, void* y,
+        float value,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorScale(
+        const TensorDesc& y_desc, void* y,
+        float alpha,
         const ExecutionContext& ctx) = 0;
 
     virtual void scaledDotProductAttentionForward(

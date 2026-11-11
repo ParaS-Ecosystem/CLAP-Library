@@ -15,6 +15,9 @@
 // along with this library. If not, see <https://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
+#ifndef CLAP_BLAS_CUBLAS_CUBLAS_UTILS_HPP
+#define CLAP_BLAS_CUBLAS_CUBLAS_UTILS_HPP
+
 #include "clap/blas_factory.hpp"
 #include "clap/dyn_backends.hpp"
 namespace clap {
@@ -35,3 +38,5 @@ inline cublasSideMode_t to_cublas_side(Side s) {
   return (s == Side::Left) ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
 }
 }
+
+#endif // CLAP_BLAS_CUBLAS_CUBLAS_UTILS_HPP

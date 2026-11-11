@@ -93,9 +93,14 @@ void RocBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
                           const std::complex<float> *B, int ldb,
                           const std::complex<float> *beta,
                           std::complex<float> *C, int ldc) {
-  size_t sizeA = lda * ((transA == Transpose::NoTrans) ? k : m);
-  size_t sizeB = ldb * ((transB == Transpose::NoTrans) ? n : k);
-  size_t sizeC = ldc * n;
+
+  const size_t sizeA = static_cast<size_t>(lda) *
+                       static_cast<size_t>(transA == Transpose::NoTrans ? k : m);
+
+  const size_t sizeB = static_cast<size_t>(ldb) *
+                       static_cast<size_t>(transB == Transpose::NoTrans ? n : k);
+
+  const size_t sizeC = static_cast<size_t>(ldc) * static_cast<size_t>(n);
 
   std::complex<float> *d_A = nullptr;
   std::complex<float> *d_B = nullptr;
@@ -137,9 +142,14 @@ void RocBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
                           const std::complex<double> *B, int ldb,
                           const std::complex<double> *beta,
                           std::complex<double> *C, int ldc) {
-  size_t sizeA = lda * ((transA == Transpose::NoTrans) ? k : m);
-  size_t sizeB = ldb * ((transB == Transpose::NoTrans) ? n : k);
-  size_t sizeC = ldc * n;
+
+  const size_t sizeA = static_cast<size_t>(lda) *
+                       static_cast<size_t>(transA == Transpose::NoTrans ? k : m);
+
+  const size_t sizeB = static_cast<size_t>(ldb) *
+                       static_cast<size_t>(transB == Transpose::NoTrans ? n : k);
+
+  const size_t sizeC = static_cast<size_t>(ldc) * static_cast<size_t>(n);
 
   std::complex<double> *d_A = nullptr;
   std::complex<double> *d_B = nullptr;

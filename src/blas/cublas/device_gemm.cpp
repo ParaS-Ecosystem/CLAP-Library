@@ -289,24 +289,153 @@ void CuBlasBackend::gemm_ex_strided_batched_device(
 }
 
 void CuBlasBackend::gemm_strided_batched_device(Layout layout,Transpose ta,Transpose tb,
-  int m,int n,int k,float alpha,const void* A,int lda,long long strideA,
-  const void* B,int ldb,long long strideB,float beta,void* C,int ldc,
-  long long strideC,int batches,void* stream) {
+                    int m,int n,int k,float alpha,const void* A,int lda,long long strideA,
+                    const void* B,int ldb,long long strideB,float beta,void* C,int ldc,
+                    long long strideC,int batches,void* stream) {
+
   if(batches<0 || strideA<0 || strideB<0 || strideC<0)
     throw std::invalid_argument("Invalid batched GEMM count/stride");
   validate(layout,ta,tb,m,n,k,lda,ldb,ldc,A,B,C);
   if (batches==0 || m==0 || n==0) return;
   set_stream(handle,stream);
+
   auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
+
   using Fn=cublasStatus_t (*)(cublasHandle_t,cublasOperation_t,cublasOperation_t,
     int,int,int,const float*,const float*,int,long long,
     const float*,int,long long,const float*,float*,int,long long,int);
+
   auto fn=vendor_symbol<Fn>("cublasSgemmStridedBatched");
   const float* a=static_cast<const float*>(layout==Layout::RowMajor ? B:A);
   const float* b=static_cast<const float*>(layout==Layout::RowMajor ? A:B);
   auto sa=layout==Layout::RowMajor ? strideB:strideA;
   auto sb=layout==Layout::RowMajor ? strideA:strideB;
+
   check((int)fn(handle,p.a,p.b,p.m,p.n,p.k,&alpha,a,p.lda,sa,
                 b,p.ldb,sb,&beta,static_cast<float*>(C),p.ldc,strideC,batches));
 }
+
+  void CuBlasBackend::gemm_strided_batched_device(Layout layout, Transpose ta, Transpose tb,
+                      int m, int n, int k, double alpha, const double* A, int lda,
+                      long long strideA, const double* B, int ldb, long long strideB,
+                      double beta, double* C, int ldc, long long strideC,
+                      int batches, void* stream) {
+
+  if (batches < 0 || strideA < 0 || strideB < 0 || strideC < 0)
+    throw std::invalid_argument("Invalid batched GEMM count/stride");
+
+  validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+
+  if (batches == 0 || m == 0 || n == 0)
+    return;
+
+  set_stream(handle, stream);
+
+  auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+
+  using Fn = cublasStatus_t (*)(cublasHandle_t, cublasOperation_t, cublasOperation_t,
+                                int, int, int, const double*, const double*, int,
+                                long long, const double*, int, long long,
+                                const double*, double*, int, long long, int);
+
+  auto fn = vendor_symbol<Fn>("cublasDgemmStridedBatched");
+
+  const double* a = (layout == Layout::RowMajor ? B : A);
+  const double* b = (layout == Layout::RowMajor ? A : B);
+
+  auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+  auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+  check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, &alpha, a, p.lda, sa,
+                b, p.ldb, sb, &beta, C, p.ldc, strideC,batches));
+}
+
+  void CuBlasBackend::gemm_strided_batched_device(Layout layout, Transpose ta, Transpose tb,
+                      int m, int n, int k, const std::complex<float>* alpha,
+                      const std::complex<float>* A, int lda, long long strideA,
+                      const std::complex<float>* B, int ldb, long long strideB,
+                      const std::complex<float>* beta, std::complex<float>* C,
+                      int ldc, long long strideC, int batches, void* stream) {
+
+  if (batches < 0 || strideA < 0 || strideB < 0 || strideC < 0)
+    throw std::invalid_argument("Invalid batched GEMM count/stride");
+
+  validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+
+  if (batches == 0 || m == 0 || n == 0)
+    return;
+
+  if (!alpha || !beta)
+    throw std::invalid_argument("Null complex GEMM scalar pointer");
+
+  set_stream(handle, stream);
+
+  auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+
+  using Fn = cublasStatus_t (*)(cublasHandle_t, cublasOperation_t, cublasOperation_t,
+                                int, int, int, const cuComplex*, const cuComplex*, int,
+                                long long, const cuComplex*, int, long long, const cuComplex*,
+                                cuComplex*, int, long long, int);
+
+  auto fn = vendor_symbol<Fn>("cublasCgemmStridedBatched");
+
+  const cuComplex* a = reinterpret_cast<const cuComplex*>(layout == Layout::RowMajor ? B : A);
+  const cuComplex* b = reinterpret_cast<const cuComplex*>(layout == Layout::RowMajor ? A : B);
+
+  auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+  auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+  check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, reinterpret_cast<const cuComplex*>(alpha),
+                a, p.lda, sa, b, p.ldb, sb, reinterpret_cast<const cuComplex*>(beta),
+                reinterpret_cast<cuComplex*>(C), p.ldc, strideC, batches));
+}
+
+  void CuBlasBackend::gemm_strided_batched_device(Layout layout, Transpose ta, Transpose tb,
+                      int m, int n, int k, const std::complex<double>* alpha,
+                      const std::complex<double>* A, int lda, long long strideA,
+                      const std::complex<double>* B, int ldb, long long strideB,
+                      const std::complex<double>* beta, std::complex<double>* C,
+                      int ldc, long long strideC, int batches, void* stream) {
+
+  if (batches < 0 || strideA < 0 || strideB < 0 || strideC < 0)
+    throw std::invalid_argument("Invalid batched GEMM count/stride");
+
+  validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+
+  if (batches == 0 || m == 0 || n == 0)
+    return;
+
+  if (!alpha || !beta)
+    throw std::invalid_argument("Null complex GEMM scalar pointer");
+
+  set_stream(handle, stream);
+
+  auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+
+  using Fn = cublasStatus_t (*)(cublasHandle_t, cublasOperation_t, cublasOperation_t,
+                                int, int, int, const cuDoubleComplex*,
+                                const cuDoubleComplex*, int, long long,
+                                const cuDoubleComplex*, int, long long,
+                                const cuDoubleComplex*, cuDoubleComplex*,
+                                int, long long, int);
+
+  auto fn = vendor_symbol<Fn>("cublasZgemmStridedBatched");
+
+  const cuDoubleComplex* a = reinterpret_cast<const cuDoubleComplex*>(
+                             layout == Layout::RowMajor ? B : A);
+
+  const cuDoubleComplex* b = reinterpret_cast<const cuDoubleComplex*>(
+                             layout == Layout::RowMajor ? A : B);
+
+  auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+  auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+  check((int)fn(handle, p.a, p.b, p.m, p.n, p.k,
+                reinterpret_cast<const cuDoubleComplex*>(alpha),
+                a, p.lda, sa, b, p.ldb, sb,
+                reinterpret_cast<const cuDoubleComplex*>(beta),
+                reinterpret_cast<cuDoubleComplex*>(C), p.ldc, strideC,
+                batches));
+}
+
 }

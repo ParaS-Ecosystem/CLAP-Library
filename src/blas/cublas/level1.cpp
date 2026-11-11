@@ -16,8 +16,50 @@
 // -----------------------------------------------------------------------------
 
 #include "clap/blas/cublas/cublas_backend.hpp"
+#include <stdexcept>
 
 namespace clap {
+
+class ScopedCublasPointerMode {
+ public:
+  explicit ScopedCublasPointerMode(cublasHandle_t handle)
+      : handle_(handle) {
+
+    cublasStatus_t status =
+        clap_cublasGetPointerMode(handle_, &old_mode_);
+
+    if (status != CUBLAS_STATUS_SUCCESS) {
+      throw std::runtime_error(
+          "Failed to get cuBLAS pointer mode");
+    }
+
+    status = clap_cublasSetPointerMode(
+        handle_, CUBLAS_POINTER_MODE_DEVICE);
+
+    if (status != CUBLAS_STATUS_SUCCESS) {
+      throw std::runtime_error(
+          "Failed to set cuBLAS device pointer mode");
+    }
+
+    active_ = true;
+  }
+
+  ~ScopedCublasPointerMode() noexcept {
+    if (active_) {
+      (void)clap_cublasSetPointerMode(handle_, old_mode_);
+    }
+  }
+
+  ScopedCublasPointerMode(const ScopedCublasPointerMode &) = delete;
+  ScopedCublasPointerMode &operator=(
+      const ScopedCublasPointerMode &) = delete;
+
+ private:
+  cublasHandle_t handle_;
+  cublasPointerMode_t old_mode_{};
+  bool active_ = false;
+};
+
 
 // Float COPY
 void CuBlasBackend::copy(int n, const float *x, int incx, float *y, int incy) {
@@ -230,7 +272,7 @@ void CuBlasBackend::rot(int n, double *x, int incx, double *y, int incy,
   clap_cudaMemcpy(d_c, &c, sizeof(double), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(d_s, &s, sizeof(double), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasDrot(handle, n, d_x, incx, d_y, incy, d_c, d_s);
   clap_cudaDeviceSynchronize();
   clap_cudaMemcpy(x, d_x, n * sizeof(double), cudaMemcpyDeviceToHost);
@@ -258,7 +300,7 @@ void CuBlasBackend::rot(int n, float *x, int incx, float *y, int incy, float c,
   clap_cudaMemcpy(d_c, &c, sizeof(float), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(d_s, &s, sizeof(float), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasSrot(handle, n, d_x, incx, d_y, incy, d_c, d_s);
   clap_cudaDeviceSynchronize();
   clap_cudaMemcpy(x, d_x, n * sizeof(float), cudaMemcpyDeviceToHost);
@@ -285,10 +327,8 @@ void CuBlasBackend::rotg(float *a, float *b, float *c, float *s) {
   clap_cudaMemset(d_c, 0, sizeof(float));
   clap_cudaMemset(d_s, 0, sizeof(float));
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
-
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasSrotg(handle, d_a, d_b, d_c, d_s);
-
   clap_cudaDeviceSynchronize();
 
   clap_cudaMemcpy(a, d_a, sizeof(float), cudaMemcpyDeviceToHost);
@@ -315,9 +355,10 @@ void CuBlasBackend::rotg(double *a, double *b, double *c, double *s) {
   clap_cudaMemcpy(d_a, a, sizeof(double), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(d_b, b, sizeof(double), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasDrotg(handle, d_a, d_b, d_c, d_s);
   clap_cudaDeviceSynchronize();
+
   clap_cudaMemcpy(a, d_a, sizeof(double), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(b, d_b, sizeof(double), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(c, d_c, sizeof(double), cudaMemcpyDeviceToHost);
@@ -342,9 +383,10 @@ void CuBlasBackend::rotm(int n, float *x, int incx, float *y, int incy,
   clap_cudaMemcpy(d_y, y, n * sizeof(float), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(d_param, param, 5 * sizeof(float), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasSrotm(handle, n, d_x, incx, d_y, incy, d_param);
   clap_cudaDeviceSynchronize();
+
   clap_cudaMemcpy(x, d_x, n * sizeof(float), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(y, d_y, n * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -366,9 +408,10 @@ void CuBlasBackend::rotm(int n, double *x, int incx, double *y, int incy,
   clap_cudaMemcpy(d_y, y, n * sizeof(double), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(d_param, param, 5 * sizeof(double), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasDrotm(handle, n, d_x, incx, d_y, incy, d_param);
   clap_cudaDeviceSynchronize();
+
   clap_cudaMemcpy(x, d_x, n * sizeof(double), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(y, d_y, n * sizeof(double), cudaMemcpyDeviceToHost);
 
@@ -394,9 +437,10 @@ void CuBlasBackend::rotmg(float *d1, float *d2, float *x1, float y1,
   clap_cudaMemcpy(dx1, x1, sizeof(float), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(dy1, &y1, sizeof(float), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasSrotmg(handle, dd1, dd2, dx1, dy1, dparam);
   clap_cudaDeviceSynchronize();
+
   clap_cudaMemcpy(d1, dd1, sizeof(float), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(d2, dd2, sizeof(float), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(x1, dx1, sizeof(float), cudaMemcpyDeviceToHost);
@@ -426,9 +470,10 @@ void CuBlasBackend::rotmg(double *d1, double *d2, double *x1, double y1,
   clap_cudaMemcpy(dx1, x1, sizeof(double), cudaMemcpyHostToDevice);
   clap_cudaMemcpy(dy1, &y1, sizeof(double), cudaMemcpyHostToDevice);
 
-  clap_cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+  ScopedCublasPointerMode pointer_mode_guard(handle);
   clap_cublasDrotmg(handle, dd1, dd2, dx1, dy1, dparam);
   clap_cudaDeviceSynchronize();
+
   clap_cudaMemcpy(d1, dd1, sizeof(double), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(d2, dd2, sizeof(double), cudaMemcpyDeviceToHost);
   clap_cudaMemcpy(x1, dx1, sizeof(double), cudaMemcpyDeviceToHost);

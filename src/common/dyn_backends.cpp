@@ -33,6 +33,8 @@ cublasStatus_t (*p_cublasCreate_v2)(cublasHandle_t *handle) = nullptr;
 cublasStatus_t (*p_cublasDestroy_v2)(cublasHandle_t handle) = nullptr;
 cublasStatus_t (*p_cublasSetPointerMode_v2)(cublasHandle_t handle,
                                             cublasPointerMode_t mode) = nullptr;
+cublasStatus_t (*p_cublasGetPointerMode_v2)(cublasHandle_t handle,
+                                            cublasPointerMode_t *mode) = nullptr;
 cudaError_t (*p_cudaMemset)(void *, int, size_t) = nullptr;
 
 //LEVEL 1 ROUTINES
@@ -2337,6 +2339,7 @@ bool loadCudaAndCublas() {
   LOAD_CUDA_SYM(cuda_lib, cudaMemset);
 
   LOAD_CUDA_SYM(cublas_lib, cublasSetPointerMode_v2);
+  LOAD_CUDA_SYM(cublas_lib, cublasGetPointerMode_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasCreate_v2);
   LOAD_CUDA_SYM(cublas_lib, cublasDestroy_v2);
 

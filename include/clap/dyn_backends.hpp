@@ -36,6 +36,8 @@ extern cudaError_t (*p_cudaMemcpy)(void *dst, const void *src, size_t sizeBytes,
 extern cudaError_t (*p_cudaDeviceSynchronize)(void);
 extern cublasStatus_t (*p_cublasSetPointerMode_v2)(cublasHandle_t handle,
                                                    cublasPointerMode_t mode);
+extern cublasStatus_t (*p_cublasGetPointerMode_v2)(cublasHandle_t handle,
+                                                   cublasPointerMode_t *mode);
 extern cudaError_t (*p_cudaMemset)(void *, int, size_t);
 
 extern cublasStatus_t (*p_cublasCreate_v2)(cublasHandle_t *handle);

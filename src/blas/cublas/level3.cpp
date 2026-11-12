@@ -431,9 +431,13 @@ void CuBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
 
   cuComplex *dA = nullptr, *dB = nullptr, *dC = nullptr;
 
-  size_t sizeA = lda * K;
-  size_t sizeB = ldb * n;
-  size_t sizeC = ldc * n;
+  const size_t sizeA = static_cast<size_t>(lda) *
+                       static_cast<size_t>(transA == Transpose::NoTrans ? K : m);
+
+  const size_t sizeB = static_cast<size_t>(ldb) *
+                       static_cast<size_t>(transB == Transpose::NoTrans ? n : K);
+
+  const size_t sizeC = static_cast<size_t>(ldc) * static_cast<size_t>(n);
 
   clap_cudaMalloc((void **)&dA, sizeA * sizeof(cuComplex));
   clap_cudaMalloc((void **)&dB, sizeB * sizeof(cuComplex));
@@ -467,9 +471,13 @@ void CuBlasBackend::gemm(Layout layout, Transpose transA, Transpose transB,
 
   cuDoubleComplex *dA = nullptr, *dB = nullptr, *dC = nullptr;
 
-  size_t sizeA = lda * k;
-  size_t sizeB = ldb * n;
-  size_t sizeC = ldc * n;
+  const size_t sizeA = static_cast<size_t>(lda) *
+                       static_cast<size_t>(transA == Transpose::NoTrans ? k : m);
+
+  const size_t sizeB = static_cast<size_t>(ldb) *
+                       static_cast<size_t>(transB == Transpose::NoTrans ? n : k);
+
+  const size_t sizeC = static_cast<size_t>(ldc) * static_cast<size_t>(n);
 
   clap_cudaMalloc((void **)&dA, sizeA * sizeof(cuDoubleComplex));
   clap_cudaMalloc((void **)&dB, sizeB * sizeof(cuDoubleComplex));

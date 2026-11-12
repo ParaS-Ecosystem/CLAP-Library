@@ -24,6 +24,7 @@
 #define clap_cudaFree clap::dyn::p_cudaFree
 #define clap_cudaMemcpy clap::dyn::p_cudaMemcpy
 #define clap_cublasSetPointerMode clap::dyn::p_cublasSetPointerMode_v2
+#define clap_cublasGetPointerMode clap::dyn::p_cublasGetPointerMode_v2
 #define clap_cudaDeviceSynchronize clap::dyn::p_cudaDeviceSynchronize
 #define clap_cublasCreate clap::dyn::p_cublasCreate_v2
 #define clap_cublasDestroy clap::dyn::p_cublasDestroy_v2

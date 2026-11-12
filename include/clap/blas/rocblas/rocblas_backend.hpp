@@ -340,6 +340,25 @@ public:
                                    const void*, int, long long, float, void*, int, long long,
                                    int, void* = nullptr) override;
 
+  void gemm_strided_batched_device(Layout, Transpose, Transpose,
+                                   int, int, int, double, const double*, int, long long,
+                                   const double*, int, long long, double, double*, int, long long,
+                                   int, void* = nullptr) override;
+
+  void gemm_strided_batched_device(Layout, Transpose, Transpose,
+                                   int, int, int, const std::complex<float>*,
+                                   const std::complex<float>*, int, long long,
+                                   const std::complex<float>*, int, long long,
+                                   const std::complex<float>*,std::complex<float>*,
+                                   int, long long, int, void* = nullptr) override;
+
+  void gemm_strided_batched_device(Layout, Transpose, Transpose,
+                                   int, int, int, const std::complex<double>*,
+                                   const std::complex<double>*, int, long long,
+                                   const std::complex<double>*, int, long long,
+                                   const std::complex<double>*, std::complex<double>*,
+                                   int, long long, int, void* = nullptr) override;
+
 //Level 3
 
   void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,

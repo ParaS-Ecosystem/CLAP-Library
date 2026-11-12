@@ -397,14 +397,14 @@ public:
                            void *stream = nullptr) {
     throw std::runtime_error("device GEMM unsupported by this backend");
   }
-  
+
   virtual void gemm_bf16_device(Layout layout, Transpose transA,
                                 Transpose transB, int m, int n, int k, float alpha,
                                 const void *dA, int lda, const void *dB, int ldb,
                                 float beta, void *dC, int ldc, void *stream = nullptr) {
     throw std::runtime_error("BF16 device GEMM unsupported by this backend");
   }
- 
+
   virtual void gemm_strided_batched_bf16_device(Layout layout, Transpose transA, Transpose transB,
                                                 int m, int n, int k, float alpha, const void *dA,
                                                 int lda, long long strideA, const void *dB, int ldb,
@@ -421,6 +421,33 @@ public:
                                            int batch_count, void *stream = nullptr) {
     throw std::runtime_error("strided-batched device GEMM unsupported by this backend");
   }
+
+  virtual void gemm_strided_batched_device(Layout layout, Transpose transA, Transpose transB,
+                                           int m, int n, int k, double alpha, const double *dA,
+                                           int lda, long long strideA, const double *dB, int ldb,
+                                           long long strideB, double beta, double *dC, int ldc,
+                                           long long strideC, int batch_count, void *stream = nullptr) {
+    throw std::runtime_error("double strided-batched device GEMM unsupported by this backend");
+  }
+
+  virtual void gemm_strided_batched_device(Layout layout, Transpose transA, Transpose transB,
+                                           int m, int n, int k, const std::complex<float> *alpha,
+                                           const std::complex<float> *dA, int lda, long long strideA,
+                                           const std::complex<float> *dB, int ldb, long long strideB,
+                                           const std::complex<float> *beta, std::complex<float> *dC,
+                                           int ldc, long long strideC, int batch_count, void *stream = nullptr) {
+    throw std::runtime_error("complex float strided-batched device GEMM unsupported by this backend");
+  }
+
+  virtual void gemm_strided_batched_device(Layout layout, Transpose transA, Transpose transB,
+                                           int m, int n, int k, const std::complex<double> *alpha,
+                                           const std::complex<double> *dA, int lda, long long strideA,
+                                           const std::complex<double> *dB, int ldb, long long strideB,
+                                           const std::complex<double> *beta, std::complex<double> *dC,
+                                           int ldc, long long strideC, int batch_count, void *stream = nullptr) {
+    throw std::runtime_error("complex double strided-batched device GEMM unsupported by this backend");
+  }
+
 
 // Level 3
 

@@ -186,36 +186,36 @@ cublasStatus_t (*p_cublasZswap_v2)(cublasHandle_t, int, cuDoubleComplex *, int,
 //LEVEL 2 ROUTINES
 
 cublasStatus_t (*p_cublasSgemv_v2)(cublasHandle_t handle,
-                                   cublasOperation_t trans, std::int64_t m,
-                                   std::int64_t n, const float *alpha,
-                                   const float *A, std::int64_t lda,
-                                   const float *x, std::int64_t incx,
+                                   cublasOperation_t trans, int m,
+                                   int n, const float *alpha,
+                                   const float *A, int lda,
+                                   const float *x, int incx,
                                    const float *beta, float *y,
-                                   std::int64_t incy) = nullptr;
+                                   int incy) = nullptr;
 
 cublasStatus_t (*p_cublasDgemv_v2)(cublasHandle_t handle,
-                                   cublasOperation_t trans, std::int64_t m,
-                                   std::int64_t n, const double *alpha,
-                                   const double *A, std::int64_t lda,
-                                   const double *x, std::int64_t incx,
+                                   cublasOperation_t trans, int m,
+                                   int n, const double *alpha,
+                                   const double *A, int lda,
+                                   const double *x, int incx,
                                    const double *beta, double *y,
-                                   std::int64_t incy) = nullptr;
+                                   int incy) = nullptr;
 
 cublasStatus_t (*p_cublasCgemv_v2)(
-    cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
-    std::int64_t n, const std::complex<float> *alpha,
-    const std::complex<float> *A, std::int64_t lda,
-    const std::complex<float> *X, std::int64_t incx,
+    cublasHandle_t handle, cublasOperation_t trans, int m,
+    int n, const std::complex<float> *alpha,
+    const std::complex<float> *A, int lda,
+    const std::complex<float> *X, int incx,
     const std::complex<float> *beta, std::complex<float> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasZgemv_v2)(
-    cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
-    std::int64_t n, const std::complex<double> *alpha,
-    const std::complex<double> *A, std::int64_t lda,
-    const std::complex<double> *X, std::int64_t incx,
+    cublasHandle_t handle, cublasOperation_t trans, int m,
+    int n, const std::complex<double> *alpha,
+    const std::complex<double> *A, int lda,
+    const std::complex<double> *X, int incx,
     const std::complex<double> *beta, std::complex<double> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasSsymv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    int n, const float *alpha, const float *A,
@@ -229,389 +229,389 @@ cublasStatus_t (*p_cublasDsymv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasChemv_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<float> *alpha, const std::complex<float> *A,
-    std::int64_t lda, const std::complex<float> *X, std::int64_t incx,
+    int lda, const std::complex<float> *X, int incx,
     const std::complex<float> *beta, std::complex<float> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasZhemv_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<double> *alpha, const std::complex<double> *A,
-    std::int64_t lda, const std::complex<double> *X, std::int64_t incx,
+    int lda, const std::complex<double> *X, int incx,
     const std::complex<double> *beta, std::complex<double> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasStrmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   const float *A, std::int64_t lda, float *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   const float *A, int lda, float *X,
+                                   int incx) = nullptr;
 cublasStatus_t (*p_cublasDtrmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   const double *A, std::int64_t lda, double *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   const double *A, int lda, double *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCtrmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<float> *A,
-                                   std::int64_t lda, std::complex<float> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int lda, std::complex<float> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasZtrmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<double> *A,
-                                   std::int64_t lda, std::complex<double> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int lda, std::complex<double> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasStrsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   const float *A, std::int64_t lda, float *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   const float *A, int lda, float *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasDtrsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   const double *A, std::int64_t lda, double *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   const double *A, int lda, double *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCtrsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<float> *A,
-                                   std::int64_t lda, std::complex<float> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int lda, std::complex<float> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasZtrsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<double> *A,
-                                   std::int64_t lda, std::complex<double> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int lda, std::complex<double> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCgerc_v2)(
-    cublasHandle_t handle, std::int64_t m, std::int64_t n,
+    cublasHandle_t handle, int m, int n,
     const std::complex<float> *alpha, const std::complex<float> *X,
-    std::int64_t incx, const std::complex<float> *Y, std::int64_t incy,
-    std::complex<float> *A, std::int64_t lda) = nullptr;
+    int incx, const std::complex<float> *Y, int incy,
+    std::complex<float> *A, int lda) = nullptr;
 
 cublasStatus_t (*p_cublasZgerc_v2)(
-    cublasHandle_t handle, std::int64_t m, std::int64_t n,
+    cublasHandle_t handle, int m, int n,
     const std::complex<double> *alpha, const std::complex<double> *X,
-    std::int64_t incx, const std::complex<double> *Y, std::int64_t incy,
-    std::complex<double> *A, std::int64_t lda) = nullptr;
+    int incx, const std::complex<double> *Y, int incy,
+    std::complex<double> *A, int lda) = nullptr;
 
-cublasStatus_t (*p_cublasSger_v2)(cublasHandle_t handle, std::int64_t m,
-                                  std::int64_t n, const float *alpha,
-                                  const float *X, std::int64_t incx,
-                                  const float *Y, std::int64_t incy, float *A,
-                                  std::int64_t lda) = nullptr;
+cublasStatus_t (*p_cublasSger_v2)(cublasHandle_t handle, int m,
+                                  int n, const float *alpha,
+                                  const float *X, int incx,
+                                  const float *Y, int incy, float *A,
+                                  int lda) = nullptr;
 
-cublasStatus_t (*p_cublasDger_v2)(cublasHandle_t handle, std::int64_t m,
-                                  std::int64_t n, const double *alpha,
-                                  const double *X, std::int64_t incx,
-                                  const double *Y, std::int64_t incy, double *A,
-                                  std::int64_t lda) = nullptr;
+cublasStatus_t (*p_cublasDger_v2)(cublasHandle_t handle, int m,
+                                  int n, const double *alpha,
+                                  const double *X, int incx,
+                                  const double *Y, int incy, double *A,
+                                  int lda) = nullptr;
 
 cublasStatus_t (*p_cublasCgeru_v2)(
-    cublasHandle_t handle, std::int64_t m, std::int64_t n,
+    cublasHandle_t handle, int m, int n,
     const std::complex<float> *alpha, const std::complex<float> *X,
-    std::int64_t incx, const std::complex<float> *Y, std::int64_t incy,
-    std::complex<float> *A, std::int64_t lda) = nullptr;
+    int incx, const std::complex<float> *Y, int incy,
+    std::complex<float> *A, int lda) = nullptr;
 
 cublasStatus_t (*p_cublasZgeru_v2)(
-    cublasHandle_t handle, std::int64_t m, std::int64_t n,
+    cublasHandle_t handle, int m, int n,
     const std::complex<double> *alpha, const std::complex<double> *X,
-    std::int64_t incx, const std::complex<double> *Y, std::int64_t incy,
-    std::complex<double> *A, std::int64_t lda) = nullptr;
+    int incx, const std::complex<double> *Y, int incy,
+    std::complex<double> *A, int lda) = nullptr;
 
 cublasStatus_t (*p_cublasSsyr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const float *alpha,
-                                  const float *X, std::int64_t incx, float *A,
-                                  std::int64_t lda) = nullptr;
+                                  int n, const float *alpha,
+                                  const float *X, int incx, float *A,
+                                  int lda) = nullptr;
 
 cublasStatus_t (*p_cublasDsyr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const double *alpha,
-                                  const double *X, std::int64_t incx, double *A,
-                                  std::int64_t lda) = nullptr;
+                                  int n, const double *alpha,
+                                  const double *X, int incx, double *A,
+                                  int lda) = nullptr;
 
 cublasStatus_t (*p_cublasSsyr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, const float *alpha,
-                                   const float *X, std::int64_t incx,
-                                   const float *Y, std::int64_t incy, float *A,
-                                   std::int64_t lda) = nullptr;
+                                   int n, const float *alpha,
+                                   const float *X, int incx,
+                                   const float *Y, int incy, float *A,
+                                   int lda) = nullptr;
 
 cublasStatus_t (*p_cublasDsyr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, const double *alpha,
-                                   const double *X, std::int64_t incx,
-                                   const double *Y, std::int64_t incy,
-                                   double *A, std::int64_t lda) = nullptr;
+                                   int n, const double *alpha,
+                                   const double *X, int incx,
+                                   const double *Y, int incy,
+                                   double *A, int lda) = nullptr;
 
 cublasStatus_t (*p_cublasCher_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const float *alpha,
+                                  int n, const float *alpha,
                                   const std::complex<float> *X,
-                                  std::int64_t incx, std::complex<float> *A,
-                                  std::int64_t lda) = nullptr;
+                                  int incx, std::complex<float> *A,
+                                  int lda) = nullptr;
 
 cublasStatus_t (*p_cublasZher_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const double *alpha,
+                                  int n, const double *alpha,
                                   const std::complex<double> *X,
-                                  std::int64_t incx, std::complex<double> *A,
-                                  std::int64_t lda) = nullptr;
+                                  int incx, std::complex<double> *A,
+                                  int lda) = nullptr;
 
 cublasStatus_t (*p_cublasCher2_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<float> *alpha, const std::complex<float> *X,
-    std::int64_t incx, const std::complex<float> *Y, std::int64_t incy,
-    std::complex<float> *A, std::int64_t lda) = nullptr;
+    int incx, const std::complex<float> *Y, int incy,
+    std::complex<float> *A, int lda) = nullptr;
 
 cublasStatus_t (*p_cublasZher2_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<double> *alpha, const std::complex<double> *X,
-    std::int64_t incx, const std::complex<double> *Y, std::int64_t incy,
-    std::complex<double> *A, std::int64_t lda) = nullptr;
+    int incx, const std::complex<double> *Y, int incy,
+    std::complex<double> *A, int lda) = nullptr;
 
 cublasStatus_t (*p_cublasChpr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const float *alpha,
+                                  int n, const float *alpha,
                                   const std::complex<float> *X,
-                                  std::int64_t incx,
+                                  int incx,
                                   std::complex<float> *AP) = nullptr;
 
 cublasStatus_t (*p_cublasZhpr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const double *alpha,
+                                  int n, const double *alpha,
                                   const std::complex<double> *X,
-                                  std::int64_t incx,
+                                  int incx,
                                   std::complex<double> *AP) = nullptr;
 
 cublasStatus_t (*p_cublasChpr2_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<float> *alpha, const std::complex<float> *X,
-    std::int64_t incx, const std::complex<float> *Y, std::int64_t incy,
+    int incx, const std::complex<float> *Y, int incy,
     std::complex<float> *AP) = nullptr;
 
 cublasStatus_t (*p_cublasZhpr2_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<double> *alpha, const std::complex<double> *X,
-    std::int64_t incx, const std::complex<double> *Y, std::int64_t incy,
+    int incx, const std::complex<double> *Y, int incy,
     std::complex<double> *AP) = nullptr;
 
 cublasStatus_t (*p_cublasSgbmv_v2)(
-    cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
-    std::int64_t n, std::int64_t KL, std::int64_t KU, const float *alpha,
-    const float *A, std::int64_t lda, const float *X, std::int64_t incx,
-    const float *beta, float *Y, std::int64_t incy) = nullptr;
+    cublasHandle_t handle, cublasOperation_t trans, int m,
+    int n, int KL, int KU, const float *alpha,
+    const float *A, int lda, const float *X, int incx,
+    const float *beta, float *Y, int incy) = nullptr;
 
 cublasStatus_t (*p_cublasDgbmv_v2)(
-    cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
-    std::int64_t n, std::int64_t KL, std::int64_t KU, const double *alpha,
-    const double *A, std::int64_t lda, const double *X, std::int64_t incx,
-    const double *beta, double *Y, std::int64_t incy) = nullptr;
+    cublasHandle_t handle, cublasOperation_t trans, int m,
+    int n, int KL, int KU, const double *alpha,
+    const double *A, int lda, const double *X, int incx,
+    const double *beta, double *Y, int incy) = nullptr;
 
 cublasStatus_t (*p_cublasCgbmv_v2)(
-    cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
-    std::int64_t n, std::int64_t Kl, std::int64_t Ku,
+    cublasHandle_t handle, cublasOperation_t trans, int m,
+    int n, int Kl, int Ku,
     const std::complex<float> *alpha, const std::complex<float> *A,
-    std::int64_t lda, const std::complex<float> *X, std::int64_t incx,
+    int lda, const std::complex<float> *X, int incx,
     const std::complex<float> *beta, std::complex<float> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasZgbmv_v2)(
-    cublasHandle_t handle, cublasOperation_t trans, std::int64_t m,
-    std::int64_t n, std::int64_t Kl, std::int64_t Ku,
+    cublasHandle_t handle, cublasOperation_t trans, int m,
+    int n, int Kl, int Ku,
     const std::complex<double> *alpha, const std::complex<double> *A,
-    std::int64_t lda, const std::complex<double> *X, std::int64_t incx,
+    int lda, const std::complex<double> *X, int incx,
     const std::complex<double> *beta, std::complex<double> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasChbmv_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
-    std::int64_t k, const std::complex<float> *alpha,
-    const std::complex<float> *A, std::int64_t lda,
-    const std::complex<float> *X, std::int64_t incx,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
+    int k, const std::complex<float> *alpha,
+    const std::complex<float> *A, int lda,
+    const std::complex<float> *X, int incx,
     const std::complex<float> *beta, std::complex<float> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasZhbmv_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n, int64_t k,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n, int k,
     const std::complex<double> *alpha, const std::complex<double> *A,
-    std::int64_t lda, const std::complex<double> *X, std::int64_t incx,
+    int lda, const std::complex<double> *X, int incx,
     const std::complex<double> *beta, std::complex<double> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasSsbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, std::int64_t k,
+                                   int n, int k,
                                    const float *alpha, const float *A,
-                                   std::int64_t lda, const float *X,
-                                   std::int64_t incx, const float *beta,
-                                   float *Y, std::int64_t incy) = nullptr;
+                                   int lda, const float *X,
+                                   int incx, const float *beta,
+                                   float *Y, int incy) = nullptr;
 
 cublasStatus_t (*p_cublasDsbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, std::int64_t k,
+                                   int n, int k,
                                    const double *alpha, const double *A,
-                                   std::int64_t lda, const double *X,
-                                   std::int64_t incx, const double *beta,
-                                   double *Y, std::int64_t incy) = nullptr;
+                                   int lda, const double *X,
+                                   int incx, const double *beta,
+                                   double *Y, int incy) = nullptr;
 
 cublasStatus_t (*p_cublasStbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k, const float *A,
-                                   std::int64_t lda, float *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   int k, const float *A,
+                                   int lda, float *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasDtbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k, const double *A,
-                                   std::int64_t lda, double *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   int k, const double *A,
+                                   int lda, double *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCtbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k, const std::complex<float> *A,
-                                   std::int64_t lda, std::complex<float> *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   int k, const std::complex<float> *A,
+                                   int lda, std::complex<float> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasZtbmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k,
+                                   cublasDiagType_t diag, int n,
+                                   int k,
                                    const std::complex<double> *A,
-                                   std::int64_t lda, std::complex<double> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int lda, std::complex<double> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasStbsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k, const float *A,
-                                   std::int64_t lda, float *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   int k, const float *A,
+                                   int lda, float *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasDtbsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k, const double *A,
-                                   std::int64_t lda, double *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   int k, const double *A,
+                                   int lda, double *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCtbsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k, const std::complex<float> *A,
-                                   std::int64_t lda, std::complex<float> *X,
-                                   std::int64_t incx) = nullptr;
+                                   cublasDiagType_t diag, int n,
+                                   int k, const std::complex<float> *A,
+                                   int lda, std::complex<float> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasZtbsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
-                                   std::int64_t k,
+                                   cublasDiagType_t diag, int n,
+                                   int k,
                                    const std::complex<double> *A,
-                                   std::int64_t lda, std::complex<double> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int lda, std::complex<double> *X,
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasChpmv_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<float> *alpha, const std::complex<float> *Ap,
-    const std::complex<float> *X, std::int64_t incx,
+    const std::complex<float> *X, int incx,
     const std::complex<float> *beta, std::complex<float> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasZhpmv_v2)(
-    cublasHandle_t handle, cublasFillMode_t uplo, std::int64_t n,
+    cublasHandle_t handle, cublasFillMode_t uplo, int n,
     const std::complex<double> *alpha, const std::complex<double> *Ap,
-    const std::complex<double> *X, std::int64_t incx,
+    const std::complex<double> *X, int incx,
     const std::complex<double> *beta, std::complex<double> *Y,
-    std::int64_t incy) = nullptr;
+    int incy) = nullptr;
 
 cublasStatus_t (*p_cublasSspmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, const float *alpha,
+                                   int n, const float *alpha,
                                    const float *Ap, const float *x,
-                                   std::int64_t incX, const float *beta,
-                                   float *Y, std::int64_t incY) = nullptr;
+                                   int incX, const float *beta,
+                                   float *Y, int incY) = nullptr;
 
 cublasStatus_t (*p_cublasDspmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, const double *alpha,
+                                   int n, const double *alpha,
                                    const double *Ap, const double *x,
-                                   std::int64_t incX, const double *beta,
-                                   double *y, std::int64_t incY) = nullptr;
+                                   int incX, const double *beta,
+                                   double *y, int incY) = nullptr;
 
 cublasStatus_t (*p_cublasStpmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const float *Ap, float *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasDtpmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const double *Ap, double *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCtpmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<float> *Ap,
                                    std::complex<float> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasZtpmv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<double> *Ap,
                                    std::complex<double> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasStpsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const float *Ap, float *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasDtpsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const double *Ap, double *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasCtpsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<float> *Ap,
                                    std::complex<float> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasZtpsv_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
                                    cublasOperation_t trans,
-                                   cublasDiagType_t diag, std::int64_t n,
+                                   cublasDiagType_t diag, int n,
                                    const std::complex<double> *Ap,
                                    std::complex<double> *X,
-                                   std::int64_t incx) = nullptr;
+                                   int incx) = nullptr;
 
 cublasStatus_t (*p_cublasSspr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const float *alpha,
-                                  const float *X, std::int64_t incx,
+                                  int n, const float *alpha,
+                                  const float *X, int incx,
                                   float *Ap) = nullptr;
 
 cublasStatus_t (*p_cublasDspr_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                  std::int64_t n, const double *alpha,
-                                  const double *X, std::int64_t incx,
+                                  int n, const double *alpha,
+                                  const double *X, int incx,
                                   double *Ap) = nullptr;
 
 cublasStatus_t (*p_cublasSspr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, const float *alpha,
-                                   const float *X, std::int64_t incx,
-                                   const float *Y, std::int64_t incy,
+                                   int n, const float *alpha,
+                                   const float *X, int incx,
+                                   const float *Y, int incy,
                                    float *Ap) = nullptr;
 
 cublasStatus_t (*p_cublasDspr2_v2)(cublasHandle_t handle, cublasFillMode_t uplo,
-                                   std::int64_t n, const double *alpha,
-                                   const double *X, std::int64_t incx,
-                                   const double *Y, std::int64_t incy,
+                                   int n, const double *alpha,
+                                   const double *X, int incx,
+                                   const double *Y, int incy,
                                    double *Ap) = nullptr;
 
 //LEVEL 3 ROUTINES

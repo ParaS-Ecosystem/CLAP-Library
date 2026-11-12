@@ -95,8 +95,7 @@ if(BUILD_BLAS_EXAMPLES)
         level2/trsv_d level2/trsv_f
         level3/gemm_d level3/gemm_f
         device/gemm_ex_device
-        device/gemm_strided_batched_device
-	level3/symm_d level3/symm_f
+        level3/symm_d level3/symm_f
         level3/syrk_d level3/syrk_f
         level3/trmm_d level3/trmm_f
         level3/trsm_d level3/trsm_f
@@ -176,6 +175,11 @@ if(BUILD_DNN_EXAMPLES)
         reduction/norm1
         reduction/norm2
         validation/dnn_reduction_activation_validation
+
+        pooling/avgpool
+        elementwise/fill
+        elementwise/scale
+        validation/dnn_pool_fill_scale_validation
     )
 
     foreach(rel IN LISTS CLAP_DNN_EXAMPLES)

@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -70,6 +71,46 @@ inline void requireSameType(const TensorDesc& a, const TensorDesc& b, const char
     if (a.type != b.type)
         throw std::runtime_error(std::string(where) + ": tensor datatypes do not match (" +
                                  dataTypeName(a.type) + " vs " + dataTypeName(b.type) + ")");
+}
+
+struct ScalarValue {
+    unsigned char bytes[4] = {};
+    const void* data() const noexcept { return bytes; }
+};
+
+inline ScalarValue scalarValue(float value, DataType type)
+{
+    ScalarValue out;
+    std::uint32_t u;
+    std::memcpy(&u, &value, sizeof(u));
+    if (type == DataType::Float32) {
+        std::memcpy(out.bytes, &value, sizeof(value));
+        return out;
+    }
+    std::uint16_t h;
+    if (type == DataType::BFloat16) {
+        if ((u & 0x7fffffffu) > 0x7f800000u)
+            h = static_cast<std::uint16_t>((u >> 16) | 0x40u);
+        else
+            h = static_cast<std::uint16_t>((u + 0x7fffu + ((u >> 16) & 1u)) >> 16);
+    } else {
+        const std::uint32_t sign = (u >> 16) & 0x8000u;
+        std::uint32_t mag = u & 0x7fffffffu;
+        if (mag > 0x7f800000u) {
+            h = static_cast<std::uint16_t>(sign | 0x7e00u);
+        } else if (mag >= 0x477ff000u) {
+            h = static_cast<std::uint16_t>(sign | 0x7c00u);
+        } else if (mag < 0x38800000u) {
+            float v;
+            std::memcpy(&v, &mag, sizeof(v));
+            h = static_cast<std::uint16_t>(sign | static_cast<std::uint32_t>(std::nearbyint(v * 16777216.0f)));
+        } else {
+            mag += 0xfffu + ((mag >> 13) & 1u);
+            h = static_cast<std::uint16_t>(sign | ((mag - 0x38000000u) >> 13));
+        }
+    }
+    std::memcpy(out.bytes, &h, sizeof(h));
+    return out;
 }
 
 inline void squeezeUnitDims(const TensorDesc& d,

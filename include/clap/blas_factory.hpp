@@ -593,6 +593,9 @@ public:
         "Mixed-precision strided-batched device GEMM unsupported by this backend");
   }
 
+  // Scaled FP8 device GEMM. Scale pointers reference device-resident FP32
+  // per-tensor scaling factors. Return false when the backend cannot execute
+  // the requested datatype/shape combination.
   virtual bool gemm_scaled_device(
       Layout layout, Transpose transA, Transpose transB,
       int m, int n, int k, float alpha,

@@ -72,9 +72,6 @@ target_include_directories(clap
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/BLAS>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/LAPACK>
-
-    PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/blas/rocblas>
 )
 
 target_link_libraries(clap PUBLIC ${CMAKE_DL_LIBS} pthread m)

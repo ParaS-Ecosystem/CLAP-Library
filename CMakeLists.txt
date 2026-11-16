@@ -64,7 +64,8 @@ add_library(clap SHARED
 )
 
 target_include_directories(clap
-    PUBLIC
+
+  PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/BLAS>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/LAPACK>
@@ -73,7 +74,7 @@ target_include_directories(clap
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/BLAS>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/LAPACK>
 
-    PRIVATE
+  PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/blas/rocblas>
 )
 

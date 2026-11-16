@@ -97,6 +97,7 @@ if(BUILD_BLAS_EXAMPLES)
         level2/trmv_d level2/trmv_f
         level2/trsv_d level2/trsv_f
         level3/gemm_d level3/gemm_f
+        device/gemm_bf16_device
         device/gemm_ex_device
         device/gemm_strided_batched_device
         level3/symm_d level3/symm_f

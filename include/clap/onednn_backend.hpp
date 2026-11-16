@@ -83,6 +83,9 @@ public:
     void tensorReduceNorm2(const TensorDesc&, const float*, const TensorDesc&, float*) override;
     void tensorFill(const TensorDesc&, float*, float) override;
     void tensorScale(const TensorDesc&, float*, float) override;
+    void biasAdd(const TensorDesc&, const float*, const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorSubtract(const TensorDesc&, const float*, const TensorDesc&, const float*, const TensorDesc&, float*) override;
+    void tensorScaledAdd(const TensorDesc&, const float*, const TensorDesc&, const float*, const TensorDesc&, float*, float, float) override;
 
     ExecutionBackend executionBackend() const noexcept override;
     DnnSupport supports(const DnnCapabilityQuery&, const ExecutionContext&) const override;
@@ -124,6 +127,9 @@ public:
     void tensorReduceNorm2(const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
     void tensorFill(const TensorDesc&, void*, float, const ExecutionContext&) override;
     void tensorScale(const TensorDesc&, void*, float, const ExecutionContext&) override;
+    void biasAdd(const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorSubtract(const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
+    void tensorScaledAdd(const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc&, void*, float, float, const ExecutionContext&) override;
     void scaledDotProductAttentionForward(const AttentionDesc&, const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc&, const void*, const TensorDesc*, const void*, const TensorDesc&, void*, const ExecutionContext&) override;
 
 private:

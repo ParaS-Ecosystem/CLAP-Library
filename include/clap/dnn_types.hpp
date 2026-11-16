@@ -311,7 +311,10 @@ enum class DnnOperation {
     TensorReduceNorm1,
     TensorReduceNorm2,
     TensorFill,
-    TensorScale
+    TensorScale,
+    BiasAdd,
+    TensorSubtract,
+    TensorScaledAdd
 };
 
 struct DnnCapabilityQuery {
@@ -384,6 +387,14 @@ struct DnnCapabilityQuery {
         return q;
     }
 
+    static DnnCapabilityQuery forBinary(DnnOperation op, const TensorDesc& a, const TensorDesc& b, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q;
+        q.operation = op;
+        q.tensors = {a, b, y};
+        return q;
+    }
+
     const TensorDesc& tensor(std::size_t i) const
     {
         if (tensors.empty())
@@ -447,6 +458,9 @@ inline const char* dnnOperationName(DnnOperation operation) noexcept
         case DnnOperation::TensorReduceNorm2:                return "TensorReduceNorm2";
         case DnnOperation::TensorFill:                       return "TensorFill";
         case DnnOperation::TensorScale:                      return "TensorScale";
+        case DnnOperation::BiasAdd:                          return "BiasAdd";
+        case DnnOperation::TensorSubtract:                   return "TensorSubtract";
+        case DnnOperation::TensorScaledAdd:                  return "TensorScaledAdd";
     }
     return "unknown";
 }

@@ -113,6 +113,47 @@ inline ScalarValue scalarValue(float value, DataType type)
     return out;
 }
 
+inline TensorDesc biasBroadcastDesc(const TensorDesc& x, const TensorDesc& bias, const char* where)
+{
+    if (x.rank() < 2)
+        throw std::runtime_error(std::string(where) + ": x must have rank >= 2 with channels on axis 1");
+    const std::int64_t channels = x.dims[1];
+    if (bias.rank() == 1) {
+        if (bias.dims[0] != channels)
+            throw std::runtime_error(std::string(where) + ": bias length " + std::to_string(bias.dims[0]) +
+                                     " does not match the channel count " + std::to_string(channels));
+        const std::int64_t stride = bias.effectiveStrides()[0];
+        std::vector<std::int64_t> dims(x.rank(), 1), strides(x.rank(), 1);
+        dims[1] = channels;
+        strides[1] = stride;
+        strides[0] = channels * stride;
+        return TensorDesc(bias.type, dims, strides);
+    }
+    if (bias.rank() != x.rank())
+        throw std::runtime_error(std::string(where) + ": bias must be [C] or [1, C, 1, ...] with the rank of x");
+    for (std::size_t i = 0; i < bias.rank(); ++i) {
+        if (bias.dims[i] != (i == 1 ? channels : 1))
+            throw std::runtime_error(std::string(where) + ": bias must be [C] or [1, C, 1, ...] with the rank of x");
+    }
+    return bias;
+}
+
+inline TensorDesc validateBiasAdd(const TensorDesc& x, const TensorDesc& bias, const TensorDesc& y, const char* where)
+{
+    requireSameShape(x, y, where);
+    requireSameType(x, y, where);
+    requireSameType(x, bias, where);
+    return biasBroadcastDesc(x, bias, where);
+}
+
+inline void validateScaledAdd(const TensorDesc& a, const TensorDesc& b, const TensorDesc& y, const char* where)
+{
+    requireSameShape(a, b, where);
+    requireSameShape(a, y, where);
+    requireSameType(a, b, where);
+    requireSameType(a, y, where);
+}
+
 inline void squeezeUnitDims(const TensorDesc& d,
                             std::vector<std::int64_t>& dims,
                             std::vector<std::int64_t>& strides)

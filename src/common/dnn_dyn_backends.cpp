@@ -37,7 +37,7 @@ DEF(p_dnnl_batch_normalization_forward_primitive_desc_create); DEF(p_dnnl_batch_
 DEF(p_dnnl_deconvolution_forward_primitive_desc_create);
 DEF(p_dnnl_layer_normalization_forward_primitive_desc_create); DEF(p_dnnl_layer_normalization_backward_primitive_desc_create);
 DEF(p_dnnl_primitive_attr_create); DEF(p_dnnl_primitive_attr_destroy); DEF(p_dnnl_primitive_attr_set_dropout);
-DEF(p_dnnl_post_ops_create); DEF(p_dnnl_post_ops_destroy); DEF(p_dnnl_post_ops_append_eltwise); DEF(p_dnnl_primitive_attr_set_post_ops); DEF(p_dnnl_lrn_forward_primitive_desc_create); DEF(p_dnnl_lrn_backward_primitive_desc_create); DEF(p_dnnl_binary_primitive_desc_create); DEF(p_dnnl_reduction_primitive_desc_create);
+DEF(p_dnnl_post_ops_create); DEF(p_dnnl_post_ops_destroy); DEF(p_dnnl_post_ops_append_eltwise); DEF(p_dnnl_primitive_attr_set_post_ops); DEF(p_dnnl_lrn_forward_primitive_desc_create); DEF(p_dnnl_lrn_backward_primitive_desc_create); DEF(p_dnnl_binary_primitive_desc_create); DEF(p_dnnl_sum_primitive_desc_create); DEF(p_dnnl_reduction_primitive_desc_create);
 DEF(p_dnnl_stream_get_engine); DEF(p_dnnl_primitive_desc_query_md); DEF(p_dnnl_memory_desc_get_size);
 DEF(p_dnnl_layer_normalization_forward_primitive_desc_create_v2); DEF(p_dnnl_layer_normalization_backward_primitive_desc_create_v2);
 DEF(p_dnnl_graph_logical_tensor_init_with_strides); DEF(p_dnnl_graph_op_create); DEF(p_dnnl_graph_op_destroy); DEF(p_dnnl_graph_op_add_input); DEF(p_dnnl_graph_op_add_output);
@@ -136,7 +136,7 @@ bool loadOneDnn() {
     S(dnnl_batch_normalization_forward_primitive_desc_create); S(dnnl_batch_normalization_backward_primitive_desc_create);
     S(dnnl_deconvolution_forward_primitive_desc_create);
     S(dnnl_layer_normalization_forward_primitive_desc_create); S(dnnl_layer_normalization_backward_primitive_desc_create);
-    S(dnnl_primitive_attr_create); S(dnnl_primitive_attr_destroy); S(dnnl_primitive_attr_set_dropout); S(dnnl_lrn_forward_primitive_desc_create); S(dnnl_lrn_backward_primitive_desc_create); S(dnnl_binary_primitive_desc_create); S(dnnl_reduction_primitive_desc_create);
+    S(dnnl_primitive_attr_create); S(dnnl_primitive_attr_destroy); S(dnnl_primitive_attr_set_dropout); S(dnnl_lrn_forward_primitive_desc_create); S(dnnl_lrn_backward_primitive_desc_create); S(dnnl_binary_primitive_desc_create); S(dnnl_sum_primitive_desc_create); S(dnnl_reduction_primitive_desc_create);
     S(dnnl_post_ops_create); S(dnnl_post_ops_destroy); S(dnnl_post_ops_append_eltwise); S(dnnl_primitive_attr_set_post_ops);
     S(dnnl_stream_get_engine); S(dnnl_primitive_desc_query_md); S(dnnl_memory_desc_get_size);
 #undef S

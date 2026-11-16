@@ -527,6 +527,21 @@ void OneDnnBackend::tensorScale(const TensorDesc& yd, float* y, float alpha)
     tensorScale(yd, static_cast<void*>(y), alpha, ExecutionContext::cpu());
 }
 
+void OneDnnBackend::biasAdd(const TensorDesc& xd, const float* x, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
+{
+    biasAdd(xd, static_cast<const void*>(x), bd, static_cast<const void*>(b), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorSubtract(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
+{
+    tensorSubtract(ad, static_cast<const void*>(a), bd, static_cast<const void*>(b), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y, float alpha, float beta)
+{
+    tensorScaledAdd(ad, static_cast<const void*>(a), bd, static_cast<const void*>(b), yd, static_cast<void*>(y), alpha, beta, ExecutionContext::cpu());
+}
+
 void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -1388,6 +1403,41 @@ void OneDnnBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, cons
     onednnInPlaceEltwise(native_->engine, ctx, dnnl_eltwise_linear, alpha, 0.0f, yd, y, "tensorScale", "dnnl eltwise linear (alpha, beta = 0)");
 }
 
+void OneDnnBackend::biasAdd(const TensorDesc& xd, const void* x, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    const TensorDesc bias = dnn_contract::validateBiasAdd(xd, bd, yd, "oneDNN biasAdd");
+    dnn_contract::trace("CPU", "biasAdd", "dnnl binary add (broadcast bias)");
+    onednnBinary(native_->engine, ctx, dnnl_binary_add, xd, x, bias, b, yd, y);
+}
+
+void OneDnnBackend::tensorSubtract(const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    dnn_contract::trace("CPU", "tensorSubtract", "dnnl binary sub");
+    onednnBinary(native_->engine, ctx, dnnl_binary_sub, ad, a, bd, b, yd, y);
+}
+
+void OneDnnBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, float alpha, float beta, const ExecutionContext& ctx)
+{
+    dnn_contract::validateScaledAdd(ad, bd, yd, "oneDNN tensorScaledAdd");
+    Cpu q(native_->engine, ctx);
+    Md am(ad), bm(bd), ym(yd);
+    Mem A(am, q.e, mut(a)), B(bm, q.e, mut(b)), Y(ym, q.e, y);
+    const const_dnnl_memory_desc_t srcs[2] = {am.v, bm.v};
+    const float scales[2] = {alpha, beta};
+    Pd pd;
+    checkPd(
+        dnn_dyn::p_dnnl_sum_primitive_desc_create(
+            &pd.v, q.e, ym.v, 2, scales, srcs, nullptr),
+        "dnnl_sum_primitive_desc_create");
+    Prim p(pd);
+    dnn_contract::trace("CPU", "tensorScaledAdd", "dnnl sum (scales = {alpha, beta})");
+    exec(p, q, {
+        {DNNL_ARG_MULTIPLE_SRC, A.v},
+        {DNNL_ARG_MULTIPLE_SRC + 1, B.v},
+        {DNNL_ARG_DST, Y.v}
+    });
+}
+
 namespace {
 
 struct GraphOp {
@@ -1933,6 +1983,41 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
                 if (!probe)
                     return probe;
                 return DnnSupport::yes(fill ? "dnnl eltwise pow (alpha = value, beta = 0)" : "dnnl eltwise linear (alpha, beta = 0)");
+            }
+
+            case DnnOperation::BiasAdd:
+            case DnnOperation::TensorSubtract: {
+                if (query.tensors.size() < 3)
+                    return DnnSupport::no(std::string(dnnOperationName(query.operation)) + " capability queries need {a, b, y} descriptors");
+                const bool bias = query.operation == DnnOperation::BiasAdd;
+                const TensorDesc bd = bias
+                    ? dnn_contract::validateBiasAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(biasAdd)")
+                    : query.tensor(1);
+                Md am(query.tensor(0)), bm(bd), ym(query.tensor(2));
+                Pd pd;
+                const DnnSupport probe = probeResult(
+                    dnn_dyn::p_dnnl_binary_primitive_desc_create(
+                        &pd.v, engine, bias ? dnnl_binary_add : dnnl_binary_sub, am.v, bm.v, ym.v, nullptr),
+                    "binary");
+                if (!probe)
+                    return probe;
+                return DnnSupport::yes(bias ? "dnnl binary add (broadcast bias)" : "dnnl binary sub");
+            }
+
+            case DnnOperation::TensorScaledAdd: {
+                if (query.tensors.size() < 3)
+                    return DnnSupport::no("TensorScaledAdd capability queries need {a, b, y} descriptors");
+                dnn_contract::validateScaledAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
+                Md am(query.tensor(0)), bm(query.tensor(1)), ym(query.tensor(2));
+                const const_dnnl_memory_desc_t srcs[2] = {am.v, bm.v};
+                const float scales[2] = {1.0f, 1.0f};
+                Pd pd;
+                const DnnSupport probe = probeResult(
+                    dnn_dyn::p_dnnl_sum_primitive_desc_create(&pd.v, engine, ym.v, 2, scales, srcs, nullptr),
+                    "sum");
+                if (!probe)
+                    return probe;
+                return DnnSupport::yes("dnnl sum (scales = {alpha, beta})");
             }
 
             case DnnOperation::TensorReduceSum:

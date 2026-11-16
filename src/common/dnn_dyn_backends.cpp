@@ -90,7 +90,8 @@ std::mutex one_mutex, cuda_mutex, hip_mutex;
 void* one_lib = nullptr; void* cuda_lib = nullptr; void* cudnn_lib = nullptr; void* hip_lib = nullptr; void* miopen_lib = nullptr;
 void* cuda_driver_lib = nullptr; void* nvrtc_lib = nullptr;
 bool one_done=false, cuda_done=false, hip_done=false, cuda_jit_done=false;
-bool one_graph=false, miopen_t5=false, miopen_mha=false;
+bool one_ok=false, cuda_ok=false, hip_ok=false, cuda_jit_ok=false;
+bool one_graph=false, miopen_t5=false, miopen_mha=false, miopen_ln_bwd=false;
 std::mutex jit_mutex;
 std::string error_text;
 
@@ -119,7 +120,7 @@ const char* lastError() { return error_text.c_str(); }
 
 bool loadOneDnn() {
     std::lock_guard<std::mutex> lock(one_mutex);
-    if (one_done) return one_lib != nullptr;
+    if (one_done) return one_ok;
     one_done=true;
     one_lib=open_any({"libdnnl.so", "libdnnl.so.3", "libdnnl.so.2"});
     if (!one_lib) { error_text="cannot dlopen libdnnl.so; set LD_LIBRARY_PATH to oneDNN lib directory"; return false; }
@@ -153,12 +154,13 @@ bool loadOneDnn() {
     SO(dnnl_graph_tensor_create); SO(dnnl_graph_tensor_destroy);
 #undef SO
     one_graph = ok;
+    one_ok = true;
     return true;
 }
 
 bool loadCudaAndCudnn() {
     std::lock_guard<std::mutex> lock(cuda_mutex);
-    if (cuda_done) return cuda_lib && cudnn_lib;
+    if (cuda_done) return cuda_ok;
     cuda_done=true;
     cuda_lib=open_any({"libcudart.so", "libcudart.so.13", "libcudart.so.12"});
     if (!cuda_lib) { error_text="cannot dlopen libcudart.so"; return false; }
@@ -183,12 +185,13 @@ bool loadCudaAndCudnn() {
     S(cudnnBackendCreateDescriptor); S(cudnnBackendDestroyDescriptor); S(cudnnBackendSetAttribute); S(cudnnBackendFinalize); S(cudnnBackendExecute);
     S(cudnnBackendGetAttribute); S(cudnnGetVersion); S(cudnnSetStream); S(cudnnSetTensorNdDescriptor); S(cudnnSetTensor4dDescriptorEx); S(cudnnSetActivationDescriptorSwishBeta);
 #undef S
+    cuda_ok = true;
     return true;
 }
 
 bool loadCudaJit() {
     std::lock_guard<std::mutex> lock(jit_mutex);
-    if (cuda_jit_done) return cuda_driver_lib && nvrtc_lib;
+    if (cuda_jit_done) return cuda_jit_ok;
     cuda_jit_done = true;
 
     if (!loadCudaAndCudnn()) return false;
@@ -218,12 +221,13 @@ bool loadCudaJit() {
         return false;
     }
 
+    cuda_jit_ok = true;
     return true;
 }
 
 bool loadHipAndMiopen() {
     std::lock_guard<std::mutex> lock(hip_mutex);
-    if (hip_done) return hip_lib && miopen_lib;
+    if (hip_done) return hip_ok;
     hip_done=true;
     hip_lib=open_any({"libamdhip64.so", "libamdhip64.so.7", "libamdhip64.so.6"});
     if (!hip_lib) { error_text="cannot dlopen libamdhip64.so"; return false; }
@@ -244,7 +248,7 @@ bool loadHipAndMiopen() {
     S(miopenSoftmaxForward_V2); S(miopenSoftmaxBackward_V2); S(miopenCreateLRNDescriptor); S(miopenSetLRNDescriptor); S(miopenDestroyLRNDescriptor); S(miopenLRNForward); S(miopenLRNBackward); S(miopenLRNGetWorkSpaceSize); S(miopenOpTensor); S(miopenSetTensor); S(miopenScaleTensor); S(miopenTransformTensor); S(miopenCreateReduceTensorDescriptor); S(miopenDestroyReduceTensorDescriptor); S(miopenSetReduceTensorDescriptor); S(miopenGetReductionWorkspaceSize); S(miopenReduceTensor);
     S(miopenBatchNormalizationForwardTraining); S(miopenBatchNormalizationForwardInference); S(miopenBatchNormalizationBackward);
     S(miopenConvolutionBackwardBias); S(miopenConvolutionForwardBias);
-    S(miopenLayerNormForward); S(miopenGetLayerNormBackwardWorkspaceSize); S(miopenLayerNormBackward);
+    S(miopenLayerNormForward);
     S(miopenCreateDropoutDescriptor); S(miopenDestroyDropoutDescriptor); S(miopenDropoutGetStatesSize); S(miopenSetDropoutDescriptor); S(miopenDropoutGetReserveSpaceSize); S(miopenDropoutForward); S(miopenDropoutBackward);
     S(miopenSetStream); S(miopenSetTensorDescriptor);
 #undef S
@@ -258,7 +262,12 @@ bool loadHipAndMiopen() {
     SO(miopenCreateMhaDescriptor); SO(miopenSetMhaDescriptor); SO(miopenCreateMhaProblem); SO(miopenSetProblemTensorDescriptor);
     SO(miopenFindSolutions); SO(miopenGetSolutionWorkspaceSize); SO(miopenRunSolution); SO(miopenDestroySolution); SO(miopenDestroyProblem);
     miopen_mha = ok;
+
+    ok = true;
+    SO(miopenGetLayerNormBackwardWorkspaceSize); SO(miopenLayerNormBackward);
+    miopen_ln_bwd = ok;
 #undef SO
+    hip_ok = true;
     return true;
 }
 
@@ -268,5 +277,6 @@ bool hasAmdGpu() { return loadHipAndMiopen(); }
 bool hasOneDnnGraph() { return loadOneDnn() && one_graph; }
 bool hasMiopenT5LayerNorm() { return loadHipAndMiopen() && miopen_t5; }
 bool hasMiopenMha() { return loadHipAndMiopen() && miopen_mha; }
+bool hasMiopenLayerNormBackward() { return loadHipAndMiopen() && miopen_ln_bwd; }
 
 }

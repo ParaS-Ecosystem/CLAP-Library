@@ -671,6 +671,36 @@ void MiOpenBackend::tensorScale(const TensorDesc& yd, float* y, float alpha)
     Y0.d2h(y);
 }
 
+void MiOpenBackend::biasAdd(const TensorDesc& xd, const float* x, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), B0(bytes(bd)), Y0(bytes(yd));
+    X0.h2d(x);
+    B0.h2d(b);
+    biasAdd(xd, X0.p, bd, B0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::tensorSubtract(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
+{
+    Buf A0(bytes(ad)), B0(bytes(bd)), C0(bytes(yd));
+    A0.h2d(a);
+    B0.h2d(b);
+    tensorSubtract(ad, A0.p, bd, B0.p, yd, C0.p, legacyContext());
+    syncLegacy();
+    C0.d2h(y);
+}
+
+void MiOpenBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y, float alpha, float beta)
+{
+    Buf A0(bytes(ad)), B0(bytes(bd)), C0(bytes(yd));
+    A0.h2d(a);
+    B0.h2d(b);
+    tensorScaledAdd(ad, A0.p, bd, B0.p, yd, C0.p, alpha, beta, legacyContext());
+    syncLegacy();
+    C0.d2h(y);
+}
+
 void MiOpenBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "convolutionForward");
@@ -1463,6 +1493,40 @@ void MiOpenBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, cons
     check(dnn_dyn::p_miopenScaleTensor(h.v, Y.v, y, v.data()), "miopenScaleTensor");
 }
 
+static void miopenScaledAdd(abi::miopenHandle_t h, float alpha1, const TensorDesc& ad, const void* a, float alpha2, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const char* operation, const char* vendor_call)
+{
+    Tensor A(ad), B(bd), C(yd);
+    float zero = 0;
+    dnn_contract::trace("ROCM", operation, vendor_call);
+    check(
+        dnn_dyn::p_miopenOpTensor(
+            h, miopenTensorOpAdd, &alpha1, A.v, a, &alpha2, B.v, b, &zero, C.v, y),
+        "miopenOpTensor");
+}
+
+void MiOpenBackend::biasAdd(const TensorDesc& xd, const void* x, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "biasAdd");
+    const TensorDesc bias = dnn_contract::validateBiasAdd(xd, bd, yd, "MIOpen biasAdd");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenScaledAdd(h.v, 1.0f, xd, x, 1.0f, bias, b, yd, y, "biasAdd", "miopenOpTensor (miopenTensorOpAdd, broadcast bias)");
+}
+
+void MiOpenBackend::tensorSubtract(const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorSubtract");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenScaledAdd(h.v, 1.0f, ad, a, -1.0f, bd, b, yd, y, "tensorSubtract", "miopenOpTensor (miopenTensorOpAdd, alpha2 = -1)");
+}
+
+void MiOpenBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, float alpha, float beta, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorScaledAdd");
+    dnn_contract::validateScaledAdd(ad, bd, yd, "MIOpen tensorScaledAdd");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenScaledAdd(h.v, alpha, ad, a, beta, bd, b, yd, y, "tensorScaledAdd", "miopenOpTensor (miopenTensorOpAdd, alpha1 = alpha, alpha2 = beta)");
+}
+
 namespace {
 
 struct MhaConstants {
@@ -1753,6 +1817,21 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
                 if (x.type == DataType::BFloat16)
                     return DnnSupport::no("miopenScaleTensor supports Float32/Float16 tensors only");
                 return DnnSupport::yes("miopenScaleTensor");
+
+            case DnnOperation::BiasAdd:
+                if (query.tensors.size() < 3)
+                    return DnnSupport::no("BiasAdd capability queries need {x, bias, y} descriptors");
+                dnn_contract::validateBiasAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(biasAdd)");
+                return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, broadcast bias)");
+
+            case DnnOperation::TensorSubtract:
+                return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, alpha2 = -1)");
+
+            case DnnOperation::TensorScaledAdd:
+                if (query.tensors.size() < 3)
+                    return DnnSupport::no("TensorScaledAdd capability queries need {a, b, y} descriptors");
+                dnn_contract::validateScaledAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
+                return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, alpha1 = alpha, alpha2 = beta)");
 
             default:
                 if (x.rank() != 4)

@@ -181,6 +181,11 @@ if(BUILD_DNN_EXAMPLES)
         elementwise/fill
         elementwise/scale
         validation/dnn_pool_fill_scale_validation
+
+        elementwise/bias_add
+        elementwise/subtract
+        elementwise/scaled_add
+        validation/dnn_bias_sub_scaledadd_validation
     )
 
     foreach(rel IN LISTS CLAP_DNN_EXAMPLES)

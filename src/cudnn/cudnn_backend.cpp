@@ -1831,6 +1831,27 @@ void CuDnnBackend::tensorScale(const TensorDesc& yd, float* y, float alpha)
     Y.copyToHost(y, Y.size());
 }
 
+void CuDnnBackend::biasAdd(const TensorDesc& xd, const float* x, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
+{
+    stageBinary(xd, x, bd, b, yd, y, [&](void* X, void* B, void* Y) {
+        biasAdd(xd, X, bd, B, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::tensorSubtract(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y)
+{
+    stageBinary(ad, a, bd, b, yd, y, [&](void* A, void* B, void* Y) {
+        tensorSubtract(ad, A, bd, B, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const TensorDesc& bd, const float* b, const TensorDesc& yd, float* y, float alpha, float beta)
+{
+    stageBinary(ad, a, bd, b, yd, y, [&](void* A, void* B, void* Y) {
+        tensorScaledAdd(ad, A, bd, B, yd, Y, alpha, beta, legacyContext());
+    });
+}
+
 void CuDnnBackend::convolutionForward(const TensorDesc& xd,
                                       const void* x,
                                       const TensorDesc& wd,
@@ -3075,6 +3096,58 @@ void CuDnnBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, const
     checkCudnn(dnn_dyn::p_cudnnScaleTensor(h, Y, y, &alpha), "cudnnScaleTensor");
 }
 
+static void cudnnScaledAdd(abi::cudnnHandle_t h, float alpha1, const TensorDesc& ad, const void* a, float alpha2, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const char* operation, const char* vendor_call)
+{
+    TensorDescriptor A(ad);
+    TensorDescriptor B(bd);
+    TensorDescriptor Y(yd);
+    abi::cudnnOpTensorDescriptor_t d = nullptr;
+
+    checkCudnn(dnn_dyn::p_cudnnCreateOpTensorDescriptor(&d), "cudnnCreateOpTensorDescriptor");
+    try {
+        checkCudnn(
+            dnn_dyn::p_cudnnSetOpTensorDescriptor(
+                d, abi::CUDNN_OP_TENSOR_ADD, abi::CUDNN_DATA_FLOAT, abi::CUDNN_PROPAGATE_NAN),
+            "cudnnSetOpTensorDescriptor");
+
+        float zero = 0;
+        dnn_contract::trace("CUDA", operation, vendor_call);
+        checkCudnn(
+            dnn_dyn::p_cudnnOpTensor(
+                h, d, &alpha1, A, a, &alpha2, B, b, &zero, Y, y),
+            "cudnnOpTensor");
+        dnn_dyn::p_cudnnDestroyOpTensorDescriptor(d);
+    }
+    catch (...) {
+        if (d)
+            dnn_dyn::p_cudnnDestroyOpTensorDescriptor(d);
+        throw;
+    }
+}
+
+void CuDnnBackend::biasAdd(const TensorDesc& xd, const void* x, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "biasAdd");
+    const TensorDesc bias = dnn_contract::validateBiasAdd(xd, bd, yd, "cuDNN biasAdd");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    cudnnScaledAdd(h, 1.0f, xd, x, 1.0f, bias, b, yd, y, "biasAdd", "cudnnOpTensor (CUDNN_OP_TENSOR_ADD, broadcast bias)");
+}
+
+void CuDnnBackend::tensorSubtract(const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorSubtract");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    cudnnScaledAdd(h, 1.0f, ad, a, -1.0f, bd, b, yd, y, "tensorSubtract", "cudnnOpTensor (CUDNN_OP_TENSOR_ADD, alpha2 = -1)");
+}
+
+void CuDnnBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, float alpha, float beta, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorScaledAdd");
+    dnn_contract::validateScaledAdd(ad, bd, yd, "cuDNN tensorScaledAdd");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    cudnnScaledAdd(h, alpha, ad, a, beta, bd, b, yd, y, "tensorScaledAdd", "cudnnOpTensor (CUDNN_OP_TENSOR_ADD, alpha1 = alpha, alpha2 = beta)");
+}
+
 namespace {
 
 enum SdpaUid : std::int64_t {
@@ -3358,6 +3431,21 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
 
             case DnnOperation::TensorScale:
                 return DnnSupport::yes("cudnnScaleTensor");
+
+            case DnnOperation::BiasAdd:
+                if (query.tensors.size() < 3)
+                    return DnnSupport::no("BiasAdd capability queries need {x, bias, y} descriptors");
+                dnn_contract::validateBiasAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(biasAdd)");
+                return DnnSupport::yes("cudnnOpTensor (CUDNN_OP_TENSOR_ADD, broadcast bias)");
+
+            case DnnOperation::TensorSubtract:
+                return DnnSupport::yes("cudnnOpTensor (CUDNN_OP_TENSOR_ADD, alpha2 = -1)");
+
+            case DnnOperation::TensorScaledAdd:
+                if (query.tensors.size() < 3)
+                    return DnnSupport::no("TensorScaledAdd capability queries need {a, b, y} descriptors");
+                dnn_contract::validateScaledAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
+                return DnnSupport::yes("cudnnOpTensor (CUDNN_OP_TENSOR_ADD, alpha1 = alpha, alpha2 = beta)");
 
             default:
                 if (x.rank() != 4)

@@ -157,17 +157,8 @@ void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   if(!m || !n) return;
 
   set_stream(handle,stream);
-  auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
-  using Fn=rocblas_status (*)(rocblas_handle,rocblas_operation,rocblas_operation,
-    int,int,int,const void*,const void*,int,int,const void*,int,int,
-    const void*,const void*,int,int,void*,int,int,int,int,int,unsigned);
-  auto fn=vendor_symbol<Fn>("rocblas_gemm_ex");
-  const void* a=(layout==Layout::RowMajor ? B:A);
-  const void* b=(layout==Layout::RowMajor ? A:B);
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k, &alpha,
-    a,kRocblasBF16,p.lda, b,kRocblasBF16,p.ldb, &beta,
-    C,kRocblasBF16,p.ldc, C,kRocblasBF16,p.ldc,
-    kRocblasF32,0,0,0));
+  clap::rocblas_gemm_select::gemm_bf16(
+      handle,layout,ta,tb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc,stream);
 }
 
 void RocBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta, Transpose tb,

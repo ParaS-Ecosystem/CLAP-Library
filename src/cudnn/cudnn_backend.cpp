@@ -1852,6 +1852,27 @@ void CuDnnBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const T
     });
 }
 
+void CuDnnBackend::tensorLayoutTransform(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        tensorLayoutTransform(xd, X, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::nchwToNhwc(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        nchwToNhwc(xd, X, yd, Y, legacyContext());
+    });
+}
+
+void CuDnnBackend::nhwcToNchw(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    stageUnary(xd, x, yd, y, [&](void* X, void* Y) {
+        nhwcToNchw(xd, X, yd, Y, legacyContext());
+    });
+}
+
 void CuDnnBackend::convolutionForward(const TensorDesc& xd,
                                       const void* x,
                                       const TensorDesc& wd,
@@ -3148,6 +3169,43 @@ void CuDnnBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const Te
     cudnnScaledAdd(h, alpha, ad, a, beta, bd, b, yd, y, "tensorScaledAdd", "cudnnOpTensor (CUDNN_OP_TENSOR_ADD, alpha1 = alpha, alpha2 = beta)");
 }
 
+static void cudnnLayoutTransform(abi::cudnnHandle_t h, const dnn_contract::LayoutTransformViews& v, const void* x, void* y, const char* operation)
+{
+    TensorDescriptor X(v.x);
+    TensorDescriptor Y(v.y);
+    const float one = 1.0f;
+    const float zero = 0.0f;
+    dnn_contract::trace("CUDA", operation, "cudnnTransformTensor");
+    checkCudnn(dnn_dyn::p_cudnnTransformTensor(h, &one, X, x, &zero, Y, y), "cudnnTransformTensor");
+}
+
+void CuDnnBackend::tensorLayoutTransform(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "tensorLayoutTransform");
+    const auto v = dnn_contract::validateTensorLayoutTransform(xd, yd, "cuDNN tensorLayoutTransform");
+    dnn_contract::requireDistinctBuffers(x, y, v, "cuDNN tensorLayoutTransform");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    cudnnLayoutTransform(h, v, x, y, "tensorLayoutTransform");
+}
+
+void CuDnnBackend::nchwToNhwc(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "nchwToNhwc");
+    const auto v = dnn_contract::validateNchwToNhwc(xd, yd, "cuDNN nchwToNhwc");
+    dnn_contract::requireDistinctBuffers(x, y, v, "cuDNN nchwToNhwc");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    cudnnLayoutTransform(h, v, x, y, "nchwToNhwc");
+}
+
+void CuDnnBackend::nhwcToNchw(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireCudaContext(ctx, "nhwcToNchw");
+    const auto v = dnn_contract::validateNhwcToNchw(xd, yd, "cuDNN nhwcToNchw");
+    dnn_contract::requireDistinctBuffers(x, y, v, "cuDNN nhwcToNchw");
+    ScopedHandle h(native_->mutex, native_->handles, ctx);
+    cudnnLayoutTransform(h, v, x, y, "nhwcToNchw");
+}
+
 namespace {
 
 enum SdpaUid : std::int64_t {
@@ -3446,6 +3504,12 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
                     return DnnSupport::no("TensorScaledAdd capability queries need {a, b, y} descriptors");
                 dnn_contract::validateScaledAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
                 return DnnSupport::yes("cudnnOpTensor (CUDNN_OP_TENSOR_ADD, alpha1 = alpha, alpha2 = beta)");
+
+            case DnnOperation::LayoutTransform:
+                if (query.tensors.size() < 2)
+                    return DnnSupport::no("LayoutTransform capability queries need {x, y} descriptors");
+                dnn_contract::validateTensorLayoutTransform(query.tensor(0), query.tensor(1), "supports(layoutTransform)");
+                return DnnSupport::yes("cudnnTransformTensor (alpha = 1, beta = 0)");
 
             default:
                 if (x.rank() != 4)

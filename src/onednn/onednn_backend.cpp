@@ -542,6 +542,21 @@ void OneDnnBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const 
     tensorScaledAdd(ad, static_cast<const void*>(a), bd, static_cast<const void*>(b), yd, static_cast<void*>(y), alpha, beta, ExecutionContext::cpu());
 }
 
+void OneDnnBackend::tensorLayoutTransform(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    tensorLayoutTransform(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::nchwToNhwc(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    nchwToNhwc(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
+void OneDnnBackend::nhwcToNchw(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    nhwcToNchw(xd, static_cast<const void*>(x), yd, static_cast<void*>(y), ExecutionContext::cpu());
+}
+
 void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
@@ -1438,6 +1453,45 @@ void OneDnnBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const T
     });
 }
 
+static void onednnReorder(dnnl_engine_t engine, const ExecutionContext& ctx, const dnn_contract::LayoutTransformViews& v, const void* x, void* y, const char* operation)
+{
+    Cpu q(engine, ctx);
+    Md xm(v.x), ym(v.y);
+    Mem X(xm, q.e, mut(x)), Y(ym, q.e, y);
+    Pd pd;
+    checkPd(
+        dnn_dyn::p_dnnl_reorder_primitive_desc_create(
+            &pd.v, xm.v, q.e, ym.v, q.e, nullptr),
+        "dnnl_reorder_primitive_desc_create");
+    Prim p(pd);
+    dnn_contract::trace("CPU", operation, "dnnl reorder");
+    exec(p, q, {
+        {DNNL_ARG_SRC, X.v},
+        {DNNL_ARG_DST, Y.v}
+    });
+}
+
+void OneDnnBackend::tensorLayoutTransform(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    const auto v = dnn_contract::validateTensorLayoutTransform(xd, yd, "oneDNN tensorLayoutTransform");
+    dnn_contract::requireDistinctBuffers(x, y, v, "oneDNN tensorLayoutTransform");
+    onednnReorder(native_->engine, ctx, v, x, y, "tensorLayoutTransform");
+}
+
+void OneDnnBackend::nchwToNhwc(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    const auto v = dnn_contract::validateNchwToNhwc(xd, yd, "oneDNN nchwToNhwc");
+    dnn_contract::requireDistinctBuffers(x, y, v, "oneDNN nchwToNhwc");
+    onednnReorder(native_->engine, ctx, v, x, y, "nchwToNhwc");
+}
+
+void OneDnnBackend::nhwcToNchw(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    const auto v = dnn_contract::validateNhwcToNchw(xd, yd, "oneDNN nhwcToNchw");
+    dnn_contract::requireDistinctBuffers(x, y, v, "oneDNN nhwcToNchw");
+    onednnReorder(native_->engine, ctx, v, x, y, "nhwcToNchw");
+}
+
 namespace {
 
 struct GraphOp {
@@ -2018,6 +2072,20 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
                 if (!probe)
                     return probe;
                 return DnnSupport::yes("dnnl sum (scales = {alpha, beta})");
+            }
+
+            case DnnOperation::LayoutTransform: {
+                if (query.tensors.size() < 2)
+                    return DnnSupport::no("LayoutTransform capability queries need {x, y} descriptors");
+                const auto v = dnn_contract::validateTensorLayoutTransform(query.tensor(0), query.tensor(1), "supports(layoutTransform)");
+                Md xm(v.x), ym(v.y);
+                Pd pd;
+                const DnnSupport probe = probeResult(
+                    dnn_dyn::p_dnnl_reorder_primitive_desc_create(&pd.v, xm.v, engine, ym.v, engine, nullptr),
+                    "reorder");
+                if (!probe)
+                    return probe;
+                return DnnSupport::yes("dnnl reorder");
             }
 
             case DnnOperation::TensorReduceSum:

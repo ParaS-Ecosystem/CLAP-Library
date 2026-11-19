@@ -189,6 +189,11 @@ if(BUILD_DNN_EXAMPLES)
         elementwise/subtract
         elementwise/scaled_add
         validation/dnn_bias_sub_scaledadd_validation
+
+        layout/layout_transform
+        layout/nchw_to_nhwc
+        layout/nhwc_to_nchw
+        validation/dnn_layout_transform_validation
     )
 
     foreach(rel IN LISTS CLAP_DNN_EXAMPLES)

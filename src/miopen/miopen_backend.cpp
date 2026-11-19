@@ -701,6 +701,33 @@ void MiOpenBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const 
     C0.d2h(y);
 }
 
+void MiOpenBackend::tensorLayoutTransform(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorLayoutTransform(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::nchwToNhwc(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    nchwToNhwc(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::nhwcToNchw(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    nhwcToNchw(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
 void MiOpenBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "convolutionForward");
@@ -1527,6 +1554,42 @@ void MiOpenBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const T
     miopenScaledAdd(h.v, alpha, ad, a, beta, bd, b, yd, y, "tensorScaledAdd", "miopenOpTensor (miopenTensorOpAdd, alpha1 = alpha, alpha2 = beta)");
 }
 
+static void miopenLayoutTransform(abi::miopenHandle_t h, const dnn_contract::LayoutTransformViews& v, const void* x, void* y, const char* operation)
+{
+    Tensor X(v.x), Y(v.y);
+    const float one = 1.0f;
+    const float zero = 0.0f;
+    dnn_contract::trace("ROCM", operation, "miopenTransformTensor");
+    check(dnn_dyn::p_miopenTransformTensor(h, &one, X.v, x, &zero, Y.v, y), "miopenTransformTensor");
+}
+
+void MiOpenBackend::tensorLayoutTransform(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorLayoutTransform");
+    const auto v = dnn_contract::validateTensorLayoutTransform(xd, yd, "MIOpen tensorLayoutTransform");
+    dnn_contract::requireDistinctBuffers(x, y, v, "MIOpen tensorLayoutTransform");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenLayoutTransform(h.v, v, x, y, "tensorLayoutTransform");
+}
+
+void MiOpenBackend::nchwToNhwc(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "nchwToNhwc");
+    const auto v = dnn_contract::validateNchwToNhwc(xd, yd, "MIOpen nchwToNhwc");
+    dnn_contract::requireDistinctBuffers(x, y, v, "MIOpen nchwToNhwc");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenLayoutTransform(h.v, v, x, y, "nchwToNhwc");
+}
+
+void MiOpenBackend::nhwcToNchw(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "nhwcToNchw");
+    const auto v = dnn_contract::validateNhwcToNchw(xd, yd, "MIOpen nhwcToNchw");
+    dnn_contract::requireDistinctBuffers(x, y, v, "MIOpen nhwcToNchw");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenLayoutTransform(h.v, v, x, y, "nhwcToNchw");
+}
+
 namespace {
 
 struct MhaConstants {
@@ -1832,6 +1895,12 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
                     return DnnSupport::no("TensorScaledAdd capability queries need {a, b, y} descriptors");
                 dnn_contract::validateScaledAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
                 return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, alpha1 = alpha, alpha2 = beta)");
+
+            case DnnOperation::LayoutTransform:
+                if (query.tensors.size() < 2)
+                    return DnnSupport::no("LayoutTransform capability queries need {x, y} descriptors");
+                dnn_contract::validateTensorLayoutTransform(query.tensor(0), query.tensor(1), "supports(layoutTransform)");
+                return DnnSupport::yes("miopenTransformTensor (alpha = 1, beta = 0)");
 
             default:
                 if (x.rank() != 4)

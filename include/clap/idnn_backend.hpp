@@ -168,6 +168,9 @@ public:
     virtual void biasAdd(const TensorDesc& x_desc, const float* x, const TensorDesc& bias_desc, const float* bias, const TensorDesc& y_desc, float* y) = 0;
     virtual void tensorSubtract(const TensorDesc& a_desc, const float* a, const TensorDesc& b_desc, const float* b, const TensorDesc& y_desc, float* y) = 0;
     virtual void tensorScaledAdd(const TensorDesc& a_desc, const float* a, const TensorDesc& b_desc, const float* b, const TensorDesc& y_desc, float* y, float alpha, float beta) = 0;
+    virtual void tensorLayoutTransform(const TensorDesc& x_desc, const float* x, const TensorDesc& y_desc, float* y) = 0;
+    virtual void nchwToNhwc(const TensorDesc& x_desc, const float* x, const TensorDesc& y_desc, float* y) = 0;
+    virtual void nhwcToNchw(const TensorDesc& x_desc, const float* x, const TensorDesc& y_desc, float* y) = 0;
 
     virtual ExecutionBackend executionBackend() const noexcept = 0;
 
@@ -438,6 +441,21 @@ public:
         const TensorDesc& b_desc, const void* b,
         const TensorDesc& y_desc, void* y,
         float alpha, float beta,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void tensorLayoutTransform(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void nchwToNhwc(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
+        const ExecutionContext& ctx) = 0;
+
+    virtual void nhwcToNchw(
+        const TensorDesc& x_desc, const void* x,
+        const TensorDesc& y_desc, void* y,
         const ExecutionContext& ctx) = 0;
 
     virtual void scaledDotProductAttentionForward(

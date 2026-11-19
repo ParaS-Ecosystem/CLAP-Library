@@ -19,6 +19,7 @@
 
 #include "clap/dnn_types.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +27,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace clap {
@@ -152,6 +154,88 @@ inline void validateScaledAdd(const TensorDesc& a, const TensorDesc& b, const Te
     requireSameShape(a, y, where);
     requireSameType(a, b, where);
     requireSameType(a, y, where);
+}
+
+struct LayoutTransformViews {
+    TensorDesc x;
+    TensorDesc y;
+};
+
+inline std::string shapeText(const std::vector<std::int64_t>& dims)
+{
+    std::string out = "[";
+    for (std::size_t i = 0; i < dims.size(); ++i)
+        out += (i ? ", " : "") + std::to_string(dims[i]);
+    return out + "]";
+}
+
+inline TensorDesc layoutLogicalView(const TensorDesc& d, bool nhwc, const char* where)
+{
+    if (d.rank() != 4)
+        throw std::runtime_error(std::string(where) + ": layout transforms support 4D tensors only (got rank " +
+                                 std::to_string(d.rank()) + ")");
+    d.elements();
+    const std::vector<std::int64_t> s = d.effectiveStrides();
+    if (!nhwc)
+        return TensorDesc(d.type, d.dims, s);
+    return TensorDesc(d.type,
+                      std::vector<std::int64_t>{d.dims[0], d.dims[3], d.dims[1], d.dims[2]},
+                      std::vector<std::int64_t>{s[0], s[3], s[1], s[2]});
+}
+
+inline void requireNonOverlapping(const TensorDesc& d, const char* where)
+{
+    const std::vector<std::int64_t> s = d.effectiveStrides();
+    std::vector<std::pair<std::int64_t, std::int64_t>> axes;
+    for (std::size_t i = 0; i < d.rank(); ++i) {
+        if (d.dims[i] > 1)
+            axes.emplace_back(s[i], d.dims[i]);
+    }
+    std::sort(axes.begin(), axes.end());
+    std::int64_t need = 1;
+    for (const auto& a : axes) {
+        if (a.first < need)
+            throw std::runtime_error(std::string(where) + ": output strides overlap, so the destination cannot hold every element");
+        need = a.first * a.second;
+    }
+}
+
+inline LayoutTransformViews validateLayoutTransform(const TensorDesc& x, bool x_nhwc,
+                                                    const TensorDesc& y, bool y_nhwc,
+                                                    const char* where)
+{
+    requireSameType(x, y, where);
+    LayoutTransformViews v{layoutLogicalView(x, x_nhwc, where), layoutLogicalView(y, y_nhwc, where)};
+    if (v.x.dims != v.y.dims)
+        throw std::runtime_error(std::string(where) + ": logical NCHW shapes do not match (x " + shapeText(v.x.dims) +
+                                 ", y " + shapeText(v.y.dims) + ")");
+    requireNonOverlapping(v.y, where);
+    return v;
+}
+
+inline LayoutTransformViews validateTensorLayoutTransform(const TensorDesc& x, const TensorDesc& y, const char* where)
+{
+    return validateLayoutTransform(x, x.layout == TensorLayout::NHWC, y, y.layout == TensorLayout::NHWC, where);
+}
+
+inline LayoutTransformViews validateNchwToNhwc(const TensorDesc& x, const TensorDesc& y, const char* where)
+{
+    if (x.layout == TensorLayout::NHWC)
+        throw std::runtime_error(std::string(where) + ": x is tagged TensorLayout::NHWC but nchwToNhwc expects [N, C, H, W] input");
+    return validateLayoutTransform(x, false, y, true, where);
+}
+
+inline LayoutTransformViews validateNhwcToNchw(const TensorDesc& x, const TensorDesc& y, const char* where)
+{
+    if (y.layout == TensorLayout::NHWC)
+        throw std::runtime_error(std::string(where) + ": y is tagged TensorLayout::NHWC but nhwcToNchw produces [N, C, H, W] output");
+    return validateLayoutTransform(x, true, y, false, where);
+}
+
+inline void requireDistinctBuffers(const void* x, const void* y, const LayoutTransformViews& v, const char* where)
+{
+    if (x == y && v.x.effectiveStrides() != v.y.effectiveStrides())
+        throw std::runtime_error(std::string(where) + ": x and y must not share a buffer when their layouts differ");
 }
 
 inline void squeezeUnitDims(const TensorDesc& d,

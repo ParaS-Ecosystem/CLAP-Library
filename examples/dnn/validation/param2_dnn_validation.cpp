@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <exception>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -248,6 +249,8 @@ void checkSilu(clap::IDnnBackend& backend, clap_example::Device& dev, clap::Data
         report(name + " forward", close(clap_example::decode(dev.downloadVector<std::uint8_t>(Y, d.bytes()), type), ry, tolerance(type), detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name + " forward", e.what());
+    } catch (const std::exception& e) {
+        report(name + " forward", false, e.what());
     }
 
     try {
@@ -256,6 +259,8 @@ void checkSilu(clap::IDnnBackend& backend, clap_example::Device& dev, clap::Data
         report(name + " backward", close(clap_example::decode(dev.downloadVector<std::uint8_t>(DX, d.bytes()), type), rdx, 4 * tolerance(type), detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name + " backward", e.what());
+    } catch (const std::exception& e) {
+        report(name + " backward", false, e.what());
     }
 }
 
@@ -288,23 +293,29 @@ void checkSoftmax(clap::IDnnBackend& backend, clap_example::Device& dev, clap::D
     void* X = dev.uploadVector(clap_example::encode(x, type));
     void* Y = dev.uploadVector(clap_example::encode(y_init, type));
 
-    backend.softmaxForward(sm, d, X, d, Y, dev.ctx);
-    const auto got = clap_example::decode(dev.downloadVector<std::uint8_t>(Y, (span + guard) * d.elementSize()), type);
+    try {
+        backend.softmaxForward(sm, d, X, d, Y, dev.ctx);
+        const auto got = clap_example::decode(dev.downloadVector<std::uint8_t>(Y, (span + guard) * d.elementSize()), type);
 
-    std::vector<float> got_tensor(span, 0.0f), ref_tensor(span, 0.0f);
-    forEachIndex(dims, [&](const std::vector<std::int64_t>& idx) {
-        const std::size_t o = offsetOf(idx, eff);
-        got_tensor[o] = got[o];
-        ref_tensor[o] = ry[o];
-    });
+        std::vector<float> got_tensor(span, 0.0f), ref_tensor(span, 0.0f);
+        forEachIndex(dims, [&](const std::vector<std::int64_t>& idx) {
+            const std::size_t o = offsetOf(idx, eff);
+            got_tensor[o] = got[o];
+            ref_tensor[o] = ry[o];
+        });
 
-    bool guard_ok = true;
-    for (std::size_t i = span; i < span + guard; ++i)
-        guard_ok = guard_ok && got[i] == 7.0f;
+        bool guard_ok = true;
+        for (std::size_t i = span; i < span + guard; ++i)
+            guard_ok = guard_ok && got[i] == 7.0f;
 
-    std::string detail;
-    const bool ok = close(got_tensor, ref_tensor, tolerance(type), detail) && guard_ok;
-    report(name, ok, detail + (guard_ok ? "" : ", wrote outside tensor"));
+        std::string detail;
+        const bool ok = close(got_tensor, ref_tensor, tolerance(type), detail) && guard_ok;
+        report(name, ok, detail + (guard_ok ? "" : ", wrote outside tensor"));
+    } catch (const clap::DnnUnsupportedError& e) {
+        skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
+    }
 }
 
 void checkSoftmaxBackward(clap::IDnnBackend& backend, clap_example::Device& dev, bool log_softmax)
@@ -337,35 +348,47 @@ void checkSoftmaxBackward(clap::IDnnBackend& backend, clap_example::Device& dev,
     void* Y = dev.uploadVector(y);
     void* DY = dev.uploadVector(dy);
     void* DX = dev.allocate(d.bytes());
-    backend.softmaxBackward(sm, d, Y, d, DY, d, DX, dev.ctx);
+    try {
+        backend.softmaxBackward(sm, d, Y, d, DY, d, DX, dev.ctx);
 
-    std::string detail;
-    report(name, close(dev.downloadVector<float>(DX, 21), rdx, 1.0e-4, detail), detail);
+        std::string detail;
+        report(name, close(dev.downloadVector<float>(DX, 21), rdx, 1.0e-4, detail), detail);
+    } catch (const clap::DnnUnsupportedError& e) {
+        skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
+    }
 }
 
 void checkLegacySoftmax(clap::IDnnBackend& backend, clap_example::Device& dev)
 {
     const std::string name = "Historical softmaxForward(float*) == SoftmaxDesc{axis=1}";
-    if (dev.onGpu()) {
+    try {
+        if (dev.onGpu()) {
+            clap::TensorDesc d({2, 3, 2, 2});
+            const auto x = pattern(24, 2.0f, 0.0f);
+            std::vector<float> legacy(24), ref(24);
+            backend.softmaxForward(d, x.data(), d, legacy.data());
+            refSoftmax(x, ref, {2, 3, 2, 2}, {12, 4, 2, 1}, 1, false);
+            std::string detail;
+            report(name, close(legacy, ref, 1.0e-5, detail), detail);
+            return;
+        }
+
         clap::TensorDesc d({2, 3, 2, 2});
         const auto x = pattern(24, 2.0f, 0.0f);
-        std::vector<float> legacy(24), ref(24);
+        std::vector<float> legacy(24), modern(24);
         backend.softmaxForward(d, x.data(), d, legacy.data());
-        refSoftmax(x, ref, {2, 3, 2, 2}, {12, 4, 2, 1}, 1, false);
+        clap::SoftmaxDesc sm;
+        sm.axis = 1;
+        backend.softmaxForward(sm, d, x.data(), d, modern.data(), clap::ExecutionContext::cpu());
         std::string detail;
-        report(name, close(legacy, ref, 1.0e-5, detail), detail);
-        return;
+        report(name, close(legacy, modern, 0.0, detail), detail);
+    } catch (const clap::DnnUnsupportedError& e) {
+        skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
     }
-
-    clap::TensorDesc d({2, 3, 2, 2});
-    const auto x = pattern(24, 2.0f, 0.0f);
-    std::vector<float> legacy(24), modern(24);
-    backend.softmaxForward(d, x.data(), d, legacy.data());
-    clap::SoftmaxDesc sm;
-    sm.axis = 1;
-    backend.softmaxForward(sm, d, x.data(), d, modern.data(), clap::ExecutionContext::cpu());
-    std::string detail;
-    report(name, close(legacy, modern, 0.0, detail), detail);
 }
 
 void checkRmsNorm(clap::IDnnBackend& backend, clap_example::Device& dev, clap::DataType type, bool training)
@@ -410,6 +433,9 @@ void checkRmsNorm(clap::IDnnBackend& backend, clap_example::Device& dev, clap::D
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name + " forward", e.what());
         return;
+    } catch (const std::exception& e) {
+        report(name + " forward", false, e.what());
+        return;
     }
 
     if (!training)
@@ -426,6 +452,8 @@ void checkRmsNorm(clap::IDnnBackend& backend, clap_example::Device& dev, clap::D
         report(name + " backward", ok1 && ok2, "dx " + dxd + ", dweight " + dwd);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name + " backward", e.what());
+    } catch (const std::exception& e) {
+        report(name + " backward", false, e.what());
     }
 }
 
@@ -453,13 +481,21 @@ void checkLayerNorm(clap::IDnnBackend& backend, clap_example::Device& dev)
     void* M = dev.allocate(rows * sizeof(float));
     void* R = dev.allocate(rows * sizeof(float));
 
-    backend.layerNormForward(ln, d, X, sd, S, B, d, Y, M, R, dev.ctx);
+    try {
+        backend.layerNormForward(ln, d, X, sd, S, B, d, Y, M, R, dev.ctx);
 
-    std::string yd, md, rd;
-    const bool ok = close(dev.downloadVector<float>(Y, rows * inner), ry, 1.0e-4, yd) &&
-                    close(dev.downloadVector<float>(M, rows), rmean, 1.0e-4, md) &&
-                    close(dev.downloadVector<float>(R, rows), rrstd, 1.0e-4, rd);
-    report(name + " forward", ok, "y " + yd + ", mean " + md + ", rstd " + rd);
+        std::string yd, md, rd;
+        const bool ok = close(dev.downloadVector<float>(Y, rows * inner), ry, 1.0e-4, yd) &&
+                        close(dev.downloadVector<float>(M, rows), rmean, 1.0e-4, md) &&
+                        close(dev.downloadVector<float>(R, rows), rrstd, 1.0e-4, rd);
+        report(name + " forward", ok, "y " + yd + ", mean " + md + ", rstd " + rd);
+    } catch (const clap::DnnUnsupportedError& e) {
+        skip(name + " forward", e.what());
+        return;
+    } catch (const std::exception& e) {
+        report(name + " forward", false, e.what());
+        return;
+    }
 
     const auto dy = pattern(rows * inner, 1.0f, 0.5f);
     std::vector<float> rdx(rows * inner), rds(inner, 0.0f), rdb(inner, 0.0f);
@@ -484,13 +520,19 @@ void checkLayerNorm(clap::IDnnBackend& backend, clap_example::Device& dev)
     void* DX = dev.allocate(d.bytes());
     void* DS = dev.allocate(sd.bytes());
     void* DB = dev.allocate(sd.bytes());
-    backend.layerNormBackward(ln, d, X, d, DY, sd, S, M, R, d, DX, DS, DB, dev.ctx);
+    try {
+        backend.layerNormBackward(ln, d, X, d, DY, sd, S, M, R, d, DX, DS, DB, dev.ctx);
 
-    std::string a, b2, c;
-    const bool ok2 = close(dev.downloadVector<float>(DX, rows * inner), rdx, 1.0e-4, a) &&
-                     close(dev.downloadVector<float>(DS, inner), rds, 1.0e-4, b2) &&
-                     close(dev.downloadVector<float>(DB, inner), rdb, 1.0e-4, c);
-    report(name + " backward", ok2, "dx " + a + ", dscale " + b2 + ", dbias " + c);
+        std::string a, b2, c;
+        const bool ok2 = close(dev.downloadVector<float>(DX, rows * inner), rdx, 1.0e-4, a) &&
+                         close(dev.downloadVector<float>(DS, inner), rds, 1.0e-4, b2) &&
+                         close(dev.downloadVector<float>(DB, inner), rdb, 1.0e-4, c);
+        report(name + " backward", ok2, "dx " + a + ", dscale " + b2 + ", dbias " + c);
+    } catch (const clap::DnnUnsupportedError& e) {
+        skip(name + " backward", e.what());
+    } catch (const std::exception& e) {
+        report(name + " backward", false, e.what());
+    }
 }
 
 void checkSdpa(clap::IDnnBackend& backend, clap_example::Device& dev, clap::DataType type,
@@ -541,6 +583,8 @@ void checkSdpa(clap::IDnnBackend& backend, clap_example::Device& dev, clap::Data
         report(name, close(clap_example::decode(dev.downloadVector<std::uint8_t>(O, od.bytes()), type), ro, 4 * tolerance(type), detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
     }
 }
 

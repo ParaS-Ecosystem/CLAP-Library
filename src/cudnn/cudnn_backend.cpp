@@ -48,9 +48,11 @@ void checkCuda(abi::cudaError_t status, const char* where)
 
 void checkCudnn(abi::cudnnStatus_t status, const char* where)
 {
-    if (status == abi::CUDNN_STATUS_NOT_SUPPORTED)
+    if (status >= abi::CUDNN_STATUS_NOT_SUPPORTED && status < abi::CUDNN_STATUS_NOT_SUPPORTED + 1000)
         throw DnnUnsupportedError(std::string("CLAP_DNN cuDNN: no native support in ") + where +
-                                  " (CUDNN_STATUS_NOT_SUPPORTED)");
+                                  (status == abi::CUDNN_STATUS_NOT_SUPPORTED
+                                      ? std::string(" (CUDNN_STATUS_NOT_SUPPORTED)")
+                                      : " (CUDNN_STATUS_NOT_SUPPORTED family, status=" + std::to_string(status) + ")"));
     if (status != abi::CUDNN_STATUS_SUCCESS)
         throw std::runtime_error(std::string("CLAP_DNN cuDNN error in ") + where +
                                  " (status=" + std::to_string(status) + ")");
@@ -3103,9 +3105,8 @@ void CuDnnBackend::tensorFill(const TensorDesc& yd, void* y, float value, const 
     requireCudaContext(ctx, "tensorFill");
     ScopedHandle h(native_->mutex, native_->handles, ctx);
     TensorDescriptor Y(yd);
-    const dnn_contract::ScalarValue v = dnn_contract::scalarValue(value, yd.type);
     dnn_contract::trace("CUDA", "tensorFill", "cudnnSetTensor");
-    checkCudnn(dnn_dyn::p_cudnnSetTensor(h, Y, y, v.data()), "cudnnSetTensor");
+    checkCudnn(dnn_dyn::p_cudnnSetTensor(h, Y, y, &value), "cudnnSetTensor");
 }
 
 void CuDnnBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, const ExecutionContext& ctx)

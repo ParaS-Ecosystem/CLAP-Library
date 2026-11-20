@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <exception>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -137,6 +138,8 @@ void checkActivation(clap::IDnnBackend& backend, clap_example::Device& dev, clap
         report(name + " forward", close(clap_example::decode(dev.downloadVector<std::uint8_t>(Y, d.bytes()), type), ry, 4 * tolerance(type), detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name + " forward", e.what());
+    } catch (const std::exception& e) {
+        report(name + " forward", false, e.what());
     }
 
     try {
@@ -145,6 +148,8 @@ void checkActivation(clap::IDnnBackend& backend, clap_example::Device& dev, clap
         report(name + " backward", close(clap_example::decode(dev.downloadVector<std::uint8_t>(DX, d.bytes()), type), rdx, 4 * tolerance(type), detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name + " backward", e.what());
+    } catch (const std::exception& e) {
+        report(name + " backward", false, e.what());
     }
 }
 
@@ -168,6 +173,8 @@ void checkLegacyActivation(clap::IDnnBackend& backend, clap::ActivationMode mode
         report(name, ok1 && ok2, d1 + ", " + d2);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
     }
 }
 
@@ -288,6 +295,8 @@ void checkReduce(clap::IDnnBackend& backend, clap_example::Device& dev, Red r, c
         report(name, close(clap_example::decode(dev.downloadVector<std::uint8_t>(Y, yd.bytes()), type), ref, tol, detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
     }
 }
 
@@ -305,6 +314,8 @@ void checkLegacyReduce(clap::IDnnBackend& backend, Red r)
         report(name, close(y, ref, 1.0e-4, detail), detail);
     } catch (const clap::DnnUnsupportedError& e) {
         skip(name, e.what());
+    } catch (const std::exception& e) {
+        report(name, false, e.what());
     }
 }
 

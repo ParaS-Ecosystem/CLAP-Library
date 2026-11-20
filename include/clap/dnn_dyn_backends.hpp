@@ -63,6 +63,7 @@ extern abi::dnnl_status_t (*p_dnnl_lrn_forward_primitive_desc_create)(abi::dnnl_
 extern abi::dnnl_status_t (*p_dnnl_lrn_backward_primitive_desc_create)(abi::dnnl_primitive_desc_t*, abi::dnnl_engine_t, abi::dnnl_alg_kind_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::dnnl_dim_t, float, float, float, abi::const_dnnl_primitive_desc_t, const void*);
 extern abi::dnnl_status_t (*p_dnnl_binary_primitive_desc_create)(abi::dnnl_primitive_desc_t*, abi::dnnl_engine_t, abi::dnnl_alg_kind_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, const void*);
 extern abi::dnnl_status_t (*p_dnnl_sum_primitive_desc_create)(abi::dnnl_primitive_desc_t*, abi::dnnl_engine_t, abi::const_dnnl_memory_desc_t, int, const float*, const abi::const_dnnl_memory_desc_t*, abi::const_dnnl_primitive_attr_t);
+extern abi::dnnl_status_t (*p_dnnl_reorder_primitive_desc_create)(abi::dnnl_primitive_desc_t*, abi::const_dnnl_memory_desc_t, abi::dnnl_engine_t, abi::const_dnnl_memory_desc_t, abi::dnnl_engine_t, abi::const_dnnl_primitive_attr_t);
 extern abi::dnnl_status_t (*p_dnnl_reduction_primitive_desc_create)(abi::dnnl_primitive_desc_t*, abi::dnnl_engine_t, abi::dnnl_alg_kind_t, abi::const_dnnl_memory_desc_t, abi::const_dnnl_memory_desc_t, float, float, const void*);
 extern abi::dnnl_status_t (*p_dnnl_stream_get_engine)(const void*, abi::dnnl_engine_t*);
 extern abi::const_dnnl_memory_desc_t (*p_dnnl_primitive_desc_query_md)(abi::const_dnnl_primitive_desc_t, int, int);
@@ -137,6 +138,7 @@ extern abi::cudnnStatus_t (*p_cudnnDestroyOpTensorDescriptor)(abi::cudnnOpTensor
 extern abi::cudnnStatus_t (*p_cudnnOpTensor)(abi::cudnnHandle_t, abi::cudnnOpTensorDescriptor_t, const void*, abi::cudnnTensorDescriptor_t, const void*, const void*, abi::cudnnTensorDescriptor_t, const void*, const void*, abi::cudnnTensorDescriptor_t, void*);
 extern abi::cudnnStatus_t (*p_cudnnSetTensor)(abi::cudnnHandle_t, abi::cudnnTensorDescriptor_t, void*, const void*);
 extern abi::cudnnStatus_t (*p_cudnnScaleTensor)(abi::cudnnHandle_t, abi::cudnnTensorDescriptor_t, void*, const void*);
+extern abi::cudnnStatus_t (*p_cudnnTransformTensor)(abi::cudnnHandle_t, const void*, abi::cudnnTensorDescriptor_t, const void*, const void*, abi::cudnnTensorDescriptor_t, void*);
 extern abi::cudnnStatus_t (*p_cudnnCreateReduceTensorDescriptor)(abi::cudnnReduceTensorDescriptor_t*);
 extern abi::cudnnStatus_t (*p_cudnnSetReduceTensorDescriptor)(abi::cudnnReduceTensorDescriptor_t, abi::cudnnReduceTensorOp_t, abi::cudnnDataType_t, abi::cudnnNanPropagation_t, abi::cudnnReduceTensorIndices_t, abi::cudnnIndicesType_t);
 extern abi::cudnnStatus_t (*p_cudnnDestroyReduceTensorDescriptor)(abi::cudnnReduceTensorDescriptor_t);
@@ -219,6 +221,7 @@ extern abi::miopenStatus_t (*p_miopenLRNGetWorkSpaceSize)(abi::miopenTensorDescr
 extern abi::miopenStatus_t (*p_miopenOpTensor)(abi::miopenHandle_t, abi::miopenTensorOp_t, const void*, abi::miopenTensorDescriptor_t, const void*, const void*, abi::miopenTensorDescriptor_t, const void*, const void*, abi::miopenTensorDescriptor_t, void*);
 extern abi::miopenStatus_t (*p_miopenSetTensor)(abi::miopenHandle_t, abi::miopenTensorDescriptor_t, void*, const void*);
 extern abi::miopenStatus_t (*p_miopenScaleTensor)(abi::miopenHandle_t, abi::miopenTensorDescriptor_t, void*, const void*);
+extern abi::miopenStatus_t (*p_miopenTransformTensor)(abi::miopenHandle_t, const void*, abi::miopenTensorDescriptor_t, const void*, const void*, abi::miopenTensorDescriptor_t, void*);
 extern abi::miopenStatus_t (*p_miopenCreateReduceTensorDescriptor)(abi::miopenReduceTensorDescriptor_t*);
 extern abi::miopenStatus_t (*p_miopenDestroyReduceTensorDescriptor)(abi::miopenReduceTensorDescriptor_t);
 extern abi::miopenStatus_t (*p_miopenSetReduceTensorDescriptor)(abi::miopenReduceTensorDescriptor_t, abi::miopenReduceTensorOp_t, abi::miopenDataType_t, abi::miopenNanPropagation_t, abi::miopenReduceTensorIndices_t, abi::miopenIndicesType_t);

@@ -701,6 +701,33 @@ void MiOpenBackend::tensorScaledAdd(const TensorDesc& ad, const float* a, const 
     C0.d2h(y);
 }
 
+void MiOpenBackend::tensorLayoutTransform(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    tensorLayoutTransform(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::nchwToNhwc(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    nchwToNhwc(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
+void MiOpenBackend::nhwcToNchw(const TensorDesc& xd, const float* x, const TensorDesc& yd, float* y)
+{
+    Buf X0(bytes(xd)), Y0(bytes(yd));
+    X0.h2d(x);
+    nhwcToNchw(xd, X0.p, yd, Y0.p, legacyContext());
+    syncLegacy();
+    Y0.d2h(y);
+}
+
 void MiOpenBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     requireRocm(ctx, "convolutionForward");
@@ -1345,9 +1372,69 @@ void MiOpenBackend::lrnBackward(const LrnDesc& lrn, const TensorDesc& xd, const 
     }
 }
 
+static void requireMiopenKernelType(const TensorDesc& d, const char* what)
+{
+    if (d.type == DataType::BFloat16)
+        throw DnnUnsupportedError(std::string("CLAP_DNN MIOpen: no BFloat16 kernel for ") + what);
+}
+
+static bool memoryOrdered(const TensorDesc& d)
+{
+    const auto s = d.effectiveStrides();
+    std::int64_t prev = -1;
+    for (std::size_t i = 0; i < d.rank(); ++i) {
+        if (d.dims[i] == 1)
+            continue;
+        if (prev >= 0 && s[i] > prev)
+            return false;
+        prev = s[i];
+    }
+    return true;
+}
+
+static TensorDesc permuteDims(const TensorDesc& d, const std::vector<std::size_t>& order)
+{
+    const auto s = d.effectiveStrides();
+    std::vector<std::int64_t> dims(order.size()), strides(order.size());
+    for (std::size_t i = 0; i < order.size(); ++i) {
+        dims[i] = d.dims[order[i]];
+        strides[i] = s[order[i]];
+    }
+    for (std::size_t i = order.size(); i-- > 0;) {
+        if (dims[i] == 1)
+            strides[i] = i + 1 < order.size() ? strides[i + 1] * dims[i + 1] : 1;
+    }
+    return TensorDesc(d.type, dims, strides);
+}
+
+struct ElementwiseViews {
+    TensorDesc a;
+    TensorDesc b;
+    TensorDesc y;
+};
+
+static ElementwiseViews elementwiseViews(const TensorDesc& ad, const TensorDesc& bd, const TensorDesc& yd, const char* what)
+{
+    if (memoryOrdered(ad) && memoryOrdered(bd) && memoryOrdered(yd))
+        return {ad, bd, yd};
+    if (ad.rank() != yd.rank() || bd.rank() != yd.rank())
+        throw DnnUnsupportedError(std::string("CLAP_DNN MIOpen ") + what + ": operands of different rank must use outer-to-inner strides");
+    const auto s = yd.effectiveStrides();
+    std::vector<std::size_t> order(yd.rank());
+    for (std::size_t i = 0; i < order.size(); ++i)
+        order[i] = i;
+    std::stable_sort(order.begin(), order.end(), [&](std::size_t i, std::size_t j) { return s[i] > s[j]; });
+    ElementwiseViews v{permuteDims(ad, order), permuteDims(bd, order), permuteDims(yd, order)};
+    if (!memoryOrdered(v.a) || !memoryOrdered(v.b) || !memoryOrdered(v.y))
+        throw DnnUnsupportedError(std::string("CLAP_DNN MIOpen ") + what + ": operands do not share one memory order");
+    return v;
+}
+
 static void miopenOp(abi::miopenHandle_t h, abi::miopenTensorOp_t op, const TensorDesc& ad, const void* a, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y)
 {
-    Tensor A(ad), B(bd), C(yd);
+    requireMiopenKernelType(yd, "miopenOpTensor");
+    const ElementwiseViews v = elementwiseViews(ad, bd, yd, "tensorOp");
+    Tensor A(v.a), B(v.b), C(v.y);
     float one = 1, zero = 0;
     dnn_contract::trace("ROCM", "tensorOp", "miopenOpTensor");
     check(
@@ -1386,6 +1473,7 @@ void MiOpenBackend::tensorMax(const TensorDesc& ad, const void* a, const TensorD
 
 static void miopenReduce(abi::miopenHandle_t h, Scratch& scratch, abi::miopenReduceTensorOp_t op, const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y)
 {
+    requireMiopenKernelType(xd, "miopenReduceTensor");
     Tensor X(xd), Y(yd);
 
     abi::miopenReduceTensorDescriptor_t d = nullptr;
@@ -1495,7 +1583,9 @@ void MiOpenBackend::tensorScale(const TensorDesc& yd, void* y, float alpha, cons
 
 static void miopenScaledAdd(abi::miopenHandle_t h, float alpha1, const TensorDesc& ad, const void* a, float alpha2, const TensorDesc& bd, const void* b, const TensorDesc& yd, void* y, const char* operation, const char* vendor_call)
 {
-    Tensor A(ad), B(bd), C(yd);
+    requireMiopenKernelType(yd, "miopenOpTensor");
+    const ElementwiseViews v = elementwiseViews(ad, bd, yd, operation);
+    Tensor A(v.a), B(v.b), C(v.y);
     float zero = 0;
     dnn_contract::trace("ROCM", operation, vendor_call);
     check(
@@ -1525,6 +1615,43 @@ void MiOpenBackend::tensorScaledAdd(const TensorDesc& ad, const void* a, const T
     dnn_contract::validateScaledAdd(ad, bd, yd, "MIOpen tensorScaledAdd");
     Handle h(native_->mutex, native_->handles, ctx);
     miopenScaledAdd(h.v, alpha, ad, a, beta, bd, b, yd, y, "tensorScaledAdd", "miopenOpTensor (miopenTensorOpAdd, alpha1 = alpha, alpha2 = beta)");
+}
+
+static void miopenLayoutTransform(abi::miopenHandle_t h, const dnn_contract::LayoutTransformViews& v, const void* x, void* y, const char* operation)
+{
+    requireMiopenKernelType(v.x, "miopenTransformTensor");
+    Tensor X(v.x), Y(v.y);
+    const float one = 1.0f;
+    const float zero = 0.0f;
+    dnn_contract::trace("ROCM", operation, "miopenTransformTensor");
+    check(dnn_dyn::p_miopenTransformTensor(h, &one, X.v, x, &zero, Y.v, y), "miopenTransformTensor");
+}
+
+void MiOpenBackend::tensorLayoutTransform(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "tensorLayoutTransform");
+    const auto v = dnn_contract::validateTensorLayoutTransform(xd, yd, "MIOpen tensorLayoutTransform");
+    dnn_contract::requireDistinctBuffers(x, y, v, "MIOpen tensorLayoutTransform");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenLayoutTransform(h.v, v, x, y, "tensorLayoutTransform");
+}
+
+void MiOpenBackend::nchwToNhwc(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "nchwToNhwc");
+    const auto v = dnn_contract::validateNchwToNhwc(xd, yd, "MIOpen nchwToNhwc");
+    dnn_contract::requireDistinctBuffers(x, y, v, "MIOpen nchwToNhwc");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenLayoutTransform(h.v, v, x, y, "nchwToNhwc");
+}
+
+void MiOpenBackend::nhwcToNchw(const TensorDesc& xd, const void* x, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
+{
+    requireRocm(ctx, "nhwcToNchw");
+    const auto v = dnn_contract::validateNhwcToNchw(xd, yd, "MIOpen nhwcToNchw");
+    dnn_contract::requireDistinctBuffers(x, y, v, "MIOpen nhwcToNchw");
+    Handle h(native_->mutex, native_->handles, ctx);
+    miopenLayoutTransform(h.v, v, x, y, "nhwcToNchw");
 }
 
 namespace {
@@ -1799,6 +1926,8 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
             case DnnOperation::TensorMultiply:
             case DnnOperation::TensorMin:
             case DnnOperation::TensorMax:
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen has no BFloat16 kernel for miopenOpTensor");
                 return DnnSupport::yes("miopenOpTensor");
 
             case DnnOperation::TensorReduceSum:
@@ -1808,6 +1937,8 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
             case DnnOperation::TensorReduceMean:
             case DnnOperation::TensorReduceNorm1:
             case DnnOperation::TensorReduceNorm2:
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen has no BFloat16 kernel for miopenReduceTensor");
                 return DnnSupport::yes("miopenReduceTensor");
 
             case DnnOperation::TensorFill:
@@ -1821,17 +1952,34 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
             case DnnOperation::BiasAdd:
                 if (query.tensors.size() < 3)
                     return DnnSupport::no("BiasAdd capability queries need {x, bias, y} descriptors");
-                dnn_contract::validateBiasAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(biasAdd)");
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen has no BFloat16 kernel for miopenOpTensor");
+                elementwiseViews(query.tensor(0),
+                                 dnn_contract::validateBiasAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(biasAdd)"),
+                                 query.tensor(2), "supports(biasAdd)");
                 return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, broadcast bias)");
 
             case DnnOperation::TensorSubtract:
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen has no BFloat16 kernel for miopenOpTensor");
                 return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, alpha2 = -1)");
 
             case DnnOperation::TensorScaledAdd:
                 if (query.tensors.size() < 3)
                     return DnnSupport::no("TensorScaledAdd capability queries need {a, b, y} descriptors");
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen has no BFloat16 kernel for miopenOpTensor");
                 dnn_contract::validateScaledAdd(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
+                elementwiseViews(query.tensor(0), query.tensor(1), query.tensor(2), "supports(tensorScaledAdd)");
                 return DnnSupport::yes("miopenOpTensor (miopenTensorOpAdd, alpha1 = alpha, alpha2 = beta)");
+
+            case DnnOperation::LayoutTransform:
+                if (query.tensors.size() < 2)
+                    return DnnSupport::no("LayoutTransform capability queries need {x, y} descriptors");
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen has no BFloat16 kernel for miopenTransformTensor");
+                dnn_contract::validateTensorLayoutTransform(query.tensor(0), query.tensor(1), "supports(layoutTransform)");
+                return DnnSupport::yes("miopenTransformTensor (alpha = 1, beta = 0)");
 
             default:
                 if (x.rank() != 4)

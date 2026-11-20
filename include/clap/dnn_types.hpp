@@ -42,7 +42,8 @@ enum class DataType {
 
 enum class TensorLayout {
     NCHW,
-    Strided
+    Strided,
+    NHWC
 };
 
 enum class ActivationMode {
@@ -314,7 +315,8 @@ enum class DnnOperation {
     TensorScale,
     BiasAdd,
     TensorSubtract,
-    TensorScaledAdd
+    TensorScaledAdd,
+    LayoutTransform
 };
 
 struct DnnCapabilityQuery {
@@ -395,6 +397,28 @@ struct DnnCapabilityQuery {
         return q;
     }
 
+    static DnnCapabilityQuery forLayoutTransform(const TensorDesc& x, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q;
+        q.operation = DnnOperation::LayoutTransform;
+        q.tensors = {x, y};
+        return q;
+    }
+
+    static DnnCapabilityQuery forNchwToNhwc(const TensorDesc& x, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q = forLayoutTransform(x, y);
+        q.tensors[1].layout = TensorLayout::NHWC;
+        return q;
+    }
+
+    static DnnCapabilityQuery forNhwcToNchw(const TensorDesc& x, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q = forLayoutTransform(x, y);
+        q.tensors[0].layout = TensorLayout::NHWC;
+        return q;
+    }
+
     const TensorDesc& tensor(std::size_t i) const
     {
         if (tensors.empty())
@@ -461,6 +485,7 @@ inline const char* dnnOperationName(DnnOperation operation) noexcept
         case DnnOperation::BiasAdd:                          return "BiasAdd";
         case DnnOperation::TensorSubtract:                   return "TensorSubtract";
         case DnnOperation::TensorScaledAdd:                  return "TensorScaledAdd";
+        case DnnOperation::LayoutTransform:                  return "LayoutTransform";
     }
     return "unknown";
 }

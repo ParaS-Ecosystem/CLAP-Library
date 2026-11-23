@@ -1868,6 +1868,8 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
         switch (query.operation) {
             case DnnOperation::ActivationForward:
             case DnnOperation::ActivationBackward:
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen does not implement BFloat16 for miopenActivation*");
                 if (query.activation.mode == ActivationMode::SiLU)
                     return DnnSupport::yes("composed from native MIOpen primitives: LOGISTIC activation + miopenOpTensor (MIOpen has no SiLU mode)");
                 return DnnSupport::yes("miopenActivation*");
@@ -1878,6 +1880,8 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
                 dnn_contract::AxisView view;
                 if (!dnn_contract::makeAxisView(x, axis, view))
                     return DnnSupport::no("the dimensions around the softmax axis cannot be collapsed into an MIOpen [N, C, H, 1] view");
+                if (x.type == DataType::BFloat16)
+                    return DnnSupport::no("MIOpen does not implement BFloat16 for miopenSoftmax*_V2");
                 return DnnSupport::yes(query.softmax.log_softmax
                     ? "miopenSoftmax*_V2 with MIOPEN_SOFTMAX_LOG"
                     : "miopenSoftmax*_V2 with MIOPEN_SOFTMAX_ACCURATE");

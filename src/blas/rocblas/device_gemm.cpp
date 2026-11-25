@@ -28,8 +28,23 @@
 namespace clap {
 namespace {
 
+constexpr int kRocblasF16  = 150;
 constexpr int kRocblasBF16 = 168;
 constexpr int kRocblasF32  = 151;
+constexpr int kRocblasI8   = 160;
+constexpr int kRocblasI32  = 162;
+
+int rocblas_data_type(BlasDataType type) {
+  switch (type) {
+    case BlasDataType::Float16:  return kRocblasF16;
+    case BlasDataType::BFloat16: return kRocblasBF16;
+    case BlasDataType::Float32:  return kRocblasF32;
+    case BlasDataType::I8:       return kRocblasI8;
+    case BlasDataType::I32:      return kRocblasI32;
+    default:
+      throw std::invalid_argument("Unsupported mixed-precision GEMM datatype");
+  }
+}
 
 template <typename T> T vendor_symbol(const char* symbol) {
   static void* library = [] {
@@ -142,17 +157,8 @@ void RocBlasBackend::gemm_bf16_device(Layout layout,Transpose ta,Transpose tb,
   if(!m || !n) return;
 
   set_stream(handle,stream);
-  auto p=params(layout,ta,tb,m,n,k,lda,ldb,ldc);
-  using Fn=rocblas_status (*)(rocblas_handle,rocblas_operation,rocblas_operation,
-    int,int,int,const void*,const void*,int,int,const void*,int,int,
-    const void*,const void*,int,int,void*,int,int,int,int,int,unsigned);
-  auto fn=vendor_symbol<Fn>("rocblas_gemm_ex");
-  const void* a=(layout==Layout::RowMajor ? B:A);
-  const void* b=(layout==Layout::RowMajor ? A:B);
-  check((int)fn(handle,p.a,p.b,p.m,p.n,p.k, &alpha,
-    a,kRocblasBF16,p.lda, b,kRocblasBF16,p.ldb, &beta,
-    C,kRocblasBF16,p.ldc, C,kRocblasBF16,p.ldc,
-    kRocblasF32,0,0,0));
+  clap::rocblas_gemm_select::gemm_bf16(
+      handle,layout,ta,tb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc,stream);
 }
 
 void RocBlasBackend::gemm_strided_batched_bf16_device(Layout layout, Transpose ta, Transpose tb,
@@ -349,6 +355,93 @@ void RocBlasBackend::gemm_strided_batched_device(Layout layout, Transpose ta, Tr
       reinterpret_cast<const roc_DoubleComplex*>(beta),
       reinterpret_cast<roc_DoubleComplex*>(C), p.ldc, strideC,
       batches));
+}
+
+
+// Same datatype rules as the cuBLAS backend (A and B equal; FP16/BF16 write
+// their own type or FP32; FP32 writes FP32), plus INT8 inputs with an INT32
+// result, which rocBLAS supports with INT32 accumulation.
+void RocBlasBackend::gemm_ex_strided_batched_device(
+    Layout layout, Transpose ta, Transpose tb,
+    int m, int n, int k, float alpha,
+    const void* A, BlasDataType typeA, int lda, long long strideA,
+    const void* B, BlasDataType typeB, int ldb, long long strideB,
+    float beta,
+    void* C, BlasDataType typeC, int ldc, long long strideC,
+    int batches, void* stream) {
+
+  if (batches < 0 || strideA < 0 || strideB < 0 || strideC < 0)
+    throw std::invalid_argument("Invalid mixed-precision batched GEMM count/stride");
+
+  const bool int8 = typeA == BlasDataType::I8;
+  const bool floating = typeA == BlasDataType::Float16 ||
+                        typeA == BlasDataType::BFloat16 ||
+                        typeA == BlasDataType::Float32;
+  if (typeA != typeB ||
+      (int8 ? typeC != BlasDataType::I32
+            : !floating ||
+              (typeA == BlasDataType::Float32
+                   ? typeC != BlasDataType::Float32
+                   : (typeC != typeA && typeC != BlasDataType::Float32)))) {
+    throw std::invalid_argument("Unsupported mixed-precision GEMM datatype combination");
+  }
+
+  validate(layout, ta, tb, m, n, k, lda, ldb, ldc, A, B, C);
+
+  if (batches == 0 || m == 0 || n == 0)
+    return;
+
+  set_stream(handle, stream);
+  auto p = params(layout, ta, tb, m, n, k, lda, ldb, ldc);
+
+  using Fn = rocblas_status (*)(rocblas_handle, rocblas_operation, rocblas_operation,
+                                int, int, int, const void*, const void*, int, int,
+                                std::int64_t, const void*, int, int, std::int64_t,
+                                const void*, const void*, int, int, std::int64_t,
+                                void*, int, int, std::int64_t,
+                                int, int, int, int32_t, uint32_t);
+
+  auto fn = vendor_symbol<Fn>("rocblas_gemm_strided_batched_ex");
+  const void* a = (layout == Layout::RowMajor ? B : A);
+  const void* b = (layout == Layout::RowMajor ? A : B);
+
+  const auto sa = (layout == Layout::RowMajor ? strideB : strideA);
+  const auto sb = (layout == Layout::RowMajor ? strideA : strideB);
+
+  const int abType = rocblas_data_type(typeA);
+  const int cType = rocblas_data_type(typeC);
+
+  // INT8 GEMMs take INT32 alpha and beta and accumulate in INT32.
+  const int32_t intAlpha = static_cast<int32_t>(alpha);
+  const int32_t intBeta = static_cast<int32_t>(beta);
+  const void* alphaPtr = int8 ? static_cast<const void*>(&intAlpha) : &alpha;
+  const void* betaPtr = int8 ? static_cast<const void*>(&intBeta) : &beta;
+
+  check((int)fn(handle, p.a, p.b, p.m, p.n, p.k, alphaPtr,
+                a, abType, p.lda, sa,
+                b, abType, p.ldb, sb,
+                betaPtr, C, cType, p.ldc, strideC,
+                C, cType, p.ldc, strideC,
+                batches, int8 ? kRocblasI32 : kRocblasF32, 0, 0, 0));
+}
+
+// Scaled FP8 GEMMs run through the hipBLASLt FP8 plans of the GEMM selector,
+// which also checks the arguments. Returns false when the request cannot run
+// there (unsupported datatype, shape or arguments), so callers can fall back.
+bool RocBlasBackend::gemm_scaled_device(
+    Layout layout, Transpose ta, Transpose tb,
+    int m, int n, int k, float alpha,
+    const void* A, BlasDataType typeA, int lda, const float* scaleA,
+    const void* B, BlasDataType typeB, int ldb, const float* scaleB,
+    float beta,
+    void* C, BlasDataType typeC, int ldc,
+    void* stream) {
+
+  return clap::rocblas_gemm_select::gemm_scaled_fp8(
+      layout, ta, tb, m, n, k, alpha,
+      A, typeA, lda, scaleA,
+      B, typeB, ldb, scaleB,
+      beta, C, typeC, ldc, stream);
 }
 
 

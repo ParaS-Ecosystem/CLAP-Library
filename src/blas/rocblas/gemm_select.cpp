@@ -722,7 +722,7 @@ struct LtResources {
 };
 
 // FP8 plans use exact dimensions and datatype combinations. Unlike the
-// existing FP32/BF16 cache, these plans retain their descriptors and layouts.
+// FP32/BF16 decision cache, these plans retain their descriptors and layouts.
 struct Fp8PlanKey {
     int device;
     int m, n, k;
@@ -972,6 +972,100 @@ bool create_lt_resources(
     }
 
     return true;
+}
+
+// FP32/BF16 descriptors and layouts depend only on the normalized shape, so
+// they are created once per shape and reused: decode issues the same shapes on
+// every step. The cache is bounded and kept for the life of the process,
+// because destroying descriptors during static destruction could run after the
+// HIP runtime has shut down. Entries are never modified after creation, so
+// concurrent GEMMs can share them.
+struct LtPlanKey {
+    bool bf16;
+    int m, n, k;
+    int lda, ldb, ldc;
+    int trans_a, trans_b;
+    int batch_count;
+    int64_t stride_a, stride_b, stride_c;
+    bool strided_batched;
+
+    bool operator==(const LtPlanKey& other) const {
+        return bf16 == other.bf16 &&
+               m == other.m && n == other.n && k == other.k &&
+               lda == other.lda && ldb == other.ldb && ldc == other.ldc &&
+               trans_a == other.trans_a && trans_b == other.trans_b &&
+               batch_count == other.batch_count &&
+               stride_a == other.stride_a && stride_b == other.stride_b &&
+               stride_c == other.stride_c &&
+               strided_batched == other.strided_batched;
+    }
+};
+
+struct LtPlanKeyHash {
+    size_t operator()(const LtPlanKey& key) const {
+        size_t seed = 0;
+        const auto combine = [&seed](size_t value) {
+            seed ^= value + 0x9e3779b9U + (seed << 6) + (seed >> 2);
+        };
+
+        combine(std::hash<bool>{}(key.bf16));
+        combine(std::hash<int>{}(key.m));
+        combine(std::hash<int>{}(key.n));
+        combine(std::hash<int>{}(key.k));
+        combine(std::hash<int>{}(key.lda));
+        combine(std::hash<int>{}(key.ldb));
+        combine(std::hash<int>{}(key.ldc));
+        combine(std::hash<int>{}(key.trans_a));
+        combine(std::hash<int>{}(key.trans_b));
+        combine(std::hash<int>{}(key.batch_count));
+        combine(std::hash<int64_t>{}(key.stride_a));
+        combine(std::hash<int64_t>{}(key.stride_b));
+        combine(std::hash<int64_t>{}(key.stride_c));
+        combine(std::hash<bool>{}(key.strided_batched));
+        return seed;
+    }
+};
+
+constexpr size_t kMaxCachedLtPlans = 4096;
+
+// Returns the cached descriptors for this shape, creating them on first use,
+// or nullptr when the cache is full.
+const LtResources* cached_lt_resources(
+    DynamicApi& api,
+    const NormalizedGemm& p,
+    bool bf16) {
+
+    static std::mutex mutex;
+    static auto& cache = *new std::unordered_map<
+        LtPlanKey, std::unique_ptr<LtResources>, LtPlanKeyHash>();
+
+    const LtPlanKey key{
+        bf16, p.m, p.n, p.k, p.lda, p.ldb, p.ldc,
+        static_cast<int>(p.trans_a), static_cast<int>(p.trans_b),
+        p.batch_count, p.stride_a, p.stride_b, p.stride_c,
+        p.strided_batched};
+
+    std::lock_guard<std::mutex> lock(mutex);
+
+    const auto found = cache.find(key);
+    if (found != cache.end()) {
+        return found->second.get();
+    }
+
+    if (cache.size() >= kMaxCachedLtPlans) {
+        return nullptr;
+    }
+
+    auto resources = std::make_unique<LtResources>(api);
+    std::string error;
+
+    if (!create_lt_resources(api, p, bf16, *resources, error)) {
+        throw std::runtime_error(error);
+    }
+
+    const LtResources* created = resources.get();
+    cache.emplace(key, std::move(resources));
+    return created;
 }
 
 // Map CLAP FP8 input formats to ROCm HIP datatypes.
@@ -1952,6 +2046,21 @@ void execute_hipblaslt(
     float beta,
     void* C,
     void* stream) {
+
+    if (const LtResources* cached = cached_lt_resources(api, p, bf16)) {
+        run_hipblaslt(
+            api,
+            get_lt_handle(api),
+            *cached,
+            decision,
+            p,
+            alpha,
+            beta,
+            C,
+            C,
+            stream);
+        return;
+    }
 
     LtResources resources(api);
     std::string error;

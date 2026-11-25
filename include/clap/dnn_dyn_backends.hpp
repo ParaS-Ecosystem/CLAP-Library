@@ -293,6 +293,7 @@ bool loadHipAndMiopen();
 bool hasOneDnnGraph();
 bool hasMiopenT5LayerNorm();
 bool hasMiopenMha();
+bool hasMiopenLayerNormBackward();
 bool hasNvidiaGpu();
 bool hasAmdGpu();
 const char* lastError();

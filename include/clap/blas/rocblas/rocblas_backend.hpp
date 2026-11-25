@@ -359,6 +359,17 @@ public:
                                    const std::complex<double>*, std::complex<double>*,
                                    int, long long, int, void* = nullptr) override;
 
+  void gemm_ex_strided_batched_device(Layout, Transpose, Transpose, int, int, int, float,
+                                      const void*, BlasDataType, int, long long,
+                                      const void*, BlasDataType, int, long long, float,
+                                      void*, BlasDataType, int, long long, int,
+                                      void* = nullptr) override;
+
+  bool gemm_scaled_device(Layout, Transpose, Transpose, int, int, int, float,
+                          const void*, BlasDataType, int, const float*,
+                          const void*, BlasDataType, int, const float*, float,
+                          void*, BlasDataType, int, void* = nullptr) override;
+
 //Level 3
 
   void gemm(Layout layout, Transpose transA, Transpose transB, int m, int n,

@@ -192,6 +192,7 @@ struct ConvolutionDesc {
     std::int64_t stride_w = 1;
     std::int64_t dilation_h = 1;
     std::int64_t dilation_w = 1;
+    std::int64_t groups = 1;
 };
 
 struct ActivationDesc {
@@ -326,6 +327,7 @@ struct DnnCapabilityQuery {
     SoftmaxDesc softmax;
     RmsNormDesc rms_norm;
     AttentionDesc attention;
+    ConvolutionDesc convolution;
     bool has_mask = false;
 
     static DnnCapabilityQuery forActivation(DnnOperation op, const ActivationDesc& a, const TensorDesc& x)
@@ -417,6 +419,27 @@ struct DnnCapabilityQuery {
         DnnCapabilityQuery q = forLayoutTransform(x, y);
         q.tensors[0].layout = TensorLayout::NHWC;
         return q;
+    }
+
+    static DnnCapabilityQuery forConvolution(DnnOperation op, const ConvolutionDesc& c, const TensorDesc& x, const TensorDesc& w, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q;
+        q.operation = op;
+        q.convolution = c;
+        q.tensors = {x, w, y};
+        return q;
+    }
+
+    static DnnCapabilityQuery forGroupedConvolution(DnnOperation op, const ConvolutionDesc& c, std::int64_t groups, const TensorDesc& x, const TensorDesc& w, const TensorDesc& y)
+    {
+        DnnCapabilityQuery q = forConvolution(op, c, x, w, y);
+        q.convolution.groups = groups;
+        return q;
+    }
+
+    static DnnCapabilityQuery forDepthwiseConvolution(DnnOperation op, const ConvolutionDesc& c, const TensorDesc& x, const TensorDesc& w, const TensorDesc& y)
+    {
+        return forGroupedConvolution(op, c, x.rank() > 1 ? x.dims[1] : 1, x, w, y);
     }
 
     const TensorDesc& tensor(std::size_t i) const

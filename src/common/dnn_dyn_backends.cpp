@@ -54,7 +54,7 @@ DEF(p_nvrtcCreateProgram); DEF(p_nvrtcCompileProgram); DEF(p_nvrtcGetPTXSize); D
 DEF(p_cudnnCreateLRNDescriptor); DEF(p_cudnnSetLRNDescriptor); DEF(p_cudnnDestroyLRNDescriptor); DEF(p_cudnnLRNCrossChannelForward); DEF(p_cudnnLRNCrossChannelBackward); DEF(p_cudnnCreateOpTensorDescriptor); DEF(p_cudnnSetOpTensorDescriptor); DEF(p_cudnnDestroyOpTensorDescriptor); DEF(p_cudnnOpTensor); DEF(p_cudnnSetTensor); DEF(p_cudnnScaleTensor); DEF(p_cudnnTransformTensor); DEF(p_cudnnCreateReduceTensorDescriptor); DEF(p_cudnnSetReduceTensorDescriptor); DEF(p_cudnnDestroyReduceTensorDescriptor); DEF(p_cudnnGetReductionWorkspaceSize); DEF(p_cudnnReduceTensor);
 DEF(p_cudnnCreate); DEF(p_cudnnDestroy); DEF(p_cudnnCreateTensorDescriptor); DEF(p_cudnnSetTensor4dDescriptor); DEF(p_cudnnDestroyTensorDescriptor);
 DEF(p_cudnnCreateFilterDescriptor); DEF(p_cudnnSetFilter4dDescriptor); DEF(p_cudnnDestroyFilterDescriptor);
-DEF(p_cudnnCreateConvolutionDescriptor); DEF(p_cudnnSetConvolution2dDescriptor); DEF(p_cudnnDestroyConvolutionDescriptor);
+DEF(p_cudnnCreateConvolutionDescriptor); DEF(p_cudnnSetConvolution2dDescriptor); DEF(p_cudnnSetConvolutionGroupCount); DEF(p_cudnnDestroyConvolutionDescriptor);
 DEF(p_cudnnConvolutionForward); DEF(p_cudnnConvolutionBackwardData); DEF(p_cudnnConvolutionBackwardFilter);
 DEF(p_cudnnCreateActivationDescriptor); DEF(p_cudnnSetActivationDescriptor); DEF(p_cudnnDestroyActivationDescriptor); DEF(p_cudnnActivationForward); DEF(p_cudnnActivationBackward);
 DEF(p_cudnnCreatePoolingDescriptor); DEF(p_cudnnSetPooling2dDescriptor); DEF(p_cudnnDestroyPoolingDescriptor); DEF(p_cudnnPoolingForward); DEF(p_cudnnPoolingBackward);
@@ -69,7 +69,7 @@ DEF(p_hipGetDeviceCount); DEF(p_hipMalloc); DEF(p_hipFree); DEF(p_hipMemcpy); DE
 DEF(p_hipGetDevice); DEF(p_hipStreamCreate); DEF(p_hipStreamDestroy); DEF(p_hipStreamSynchronize); DEF(p_hipMemcpyAsync); DEF(p_hipMemsetAsync); DEF(p_hipMallocAsync); DEF(p_hipFreeAsync);
 DEF(p_miopenSetStream); DEF(p_miopenSetTensorDescriptor);
 DEF(p_miopenCreate); DEF(p_miopenDestroy); DEF(p_miopenCreateTensorDescriptor); DEF(p_miopenSet4dTensorDescriptor); DEF(p_miopenDestroyTensorDescriptor);
-DEF(p_miopenCreateConvolutionDescriptor); DEF(p_miopenInitConvolutionDescriptor); DEF(p_miopenDestroyConvolutionDescriptor);
+DEF(p_miopenCreateConvolutionDescriptor); DEF(p_miopenInitConvolutionDescriptor); DEF(p_miopenSetConvolutionGroupCount); DEF(p_miopenDestroyConvolutionDescriptor);
 DEF(p_miopenConvolutionForward); DEF(p_miopenConvolutionBackwardData); DEF(p_miopenConvolutionBackwardWeights);
 DEF(p_miopenConvolutionForwardGetWorkSpaceSize); DEF(p_miopenFindConvolutionForwardAlgorithm); DEF(p_miopenConvolutionBackwardDataGetWorkSpaceSize); DEF(p_miopenFindConvolutionBackwardDataAlgorithm); DEF(p_miopenConvolutionBackwardWeightsGetWorkSpaceSize); DEF(p_miopenFindConvolutionBackwardWeightsAlgorithm);
 DEF(p_miopenCreateLRNDescriptor); DEF(p_miopenSetLRNDescriptor); DEF(p_miopenDestroyLRNDescriptor); DEF(p_miopenLRNForward); DEF(p_miopenLRNBackward); DEF(p_miopenLRNGetWorkSpaceSize); DEF(p_miopenOpTensor); DEF(p_miopenSetTensor); DEF(p_miopenScaleTensor); DEF(p_miopenTransformTensor); DEF(p_miopenCreateReduceTensorDescriptor); DEF(p_miopenDestroyReduceTensorDescriptor); DEF(p_miopenSetReduceTensorDescriptor); DEF(p_miopenGetReductionWorkspaceSize); DEF(p_miopenReduceTensor); DEF(p_miopenCreateActivationDescriptor); DEF(p_miopenSetActivationDescriptor); DEF(p_miopenDestroyActivationDescriptor); DEF(p_miopenActivationForward); DEF(p_miopenActivationBackward);
@@ -172,7 +172,7 @@ bool loadCudaAndCudnn() {
 #define S(x) if(!sym(cudnn_lib,#x,p_##x)) return false
     S(cudnnCreate); S(cudnnDestroy); S(cudnnCreateTensorDescriptor); S(cudnnSetTensor4dDescriptor); S(cudnnDestroyTensorDescriptor);
     S(cudnnCreateFilterDescriptor); S(cudnnSetFilter4dDescriptor); S(cudnnDestroyFilterDescriptor);
-    S(cudnnCreateConvolutionDescriptor); S(cudnnSetConvolution2dDescriptor); S(cudnnDestroyConvolutionDescriptor);
+    S(cudnnCreateConvolutionDescriptor); S(cudnnSetConvolution2dDescriptor); S(cudnnSetConvolutionGroupCount); S(cudnnDestroyConvolutionDescriptor);
     S(cudnnConvolutionForward); S(cudnnConvolutionBackwardData); S(cudnnConvolutionBackwardFilter);
     S(cudnnCreateActivationDescriptor); S(cudnnSetActivationDescriptor); S(cudnnDestroyActivationDescriptor); S(cudnnActivationForward); S(cudnnActivationBackward);
     S(cudnnCreatePoolingDescriptor); S(cudnnSetPooling2dDescriptor); S(cudnnDestroyPoolingDescriptor); S(cudnnPoolingForward); S(cudnnPoolingBackward);
@@ -236,7 +236,7 @@ bool loadHipAndMiopen() {
     if (!miopen_lib) { error_text="cannot dlopen libMIOpen.so; set LD_LIBRARY_PATH to ROCm/MIOpen lib directory"; return false; }
 #define S(x) if(!sym(miopen_lib,#x,p_##x)) return false
     S(miopenCreate); S(miopenDestroy); S(miopenCreateTensorDescriptor); S(miopenSet4dTensorDescriptor); S(miopenDestroyTensorDescriptor);
-    S(miopenCreateConvolutionDescriptor); S(miopenInitConvolutionDescriptor); S(miopenDestroyConvolutionDescriptor);
+    S(miopenCreateConvolutionDescriptor); S(miopenInitConvolutionDescriptor); S(miopenSetConvolutionGroupCount); S(miopenDestroyConvolutionDescriptor);
     S(miopenConvolutionForward); S(miopenConvolutionBackwardData); S(miopenConvolutionBackwardWeights);
     S(miopenConvolutionForwardGetWorkSpaceSize); S(miopenFindConvolutionForwardAlgorithm); S(miopenConvolutionBackwardDataGetWorkSpaceSize); S(miopenFindConvolutionBackwardDataAlgorithm); S(miopenConvolutionBackwardWeightsGetWorkSpaceSize); S(miopenFindConvolutionBackwardWeightsAlgorithm);
     S(miopenCreateActivationDescriptor); S(miopenSetActivationDescriptor); S(miopenDestroyActivationDescriptor); S(miopenActivationForward); S(miopenActivationBackward);

@@ -194,6 +194,12 @@ if(BUILD_DNN_EXAMPLES)
         layout/nchw_to_nhwc
         layout/nhwc_to_nchw
         validation/dnn_layout_transform_validation
+
+        convolution/grouped_convolution
+        convolution/grouped_convolution_backward
+        convolution/depthwise_convolution
+        convolution/depthwise_convolution_backward
+        validation/dnn_grouped_conv_validation
     )
 
     foreach(rel IN LISTS CLAP_DNN_EXAMPLES)

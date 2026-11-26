@@ -362,6 +362,10 @@ public:
                 abi::CUDNN_CROSS_CORRELATION,
                 abi::CUDNN_DATA_FLOAT),
             "cudnnSetConvolution2dDescriptor");
+
+        if (c.groups != 1)
+            checkCudnn(dnn_dyn::p_cudnnSetConvolutionGroupCount(desc_, static_cast<int>(c.groups)),
+                       "cudnnSetConvolutionGroupCount");
     }
 
     ~ConvolutionDescriptor()
@@ -1887,6 +1891,7 @@ void CuDnnBackend::convolutionForward(const TensorDesc& xd,
     requireCudaContext(ctx, "convolutionForward");
     xd.require4d("convolutionForward");
     yd.require4d("convolutionForward");
+    dnn_contract::validateConvolutionGroups(xd, wd, yd, c, "convolutionForward");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -1920,6 +1925,7 @@ void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
     requireCudaContext(ctx, "convolutionBackwardData");
     dyd.require4d("convolutionBackwardData");
     dxd.require4d("convolutionBackwardData");
+    dnn_contract::validateConvolutionGroups(dxd, wd, dyd, c, "convolutionBackwardData");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -1953,6 +1959,7 @@ void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
     requireCudaContext(ctx, "convolutionBackwardWeights");
     xd.require4d("convolutionBackwardWeights");
     dyd.require4d("convolutionBackwardWeights");
+    dnn_contract::validateConvolutionGroups(xd, dwd, dyd, c, "convolutionBackwardWeights");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -2014,6 +2021,7 @@ void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
     requireCudaContext(ctx, "convolutionTransposeForward");
     xd.require4d("convolutionTransposeForward");
     yd.require4d("convolutionTransposeForward");
+    dnn_contract::requireUngroupedConvolution(c, "convolutionTransposeForward");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -2049,6 +2057,7 @@ void CuDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd,
     requireCudaContext(ctx, "fusedConvolutionBiasActivation");
     xd.require4d("fusedConvolutionBiasActivation");
     yd.require4d("fusedConvolutionBiasActivation");
+    dnn_contract::requireUngroupedConvolution(c, "fusedConvolutionBiasActivation");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -3459,7 +3468,31 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
                 return DnnSupport::yes("cuDNN graph fused flash attention (engine availability is checked at plan creation)");
             }
 
+            case DnnOperation::ConvolutionForward:
+            case DnnOperation::ConvolutionBackwardData:
+            case DnnOperation::ConvolutionBackwardWeights:
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                if (query.tensors.size() < 3) {
+                    if (query.convolution.groups != 1)
+                        return DnnSupport::no("grouped convolution capability queries need {x, w, y} descriptors");
+                    return DnnSupport::yes();
+                }
+                dnn_contract::validateConvolutionGroups(query.tensor(0), query.tensor(1), query.tensor(2), query.convolution, "supports(convolution)");
+                if (!query.tensor(1).isPacked())
+                    return DnnSupport::no("cuDNN convolution filters must be packed KCRS tensors");
+                return DnnSupport::yes(query.convolution.groups == 1 ? "cudnnConvolution*" : "cudnnConvolution* with cudnnSetConvolutionGroupCount");
+
+            case DnnOperation::ConvolutionTransposeForward:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                return DnnSupport::yes();
+
             case DnnOperation::FusedConvolutionBiasActivation:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
                 if (query.activation.mode != ActivationMode::ReLU)
                     return DnnSupport::no("cudnnConvolutionBiasActivationForward supports ReLU (and identity) activations only");
                 if (x.rank() != 4)

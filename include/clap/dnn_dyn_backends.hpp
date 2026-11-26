@@ -154,6 +154,7 @@ extern abi::cudnnStatus_t (*p_cudnnSetFilter4dDescriptor)(abi::cudnnFilterDescri
 extern abi::cudnnStatus_t (*p_cudnnDestroyFilterDescriptor)(abi::cudnnFilterDescriptor_t);
 extern abi::cudnnStatus_t (*p_cudnnCreateConvolutionDescriptor)(abi::cudnnConvolutionDescriptor_t*);
 extern abi::cudnnStatus_t (*p_cudnnSetConvolution2dDescriptor)(abi::cudnnConvolutionDescriptor_t, int, int, int, int, int, int, abi::cudnnConvolutionMode_t, abi::cudnnDataType_t);
+extern abi::cudnnStatus_t (*p_cudnnSetConvolutionGroupCount)(abi::cudnnConvolutionDescriptor_t, int);
 extern abi::cudnnStatus_t (*p_cudnnDestroyConvolutionDescriptor)(abi::cudnnConvolutionDescriptor_t);
 extern abi::cudnnStatus_t (*p_cudnnConvolutionForward)(abi::cudnnHandle_t,const void*,abi::cudnnTensorDescriptor_t,const void*,abi::cudnnFilterDescriptor_t,const void*,abi::cudnnConvolutionDescriptor_t,abi::cudnnConvolutionFwdAlgo_t,void*,std::size_t,const void*,abi::cudnnTensorDescriptor_t,void*);
 extern abi::cudnnStatus_t (*p_cudnnConvolutionBackwardData)(abi::cudnnHandle_t,const void*,abi::cudnnFilterDescriptor_t,const void*,abi::cudnnTensorDescriptor_t,const void*,abi::cudnnConvolutionDescriptor_t,abi::cudnnConvolutionBwdDataAlgo_t,void*,std::size_t,const void*,abi::cudnnTensorDescriptor_t,void*);
@@ -234,6 +235,7 @@ extern abi::miopenStatus_t (*p_miopenSet4dTensorDescriptor)(abi::miopenTensorDes
 extern abi::miopenStatus_t (*p_miopenDestroyTensorDescriptor)(abi::miopenTensorDescriptor_t);
 extern abi::miopenStatus_t (*p_miopenCreateConvolutionDescriptor)(abi::miopenConvolutionDescriptor_t*);
 extern abi::miopenStatus_t (*p_miopenInitConvolutionDescriptor)(abi::miopenConvolutionDescriptor_t,abi::miopenConvolutionMode_t,int,int,int,int,int,int);
+extern abi::miopenStatus_t (*p_miopenSetConvolutionGroupCount)(abi::miopenConvolutionDescriptor_t,int);
 extern abi::miopenStatus_t (*p_miopenDestroyConvolutionDescriptor)(abi::miopenConvolutionDescriptor_t);
 extern abi::miopenStatus_t (*p_miopenConvolutionForward)(abi::miopenHandle_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenConvolutionDescriptor_t,abi::miopenConvFwdAlgorithm_t,const void*,abi::miopenTensorDescriptor_t,void*,void*,std::size_t);
 extern abi::miopenStatus_t (*p_miopenConvolutionBackwardData)(abi::miopenHandle_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenTensorDescriptor_t,const void*,abi::miopenConvolutionDescriptor_t,abi::miopenConvBwdDataAlgorithm_t,const void*,abi::miopenTensorDescriptor_t,void*,void*,std::size_t);

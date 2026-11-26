@@ -111,6 +111,19 @@ constexpr int CUDNN_32BIT_INDICES = 0;
 constexpr int CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM = 0;
 constexpr int CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0;
 constexpr int CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0;
+using cudnnMathType_t = int;
+constexpr int CUDNN_DEFAULT_MATH = 0;
+constexpr int CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION = 2;
+
+struct cudnnConvolutionAlgoPerf_t {
+    int algo;
+    cudnnStatus_t status;
+    float time;
+    std::size_t memory;
+    int determinism;
+    cudnnMathType_t mathType;
+    int reserved[3];
+};
 
 using cudnnBackendAttributeName_t = int;
 using cudnnBackendAttributeType_t = int;

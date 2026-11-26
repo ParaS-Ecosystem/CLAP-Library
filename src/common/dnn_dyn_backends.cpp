@@ -54,7 +54,7 @@ DEF(p_nvrtcCreateProgram); DEF(p_nvrtcCompileProgram); DEF(p_nvrtcGetPTXSize); D
 DEF(p_cudnnCreateLRNDescriptor); DEF(p_cudnnSetLRNDescriptor); DEF(p_cudnnDestroyLRNDescriptor); DEF(p_cudnnLRNCrossChannelForward); DEF(p_cudnnLRNCrossChannelBackward); DEF(p_cudnnCreateOpTensorDescriptor); DEF(p_cudnnSetOpTensorDescriptor); DEF(p_cudnnDestroyOpTensorDescriptor); DEF(p_cudnnOpTensor); DEF(p_cudnnSetTensor); DEF(p_cudnnScaleTensor); DEF(p_cudnnTransformTensor); DEF(p_cudnnCreateReduceTensorDescriptor); DEF(p_cudnnSetReduceTensorDescriptor); DEF(p_cudnnDestroyReduceTensorDescriptor); DEF(p_cudnnGetReductionWorkspaceSize); DEF(p_cudnnReduceTensor);
 DEF(p_cudnnCreate); DEF(p_cudnnDestroy); DEF(p_cudnnCreateTensorDescriptor); DEF(p_cudnnSetTensor4dDescriptor); DEF(p_cudnnDestroyTensorDescriptor);
 DEF(p_cudnnCreateFilterDescriptor); DEF(p_cudnnSetFilter4dDescriptor); DEF(p_cudnnDestroyFilterDescriptor);
-DEF(p_cudnnCreateConvolutionDescriptor); DEF(p_cudnnSetConvolution2dDescriptor); DEF(p_cudnnSetConvolutionGroupCount); DEF(p_cudnnDestroyConvolutionDescriptor);
+DEF(p_cudnnCreateConvolutionDescriptor); DEF(p_cudnnSetConvolution2dDescriptor); DEF(p_cudnnSetConvolutionGroupCount); DEF(p_cudnnSetConvolutionMathType); DEF(p_cudnnFindConvolutionForwardAlgorithm); DEF(p_cudnnFindConvolutionBackwardDataAlgorithm); DEF(p_cudnnFindConvolutionBackwardFilterAlgorithm); DEF(p_cudnnDestroyConvolutionDescriptor);
 DEF(p_cudnnConvolutionForward); DEF(p_cudnnConvolutionBackwardData); DEF(p_cudnnConvolutionBackwardFilter);
 DEF(p_cudnnCreateActivationDescriptor); DEF(p_cudnnSetActivationDescriptor); DEF(p_cudnnDestroyActivationDescriptor); DEF(p_cudnnActivationForward); DEF(p_cudnnActivationBackward);
 DEF(p_cudnnCreatePoolingDescriptor); DEF(p_cudnnSetPooling2dDescriptor); DEF(p_cudnnDestroyPoolingDescriptor); DEF(p_cudnnPoolingForward); DEF(p_cudnnPoolingBackward);
@@ -172,7 +172,7 @@ bool loadCudaAndCudnn() {
 #define S(x) if(!sym(cudnn_lib,#x,p_##x)) return false
     S(cudnnCreate); S(cudnnDestroy); S(cudnnCreateTensorDescriptor); S(cudnnSetTensor4dDescriptor); S(cudnnDestroyTensorDescriptor);
     S(cudnnCreateFilterDescriptor); S(cudnnSetFilter4dDescriptor); S(cudnnDestroyFilterDescriptor);
-    S(cudnnCreateConvolutionDescriptor); S(cudnnSetConvolution2dDescriptor); S(cudnnSetConvolutionGroupCount); S(cudnnDestroyConvolutionDescriptor);
+    S(cudnnCreateConvolutionDescriptor); S(cudnnSetConvolution2dDescriptor); S(cudnnSetConvolutionGroupCount); S(cudnnSetConvolutionMathType); S(cudnnFindConvolutionForwardAlgorithm); S(cudnnFindConvolutionBackwardDataAlgorithm); S(cudnnFindConvolutionBackwardFilterAlgorithm); S(cudnnDestroyConvolutionDescriptor);
     S(cudnnConvolutionForward); S(cudnnConvolutionBackwardData); S(cudnnConvolutionBackwardFilter);
     S(cudnnCreateActivationDescriptor); S(cudnnSetActivationDescriptor); S(cudnnDestroyActivationDescriptor); S(cudnnActivationForward); S(cudnnActivationBackward);
     S(cudnnCreatePoolingDescriptor); S(cudnnSetPooling2dDescriptor); S(cudnnDestroyPoolingDescriptor); S(cudnnPoolingForward); S(cudnnPoolingBackward);

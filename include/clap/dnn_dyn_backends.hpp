@@ -155,6 +155,10 @@ extern abi::cudnnStatus_t (*p_cudnnDestroyFilterDescriptor)(abi::cudnnFilterDesc
 extern abi::cudnnStatus_t (*p_cudnnCreateConvolutionDescriptor)(abi::cudnnConvolutionDescriptor_t*);
 extern abi::cudnnStatus_t (*p_cudnnSetConvolution2dDescriptor)(abi::cudnnConvolutionDescriptor_t, int, int, int, int, int, int, abi::cudnnConvolutionMode_t, abi::cudnnDataType_t);
 extern abi::cudnnStatus_t (*p_cudnnSetConvolutionGroupCount)(abi::cudnnConvolutionDescriptor_t, int);
+extern abi::cudnnStatus_t (*p_cudnnSetConvolutionMathType)(abi::cudnnConvolutionDescriptor_t, abi::cudnnMathType_t);
+extern abi::cudnnStatus_t (*p_cudnnFindConvolutionForwardAlgorithm)(abi::cudnnHandle_t, abi::cudnnTensorDescriptor_t, abi::cudnnFilterDescriptor_t, abi::cudnnConvolutionDescriptor_t, abi::cudnnTensorDescriptor_t, int, int*, abi::cudnnConvolutionAlgoPerf_t*);
+extern abi::cudnnStatus_t (*p_cudnnFindConvolutionBackwardDataAlgorithm)(abi::cudnnHandle_t, abi::cudnnFilterDescriptor_t, abi::cudnnTensorDescriptor_t, abi::cudnnConvolutionDescriptor_t, abi::cudnnTensorDescriptor_t, int, int*, abi::cudnnConvolutionAlgoPerf_t*);
+extern abi::cudnnStatus_t (*p_cudnnFindConvolutionBackwardFilterAlgorithm)(abi::cudnnHandle_t, abi::cudnnTensorDescriptor_t, abi::cudnnTensorDescriptor_t, abi::cudnnConvolutionDescriptor_t, abi::cudnnFilterDescriptor_t, int, int*, abi::cudnnConvolutionAlgoPerf_t*);
 extern abi::cudnnStatus_t (*p_cudnnDestroyConvolutionDescriptor)(abi::cudnnConvolutionDescriptor_t);
 extern abi::cudnnStatus_t (*p_cudnnConvolutionForward)(abi::cudnnHandle_t,const void*,abi::cudnnTensorDescriptor_t,const void*,abi::cudnnFilterDescriptor_t,const void*,abi::cudnnConvolutionDescriptor_t,abi::cudnnConvolutionFwdAlgo_t,void*,std::size_t,const void*,abi::cudnnTensorDescriptor_t,void*);
 extern abi::cudnnStatus_t (*p_cudnnConvolutionBackwardData)(abi::cudnnHandle_t,const void*,abi::cudnnFilterDescriptor_t,const void*,abi::cudnnTensorDescriptor_t,const void*,abi::cudnnConvolutionDescriptor_t,abi::cudnnConvolutionBwdDataAlgo_t,void*,std::size_t,const void*,abi::cudnnTensorDescriptor_t,void*);

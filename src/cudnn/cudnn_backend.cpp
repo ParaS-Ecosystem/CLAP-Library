@@ -1023,10 +1023,67 @@ void appendKey(std::ostringstream& key, const TensorDesc& d)
 
 }
 
+namespace {
+
+struct ConvAlgo {
+    int algo = 0;
+    abi::cudnnMathType_t math = abi::CUDNN_DEFAULT_MATH;
+    std::size_t workspace = 0;
+};
+
+std::string convAlgoKey(const char* direction, const TensorDesc& a, const TensorDesc& w, const TensorDesc& b, const ConvolutionDesc& c)
+{
+    int device = 0;
+    checkCuda(dnn_dyn::p_cudaGetDevice(&device), "cudaGetDevice");
+    std::ostringstream key;
+    key << direction << '|' << device << '|';
+    cudnn_detail::appendKey(key, a);
+    cudnn_detail::appendKey(key, w);
+    cudnn_detail::appendKey(key, b);
+    key << c.pad_h << ',' << c.pad_w << ',' << c.stride_h << ',' << c.stride_w << ','
+        << c.dilation_h << ',' << c.dilation_w << ',' << c.groups;
+    return key.str();
+}
+
+template <class Find>
+ConvAlgo findConvAlgo(std::map<std::string, ConvAlgo>& cache, const std::string& key, int fallback, Find find)
+{
+    auto it = cache.find(key);
+    if (it != cache.end())
+        return it->second;
+
+    ConvAlgo chosen;
+    chosen.algo = fallback;
+    abi::cudnnConvolutionAlgoPerf_t perf[16] = {};
+    int count = 0;
+    if (find(16, &count, perf) == abi::CUDNN_STATUS_SUCCESS) {
+        for (int i = 0; i < count; ++i) {
+            if (perf[i].status != abi::CUDNN_STATUS_SUCCESS ||
+                perf[i].mathType == abi::CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION)
+                continue;
+            chosen.algo = perf[i].algo;
+            chosen.math = perf[i].mathType;
+            chosen.workspace = perf[i].memory;
+            break;
+        }
+    }
+    cache.emplace(key, chosen);
+    return chosen;
+}
+
+void applyConvAlgo(const ConvolutionDescriptor& conv, const ConvAlgo& algo)
+{
+    if (algo.math != abi::CUDNN_DEFAULT_MATH)
+        checkCudnn(dnn_dyn::p_cudnnSetConvolutionMathType(conv, algo.math), "cudnnSetConvolutionMathType");
+}
+
+}
+
 struct CuDnnBackend::NativeState {
     std::recursive_mutex mutex;
     std::map<int, abi::cudnnHandle_t> handles;
     std::map<std::string, std::unique_ptr<cudnn_detail::GraphPlan>> plans;
+    std::map<std::string, ConvAlgo> conv_algos;
 
     ~NativeState()
     {
@@ -1903,13 +1960,21 @@ void CuDnnBackend::convolutionForward(const TensorDesc& xd,
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
+    const ConvAlgo algo = findConvAlgo(native_->conv_algos, convAlgoKey("fwd", xd, wd, yd, c),
+        abi::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
+        [&](int n, int* count, abi::cudnnConvolutionAlgoPerf_t* perf) {
+            return dnn_dyn::p_cudnnFindConvolutionForwardAlgorithm(handle, x_desc, w_desc, conv_desc, y_desc, n, count, perf);
+        });
+    applyConvAlgo(conv_desc, algo);
+    StreamScratch scratch(ctx);
+    void* workspace = scratch.get(algo.workspace);
+
     dnn_contract::trace("CUDA", "convolutionForward", "cudnnConvolutionForward");
 
     checkCudnn(
         dnn_dyn::p_cudnnConvolutionForward(
             handle, &alpha, x_desc, x, w_desc, w, conv_desc,
-            abi::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
-            nullptr, 0, &beta, y_desc, y),
+            algo.algo, workspace, algo.workspace, &beta, y_desc, y),
         "cudnnConvolutionForward");
 }
 
@@ -1937,13 +2002,21 @@ void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
+    const ConvAlgo algo = findConvAlgo(native_->conv_algos, convAlgoKey("bwd_data", dxd, wd, dyd, c),
+        abi::CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
+        [&](int n, int* count, abi::cudnnConvolutionAlgoPerf_t* perf) {
+            return dnn_dyn::p_cudnnFindConvolutionBackwardDataAlgorithm(handle, w_desc, dy_desc, conv_desc, dx_desc, n, count, perf);
+        });
+    applyConvAlgo(conv_desc, algo);
+    StreamScratch scratch(ctx);
+    void* workspace = scratch.get(algo.workspace);
+
     dnn_contract::trace("CUDA", "convolutionBackwardData", "cudnnConvolutionBackwardData");
 
     checkCudnn(
         dnn_dyn::p_cudnnConvolutionBackwardData(
             handle, &alpha, w_desc, w, dy_desc, dy, conv_desc,
-            abi::CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
-            nullptr, 0, &beta, dx_desc, dx),
+            algo.algo, workspace, algo.workspace, &beta, dx_desc, dx),
         "cudnnConvolutionBackwardData");
 }
 
@@ -1971,13 +2044,21 @@ void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
+    const ConvAlgo algo = findConvAlgo(native_->conv_algos, convAlgoKey("bwd_filter", xd, dwd, dyd, c),
+        abi::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
+        [&](int n, int* count, abi::cudnnConvolutionAlgoPerf_t* perf) {
+            return dnn_dyn::p_cudnnFindConvolutionBackwardFilterAlgorithm(handle, x_desc, dy_desc, conv_desc, dw_desc, n, count, perf);
+        });
+    applyConvAlgo(conv_desc, algo);
+    StreamScratch scratch(ctx);
+    void* workspace = scratch.get(algo.workspace);
+
     dnn_contract::trace("CUDA", "convolutionBackwardWeights", "cudnnConvolutionBackwardFilter");
 
     checkCudnn(
         dnn_dyn::p_cudnnConvolutionBackwardFilter(
             handle, &alpha, x_desc, x, dy_desc, dy, conv_desc,
-            abi::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
-            nullptr, 0, &beta, dw_desc, dw),
+            algo.algo, workspace, algo.workspace, &beta, dw_desc, dw),
         "cudnnConvolutionBackwardFilter");
 }
 

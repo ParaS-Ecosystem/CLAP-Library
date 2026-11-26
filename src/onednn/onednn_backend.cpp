@@ -212,6 +212,15 @@ namespace clap {
                   pr{c.pad_h, c.pad_w} {
             }
         };
+        std::unique_ptr<Md> weightsMd(const TensorDesc& wd, std::int64_t groups) {
+            if (groups == 1)
+                return std::unique_ptr<Md>(new Md(wd));
+            const auto st = wd.effectiveStrides();
+            const dnnl_dim_t k = wd.dims[0] / groups;
+            return std::unique_ptr<Md>(new Md(dnnlType(wd.type),
+                {groups, k, wd.dims[1], wd.dims[2], wd.dims[3]},
+                {st[0] * k, st[0], st[1], st[2], st[3]}));
+        }
         struct PoolGeometry {
             dnnl_dim_t st[2];
             dnnl_dim_t k[2];
@@ -286,7 +295,9 @@ namespace clap {
             eltwiseF32(q, dnnl_eltwise_linear, 1.0f, 0.0f, n, src, dst, "dnnl_eltwise_forward_primitive_desc_create(copy)");
         }
         void conv_fwd(Cpu& q, const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const TensorDesc* bd = nullptr, const void* bias = nullptr, dnnl_primitive_attr_t attr = nullptr) {
-            Md xm(xd), wm(wd), ym(yd);
+            Md xm(xd), ym(yd);
+            std::unique_ptr<Md> wmp = weightsMd(wd, c.groups);
+            Md& wm = *wmp;
             std::unique_ptr<Md> bm;
             if (bd) bm.reset(new Md( *bd));
             Mem X(xm, q.e, mut(x)), W(wm, q.e, mut(w)), Y(ym, q.e, y);
@@ -560,6 +571,7 @@ void OneDnnBackend::nhwcToNchw(const TensorDesc& xd, const float* x, const Tenso
 void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
+    dnn_contract::validateConvolutionGroups(xd, wd, yd, c, "convolutionForward");
     dnn_contract::trace("CPU", "convolutionForward", "dnnl convolution forward");
     conv_fwd(q, xd, x, wd, w, c, yd, y);
 }
@@ -567,7 +579,10 @@ void OneDnnBackend::convolutionForward(const TensorDesc& xd, const void* x, cons
 void OneDnnBackend::convolutionBackwardData(const TensorDesc& dyd, const void* dy, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& dxd, void* dx, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
-    Md dym(dyd), wm(wd), dxm(dxd);
+    dnn_contract::validateConvolutionGroups(dxd, wd, dyd, c, "convolutionBackwardData");
+    Md dym(dyd), dxm(dxd);
+    std::unique_ptr<Md> wmp = weightsMd(wd, c.groups);
+    Md& wm = *wmp;
     Mem DY(dym, q.e, mut(dy)), W(wm, q.e, mut(w)), DX(dxm, q.e, dx);
     ConvGeometry g(c);
 
@@ -598,7 +613,10 @@ void OneDnnBackend::convolutionBackwardData(const TensorDesc& dyd, const void* d
 void OneDnnBackend::convolutionBackwardWeights(const TensorDesc& xd, const void* x, const TensorDesc& dyd, const void* dy, const ConvolutionDesc& c, const TensorDesc& dwd, void* dw, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
-    Md xm(xd), dym(dyd), dwm(dwd);
+    dnn_contract::validateConvolutionGroups(xd, dwd, dyd, c, "convolutionBackwardWeights");
+    Md xm(xd), dym(dyd);
+    std::unique_ptr<Md> dwmp = weightsMd(dwd, c.groups);
+    Md& dwm = *dwmp;
     Mem X(xm, q.e, mut(x)), DY(dym, q.e, mut(dy)), DW(dwm, q.e, dw);
     ConvGeometry g(c);
 
@@ -659,6 +677,7 @@ void OneDnnBackend::convolutionBackwardBias(const TensorDesc& dyd, const void* d
 void OneDnnBackend::convolutionTransposeForward(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const ConvolutionDesc& c, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
+    dnn_contract::requireUngroupedConvolution(c, "convolutionTransposeForward");
     Md xm(xd), wm(wd), ym(yd);
     Mem X(xm, q.e, mut(x)), W(wm, q.e, mut(w)), Y(ym, q.e, y);
     ConvGeometry g(c);
@@ -682,6 +701,7 @@ void OneDnnBackend::convolutionTransposeForward(const TensorDesc& xd, const void
 void OneDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd, const void* x, const TensorDesc& wd, const void* w, const void* bias, const ConvolutionDesc& c, const ActivationDesc& a, const TensorDesc& yd, void* y, const ExecutionContext& ctx)
 {
     Cpu q(native_->engine, ctx);
+    dnn_contract::requireUngroupedConvolution(c, "fusedConvolutionBiasActivation");
     TensorDesc bd(yd.type, {yd.dims.at(1)});
 
     Attr attr;
@@ -2003,6 +2023,38 @@ DnnSupport OneDnnBackend::supports(const DnnCapabilityQuery& query, const Execut
                               query.tensor(0), query.tensor(1), query.tensor(2), mask, query.tensor(3));
                 return DnnSupport::yes("fused oneDNN Graph SDPA partition");
             }
+
+            case DnnOperation::ConvolutionForward:
+            case DnnOperation::ConvolutionBackwardData:
+            case DnnOperation::ConvolutionBackwardWeights: {
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                if (query.tensors.size() < 3) {
+                    if (query.convolution.groups != 1)
+                        return DnnSupport::no("grouped convolution capability queries need {x, w, y} descriptors");
+                    return DnnSupport::yes("validated by oneDNN at primitive creation");
+                }
+                const TensorDesc& w = query.tensor(1);
+                const TensorDesc& y = query.tensor(2);
+                dnn_contract::validateConvolutionGroups(x, w, y, query.convolution, "supports(convolution)");
+                Md xm(x), ym(y);
+                std::unique_ptr<Md> wm = weightsMd(w, query.convolution.groups);
+                ConvGeometry g(query.convolution);
+                Pd pd;
+                return probeResult(
+                    dnn_dyn::p_dnnl_convolution_forward_primitive_desc_create(
+                        &pd.v, engine, dnnl_forward_training, dnnl_convolution_direct,
+                        xm.v, wm->v, nullptr, ym.v, g.st, g.dil, g.pl, g.pr, nullptr),
+                    query.convolution.groups == 1 ? "convolution" : "grouped convolution");
+            }
+
+            case DnnOperation::ConvolutionTransposeForward:
+            case DnnOperation::FusedConvolutionBiasActivation:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
+                if (x.rank() != 4)
+                    return DnnSupport::no(std::string(dnnOperationName(query.operation)) + " expects 4D NCHW tensors");
+                return DnnSupport::yes("validated by oneDNN at primitive creation");
 
             case DnnOperation::DropoutForward:
             case DnnOperation::DropoutBackward:

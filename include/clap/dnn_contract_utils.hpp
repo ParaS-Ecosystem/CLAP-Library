@@ -238,6 +238,46 @@ inline void requireDistinctBuffers(const void* x, const void* y, const LayoutTra
         throw std::runtime_error(std::string(where) + ": x and y must not share a buffer when their layouts differ");
 }
 
+struct ConvolutionGroups {
+    std::int64_t groups = 1;
+    std::int64_t in_per_group = 0;
+    std::int64_t out_per_group = 0;
+};
+
+inline ConvolutionGroups validateConvolutionGroups(const TensorDesc& x, const TensorDesc& w, const TensorDesc& y, const ConvolutionDesc& c, const char* where)
+{
+    if (c.groups < 1)
+        throw std::runtime_error(std::string(where) + ": convolution groups must be at least 1");
+    ConvolutionGroups g;
+    g.groups = c.groups;
+    if (c.groups == 1)
+        return g;
+    if (x.rank() != 4 || w.rank() != 4 || y.rank() != 4)
+        throw std::runtime_error(std::string(where) + ": grouped convolution expects 4D NCHW x and y and KCRS weights");
+    if (x.type != w.type || x.type != y.type)
+        throw std::runtime_error(std::string(where) + ": grouped convolution expects x, w and y of the same datatype");
+    if (x.dims[0] != y.dims[0])
+        throw std::runtime_error(std::string(where) + ": x and y batch sizes differ");
+    if (x.dims[1] % c.groups != 0)
+        throw std::runtime_error(std::string(where) + ": input channels " + std::to_string(x.dims[1]) + " are not divisible by groups " + std::to_string(c.groups));
+    if (y.dims[1] % c.groups != 0)
+        throw std::runtime_error(std::string(where) + ": output channels " + std::to_string(y.dims[1]) + " are not divisible by groups " + std::to_string(c.groups));
+    g.in_per_group = x.dims[1] / c.groups;
+    g.out_per_group = y.dims[1] / c.groups;
+    if (w.dims[0] != y.dims[1] || w.dims[1] != g.in_per_group)
+        throw std::runtime_error(std::string(where) + ": grouped weights must be [K, C / groups, R, S] = [" +
+                                 std::to_string(y.dims[1]) + ", " + std::to_string(g.in_per_group) + ", R, S]");
+    return g;
+}
+
+inline void requireUngroupedConvolution(const ConvolutionDesc& c, const char* where)
+{
+    if (c.groups < 1)
+        throw std::runtime_error(std::string(where) + ": convolution groups must be at least 1");
+    if (c.groups != 1)
+        throw DnnUnsupportedError(std::string(where) + ": grouped convolution is supported for forward, backward data and backward weights only");
+}
+
 inline void squeezeUnitDims(const TensorDesc& d,
                             std::vector<std::int64_t>& dims,
                             std::vector<std::int64_t>& strides)

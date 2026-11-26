@@ -106,6 +106,8 @@ namespace clap {
             Conv(const ConvolutionDesc& c, miopenConvolutionMode_t mode = miopenConvolution) {
                 check(dnn_dyn::p_miopenCreateConvolutionDescriptor( &v), "miopenCreateConvolutionDescriptor");
                 check(dnn_dyn::p_miopenInitConvolutionDescriptor(v, mode, (int)c.pad_h, (int)c.pad_w, (int)c.stride_h, (int)c.stride_w, (int)c.dilation_h, (int)c.dilation_w), "miopenInitConvolutionDescriptor");
+                if (c.groups != 1)
+                    check(dnn_dyn::p_miopenSetConvolutionGroupCount(v, (int)c.groups), "miopenSetConvolutionGroupCount");
             }
             ~Conv() {
                 if (v) dnn_dyn::p_miopenDestroyConvolutionDescriptor(v);
@@ -232,7 +234,7 @@ namespace clap {
         using ConvAlgoCache = std::map<std::string, miopenConvAlgoPerf_t>;
         std::string convKey(const char* direction, miopenHandle_t h, miopenConvolutionMode_t mode, const ConvolutionDesc& c, std::initializer_list<const TensorDesc*> tensors) {
             std::ostringstream k;
-            k << direction << '|' << h << '|' << mode << '|' << c.pad_h << ',' << c.pad_w << ',' << c.stride_h << ',' << c.stride_w << ',' << c.dilation_h << ',' << c.dilation_w;
+            k << direction << '|' << h << '|' << mode << '|' << c.pad_h << ',' << c.pad_w << ',' << c.stride_h << ',' << c.stride_w << ',' << c.dilation_h << ',' << c.dilation_w << ',' << c.groups;
             for (const TensorDesc* t : tensors) {
                 k << '|' << static_cast<int>(t->type);
                 for (auto d : t->dims) k << ',' << d;
@@ -732,6 +734,7 @@ void MiOpenBackend::convolutionForward(const TensorDesc& xd, const void* x, cons
 {
     requireRocm(ctx, "convolutionForward");
     xd.require4d("convolutionForward");
+    dnn_contract::validateConvolutionGroups(xd, wd, yd, c, "convolutionForward");
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor Xd(xd), Wd(wd), Yd(yd);
     Conv cd(c);
@@ -743,6 +746,7 @@ void MiOpenBackend::convolutionBackwardData(const TensorDesc& dyd, const void* d
 {
     requireRocm(ctx, "convolutionBackwardData");
     dyd.require4d("convolutionBackwardData");
+    dnn_contract::validateConvolutionGroups(dxd, wd, dyd, c, "convolutionBackwardData");
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor DYd(dyd), Wd(wd), DXd(dxd);
     Conv cd(c);
@@ -764,6 +768,7 @@ void MiOpenBackend::convolutionBackwardWeights(const TensorDesc& xd, const void*
 {
     requireRocm(ctx, "convolutionBackwardWeights");
     xd.require4d("convolutionBackwardWeights");
+    dnn_contract::validateConvolutionGroups(xd, dwd, dyd, c, "convolutionBackwardWeights");
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor Xd(xd), DYd(dyd), DWd(dwd);
     Conv cd(c);
@@ -802,6 +807,7 @@ void MiOpenBackend::convolutionTransposeForward(const TensorDesc& xd, const void
 {
     requireRocm(ctx, "convolutionTransposeForward");
     xd.require4d("convolutionTransposeForward");
+    dnn_contract::requireUngroupedConvolution(c, "convolutionTransposeForward");
     Handle h(native_->mutex, native_->handles, ctx);
     Tensor Xd(xd), Wd(wd), Yd(yd);
     Conv cd(c, miopenTranspose);
@@ -813,6 +819,7 @@ void MiOpenBackend::fusedConvolutionBiasActivation(const TensorDesc& xd, const v
 {
     requireRocm(ctx, "fusedConvolutionBiasActivation");
     xd.require4d("fusedConvolutionBiasActivation");
+    dnn_contract::requireUngroupedConvolution(c, "fusedConvolutionBiasActivation");
     if (a.mode == ActivationMode::SiLU)
         dnn_contract::unsupported("MIOpen", "fusedConvolutionBiasActivation: MIOpen has no SiLU activation mode");
     Handle h(native_->mutex, native_->handles, ctx);
@@ -1911,7 +1918,29 @@ DnnSupport MiOpenBackend::supports(const DnnCapabilityQuery& query, const Execut
                 return DnnSupport::yes("MIOpen MHA Find-2.0 forward solver (solver availability is checked by miopenFindSolutions)");
             }
 
+            case DnnOperation::ConvolutionForward:
+            case DnnOperation::ConvolutionBackwardData:
+            case DnnOperation::ConvolutionBackwardWeights:
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                if (query.tensors.size() < 3) {
+                    if (query.convolution.groups != 1)
+                        return DnnSupport::no("grouped convolution capability queries need {x, w, y} descriptors");
+                    return DnnSupport::yes();
+                }
+                dnn_contract::validateConvolutionGroups(query.tensor(0), query.tensor(1), query.tensor(2), query.convolution, "supports(convolution)");
+                return DnnSupport::yes(query.convolution.groups == 1 ? "miopenConvolution*" : "miopenConvolution* with miopenSetConvolutionGroupCount");
+
+            case DnnOperation::ConvolutionTransposeForward:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                return DnnSupport::yes();
+
             case DnnOperation::FusedConvolutionBiasActivation:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
                 if (query.activation.mode == ActivationMode::SiLU)
                     return DnnSupport::no("MIOpen has no SiLU activation mode for the fused convolution path");
                 if (x.rank() != 4)

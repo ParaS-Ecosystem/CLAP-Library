@@ -362,6 +362,10 @@ public:
                 abi::CUDNN_CROSS_CORRELATION,
                 abi::CUDNN_DATA_FLOAT),
             "cudnnSetConvolution2dDescriptor");
+
+        if (c.groups != 1)
+            checkCudnn(dnn_dyn::p_cudnnSetConvolutionGroupCount(desc_, static_cast<int>(c.groups)),
+                       "cudnnSetConvolutionGroupCount");
     }
 
     ~ConvolutionDescriptor()
@@ -1019,10 +1023,67 @@ void appendKey(std::ostringstream& key, const TensorDesc& d)
 
 }
 
+namespace {
+
+struct ConvAlgo {
+    int algo = 0;
+    abi::cudnnMathType_t math = abi::CUDNN_DEFAULT_MATH;
+    std::size_t workspace = 0;
+};
+
+std::string convAlgoKey(const char* direction, const TensorDesc& a, const TensorDesc& w, const TensorDesc& b, const ConvolutionDesc& c)
+{
+    int device = 0;
+    checkCuda(dnn_dyn::p_cudaGetDevice(&device), "cudaGetDevice");
+    std::ostringstream key;
+    key << direction << '|' << device << '|';
+    cudnn_detail::appendKey(key, a);
+    cudnn_detail::appendKey(key, w);
+    cudnn_detail::appendKey(key, b);
+    key << c.pad_h << ',' << c.pad_w << ',' << c.stride_h << ',' << c.stride_w << ','
+        << c.dilation_h << ',' << c.dilation_w << ',' << c.groups;
+    return key.str();
+}
+
+template <class Find>
+ConvAlgo findConvAlgo(std::map<std::string, ConvAlgo>& cache, const std::string& key, int fallback, Find find)
+{
+    auto it = cache.find(key);
+    if (it != cache.end())
+        return it->second;
+
+    ConvAlgo chosen;
+    chosen.algo = fallback;
+    abi::cudnnConvolutionAlgoPerf_t perf[16] = {};
+    int count = 0;
+    if (find(16, &count, perf) == abi::CUDNN_STATUS_SUCCESS) {
+        for (int i = 0; i < count; ++i) {
+            if (perf[i].status != abi::CUDNN_STATUS_SUCCESS ||
+                perf[i].mathType == abi::CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION)
+                continue;
+            chosen.algo = perf[i].algo;
+            chosen.math = perf[i].mathType;
+            chosen.workspace = perf[i].memory;
+            break;
+        }
+    }
+    cache.emplace(key, chosen);
+    return chosen;
+}
+
+void applyConvAlgo(const ConvolutionDescriptor& conv, const ConvAlgo& algo)
+{
+    if (algo.math != abi::CUDNN_DEFAULT_MATH)
+        checkCudnn(dnn_dyn::p_cudnnSetConvolutionMathType(conv, algo.math), "cudnnSetConvolutionMathType");
+}
+
+}
+
 struct CuDnnBackend::NativeState {
     std::recursive_mutex mutex;
     std::map<int, abi::cudnnHandle_t> handles;
     std::map<std::string, std::unique_ptr<cudnn_detail::GraphPlan>> plans;
+    std::map<std::string, ConvAlgo> conv_algos;
 
     ~NativeState()
     {
@@ -1887,6 +1948,7 @@ void CuDnnBackend::convolutionForward(const TensorDesc& xd,
     requireCudaContext(ctx, "convolutionForward");
     xd.require4d("convolutionForward");
     yd.require4d("convolutionForward");
+    dnn_contract::validateConvolutionGroups(xd, wd, yd, c, "convolutionForward");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -1898,13 +1960,21 @@ void CuDnnBackend::convolutionForward(const TensorDesc& xd,
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
+    const ConvAlgo algo = findConvAlgo(native_->conv_algos, convAlgoKey("fwd", xd, wd, yd, c),
+        abi::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
+        [&](int n, int* count, abi::cudnnConvolutionAlgoPerf_t* perf) {
+            return dnn_dyn::p_cudnnFindConvolutionForwardAlgorithm(handle, x_desc, w_desc, conv_desc, y_desc, n, count, perf);
+        });
+    applyConvAlgo(conv_desc, algo);
+    StreamScratch scratch(ctx);
+    void* workspace = scratch.get(algo.workspace);
+
     dnn_contract::trace("CUDA", "convolutionForward", "cudnnConvolutionForward");
 
     checkCudnn(
         dnn_dyn::p_cudnnConvolutionForward(
             handle, &alpha, x_desc, x, w_desc, w, conv_desc,
-            abi::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
-            nullptr, 0, &beta, y_desc, y),
+            algo.algo, workspace, algo.workspace, &beta, y_desc, y),
         "cudnnConvolutionForward");
 }
 
@@ -1920,6 +1990,7 @@ void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
     requireCudaContext(ctx, "convolutionBackwardData");
     dyd.require4d("convolutionBackwardData");
     dxd.require4d("convolutionBackwardData");
+    dnn_contract::validateConvolutionGroups(dxd, wd, dyd, c, "convolutionBackwardData");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -1931,13 +2002,21 @@ void CuDnnBackend::convolutionBackwardData(const TensorDesc& dyd,
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
+    const ConvAlgo algo = findConvAlgo(native_->conv_algos, convAlgoKey("bwd_data", dxd, wd, dyd, c),
+        abi::CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
+        [&](int n, int* count, abi::cudnnConvolutionAlgoPerf_t* perf) {
+            return dnn_dyn::p_cudnnFindConvolutionBackwardDataAlgorithm(handle, w_desc, dy_desc, conv_desc, dx_desc, n, count, perf);
+        });
+    applyConvAlgo(conv_desc, algo);
+    StreamScratch scratch(ctx);
+    void* workspace = scratch.get(algo.workspace);
+
     dnn_contract::trace("CUDA", "convolutionBackwardData", "cudnnConvolutionBackwardData");
 
     checkCudnn(
         dnn_dyn::p_cudnnConvolutionBackwardData(
             handle, &alpha, w_desc, w, dy_desc, dy, conv_desc,
-            abi::CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
-            nullptr, 0, &beta, dx_desc, dx),
+            algo.algo, workspace, algo.workspace, &beta, dx_desc, dx),
         "cudnnConvolutionBackwardData");
 }
 
@@ -1953,6 +2032,7 @@ void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
     requireCudaContext(ctx, "convolutionBackwardWeights");
     xd.require4d("convolutionBackwardWeights");
     dyd.require4d("convolutionBackwardWeights");
+    dnn_contract::validateConvolutionGroups(xd, dwd, dyd, c, "convolutionBackwardWeights");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -1964,13 +2044,21 @@ void CuDnnBackend::convolutionBackwardWeights(const TensorDesc& xd,
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
+    const ConvAlgo algo = findConvAlgo(native_->conv_algos, convAlgoKey("bwd_filter", xd, dwd, dyd, c),
+        abi::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
+        [&](int n, int* count, abi::cudnnConvolutionAlgoPerf_t* perf) {
+            return dnn_dyn::p_cudnnFindConvolutionBackwardFilterAlgorithm(handle, x_desc, dy_desc, conv_desc, dw_desc, n, count, perf);
+        });
+    applyConvAlgo(conv_desc, algo);
+    StreamScratch scratch(ctx);
+    void* workspace = scratch.get(algo.workspace);
+
     dnn_contract::trace("CUDA", "convolutionBackwardWeights", "cudnnConvolutionBackwardFilter");
 
     checkCudnn(
         dnn_dyn::p_cudnnConvolutionBackwardFilter(
             handle, &alpha, x_desc, x, dy_desc, dy, conv_desc,
-            abi::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
-            nullptr, 0, &beta, dw_desc, dw),
+            algo.algo, workspace, algo.workspace, &beta, dw_desc, dw),
         "cudnnConvolutionBackwardFilter");
 }
 
@@ -2014,6 +2102,7 @@ void CuDnnBackend::convolutionTransposeForward(const TensorDesc& xd,
     requireCudaContext(ctx, "convolutionTransposeForward");
     xd.require4d("convolutionTransposeForward");
     yd.require4d("convolutionTransposeForward");
+    dnn_contract::requireUngroupedConvolution(c, "convolutionTransposeForward");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -2049,6 +2138,7 @@ void CuDnnBackend::fusedConvolutionBiasActivation(const TensorDesc& xd,
     requireCudaContext(ctx, "fusedConvolutionBiasActivation");
     xd.require4d("fusedConvolutionBiasActivation");
     yd.require4d("fusedConvolutionBiasActivation");
+    dnn_contract::requireUngroupedConvolution(c, "fusedConvolutionBiasActivation");
 
     ScopedHandle handle(native_->mutex, native_->handles, ctx);
 
@@ -3459,7 +3549,31 @@ DnnSupport CuDnnBackend::supports(const DnnCapabilityQuery& query, const Executi
                 return DnnSupport::yes("cuDNN graph fused flash attention (engine availability is checked at plan creation)");
             }
 
+            case DnnOperation::ConvolutionForward:
+            case DnnOperation::ConvolutionBackwardData:
+            case DnnOperation::ConvolutionBackwardWeights:
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                if (query.tensors.size() < 3) {
+                    if (query.convolution.groups != 1)
+                        return DnnSupport::no("grouped convolution capability queries need {x, w, y} descriptors");
+                    return DnnSupport::yes();
+                }
+                dnn_contract::validateConvolutionGroups(query.tensor(0), query.tensor(1), query.tensor(2), query.convolution, "supports(convolution)");
+                if (!query.tensor(1).isPacked())
+                    return DnnSupport::no("cuDNN convolution filters must be packed KCRS tensors");
+                return DnnSupport::yes(query.convolution.groups == 1 ? "cudnnConvolution*" : "cudnnConvolution* with cudnnSetConvolutionGroupCount");
+
+            case DnnOperation::ConvolutionTransposeForward:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
+                if (x.rank() != 4)
+                    return DnnSupport::no("convolution expects 4D NCHW tensors");
+                return DnnSupport::yes();
+
             case DnnOperation::FusedConvolutionBiasActivation:
+                if (query.convolution.groups != 1)
+                    return DnnSupport::no("grouped convolution is supported for forward, backward data and backward weights only");
                 if (query.activation.mode != ActivationMode::ReLU)
                     return DnnSupport::no("cudnnConvolutionBiasActivationForward supports ReLU (and identity) activations only");
                 if (x.rank() != 4)
